@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Outlet } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { FavoritesProvider } from "@/contexts/FavoritesContext";
@@ -30,6 +30,9 @@ import ReceiptsPage from "./pages/account/ReceiptsPage";
 import ReferralPage from "./pages/account/ReferralPage";
 import ChangePasswordPage from "./pages/account/ChangePasswordPage";
 import { AdminLayout } from "./admin/components/AdminLayout";
+import { AdminAuthGuard } from "./admin/components/AdminAuthGuard";
+import { AdminAuthProvider } from "./admin/contexts/AdminAuthContext";
+import AdminLoginPage from "./admin/pages/AdminLoginPage";
 import DashboardPage from "./admin/pages/DashboardPage";
 import ParserPage from "./admin/pages/ParserPage";
 import ProductsPage from "./admin/pages/ProductsPage";
@@ -106,9 +109,11 @@ function AnimatedRoutes() {
         </Route>
 
         {/* Admin routes */}
-        <Route path="/admin" element={<PageTransition><AdminLayout /></PageTransition>}>
-          <Route index element={<DashboardPage />} />
-          <Route path="parser" element={<ParserPage />} />
+        <Route path="/admin" element={<AdminAuthProvider><Outlet /></AdminAuthProvider>}>
+          <Route path="login" element={<AdminLoginPage />} />
+          <Route element={<AdminAuthGuard><PageTransition><AdminLayout /></PageTransition></AdminAuthGuard>}>
+            <Route index element={<DashboardPage />} />
+            <Route path="parser" element={<ParserPage />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="products/:id" element={<ProductDetailPage />} />
           <Route path="categories" element={<CategoriesPage />} />
@@ -119,7 +124,8 @@ function AnimatedRoutes() {
           <Route path="excluded" element={<ExcludedPage />} />
           <Route path="logs" element={<LogsPage />} />
           <Route path="roles" element={<RolesPage />} />
-          <Route path="settings" element={<SettingsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
         </Route>
 
         {/* CRM routes */}

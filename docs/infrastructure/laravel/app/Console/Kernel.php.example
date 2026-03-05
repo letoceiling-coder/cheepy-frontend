@@ -1,0 +1,44 @@
+<?php
+
+namespace App\Console;
+
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+
+class Kernel extends ConsoleKernel
+{
+    protected function schedule(Schedule $schedule): void
+    {
+        // Parser full run every 6 hours (creates job + dispatches to queue)
+        // Adjust ParserJob::create() columns to match your parser_jobs table
+        $schedule->call(function () {
+            $job = \App\Models\ParserJob::create([
+                'type' => 'full',
+                'status' => 'pending',
+                'options' => [],
+                'progress' => [],
+            ]);
+            \App\Jobs\RunParserJob::dispatch($job->id);
+        })->cron('0 */6 * * *')
+            ->withoutOverlapping(120)
+            ->appendOutputTo(storage_path('logs/scheduler-parser.log'));
+
+        // Photo download queue (process pending photos)
+        $schedule->call(function () {
+            \App\Jobs\DownloadPhotosJob::dispatch(100)->onQueue('photos');
+        })->hourly()->withoutOverlapping(60);
+
+        // Cleanup old failed jobs (older than 7 days)
+        $schedule->command('queue:prune-failed', ['--hours' => 168])
+            ->daily()
+            ->at('03:00');
+
+        // Optional: cleanup very old products (custom command if exists)
+        // $schedule->command('products:cleanup-old')->weekly();
+    }
+
+    protected function commands(): void
+    {
+        $this->load(__DIR__ . '/Commands');
+    }
+}

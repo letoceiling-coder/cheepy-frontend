@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -7,38 +7,151 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Play, Square, RotateCcw, Loader2 } from "lucide-react";
-import { mockParserConfig, mockParserStatus, mockCategories } from "../mock-data";
-import type { ParserConfig, ParserStatus } from "../types";
+import { Play, Square, Loader2 } from "lucide-react";
+import { parserApi, categoriesApi, logsApi } from "@/lib/api";
+import type { ParserJob, Category } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export default function ParserPage() {
-  const [config, setConfig] = useState<ParserConfig>(mockParserConfig);
-  const [status, setStatus] = useState<ParserStatus>(mockParserStatus);
-  const [logs] = useState<string[]>([
-    '[14:30:01] Подключение к sadovodbaza.ru...',
-    '[14:30:02] Загрузка категории "Электроника"...',
-    '[14:30:05] Найдено 342 объявления',
-    '[14:30:06] Обработка страницы 1/15...',
-  ]);
+  const [config, setConfig] = useState({
+    withPhotos: true,
+    saveToDB: true,
+    previewOnly: false,
+    category: "",
+    linkedOnly: false,
+    productsPerCategory: 0,
+    maxPages: 0,
+  });
+  const [jobId, setJobId] = useState<number | null>(null);
+  const [currentJob, setCurrentJob] = useState<ParserJob | null>(null);
+  const [logs, setLogs] = useState<Array<{ level: string; message: string; logged_at: string }>>([]);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
-  const handleStart = () => {
-    setStatus({ ...status, isRunning: true, progress: 0, totalCount: 342, startedAt: new Date().toISOString() });
-    // Mock progress
-    let p = 0;
-    const interval = setInterval(() => {
-      p += Math.random() * 8;
-      if (p >= 100) { p = 100; clearInterval(interval); setStatus(s => ({ ...s, isRunning: false, progress: 100, processedCount: s.totalCount })); }
-      else setStatus(s => ({ ...s, progress: Math.round(p), processedCount: Math.round(s.totalCount * p / 100) }));
-    }, 500);
+  const { data: statusData, refetch: refetchStatus } = useQuery({
+    queryKey: ["parser-status"],
+    queryFn: () => parserApi.status(),
+    refetchInterval: 30000, // Fallback; WebSocket invalidates on events
+  });
+
+  const { data: categoriesData } = useQuery({
+    queryKey: ["categories-list"],
+    queryFn: () => categoriesApi.list({ tree: true }),
+  });
+
+  const flattenCategories = (items: Category[]): Category[] => {
+    const out: Category[] = [];
+    const walk = (arr: Category[]) => {
+      for (const c of arr) {
+        out.push(c);
+        if (c.children?.length) walk(c.children);
+      }
+    };
+    walk(categoriesData?.data ?? []);
+    return out;
   };
+  const categories = flattenCategories(categoriesData?.data ?? []);
+  const isRunning = statusData?.is_running ?? false;
+  const activeJob = statusData?.current_job ?? currentJob;
+
+  const fetchLogs = useCallback((jid: number | null) => {
+    if (!jid) return;
+    logsApi.list({ job_id: jid, per_page: 50 }).then((res) => {
+      setLogs((res.data ?? []).map((l) => ({ level: l.level, message: l.message, logged_at: l.logged_at })));
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (activeJob?.id) {
+      setJobId(activeJob.id);
+      fetchLogs(activeJob.id);
+    }
+  }, [activeJob?.id, fetchLogs]);
+
+  useEffect(() => {
+    if (!isRunning || !jobId) return;
+    const es = new EventSource(parserApi.progressUrl(jobId));
+    eventSourceRef.current = es;
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.status === "stream_ended") {
+          es.close();
+          refetchStatus();
+          return;
+        }
+        if (data.id) setCurrentJob(data);
+        if (data.status === "completed" || data.status === "failed" || data.status === "cancelled") {
+          es.close();
+          refetchStatus();
+        }
+      } catch { /* ignore */ }
+    };
+    es.onerror = () => {
+      es.close();
+      refetchStatus();
+    };
+    return () => {
+      es.close();
+      eventSourceRef.current = null;
+    };
+  }, [isRunning, jobId, refetchStatus]);
+
+  const handleStart = async () => {
+    try {
+      const opts: Parameters<typeof parserApi.start>[0] = {
+        type: config.category ? "category" : "full",
+        save_photos: config.withPhotos,
+        save_to_db: config.saveToDB,
+        no_details: config.previewOnly,
+        linked_only: config.linkedOnly,
+        products_per_category: config.productsPerCategory || undefined,
+        max_pages: config.maxPages || undefined,
+      };
+      if (config.category) opts.category_slug = config.category;
+      const res = await parserApi.start(opts);
+      setJobId(res.job_id);
+      setCurrentJob(res.job);
+      refetchStatus();
+      toast.success("Парсинг запущен");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    }
+  };
+
+  const handleStop = async () => {
+    try {
+      await parserApi.stop();
+      refetchStatus();
+      toast.success("Парсинг остановлен");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    }
+  };
+
+  const progress = activeJob?.progress?.percent ?? 0;
+  const totalProducts = activeJob?.progress?.products?.total ?? 0;
+  const processedCount = activeJob?.progress?.products?.done ?? activeJob?.progress?.saved ?? 0;
+  const lastFailed = statusData?.last_completed?.status === "failed";
+  const statusBadge =
+    isRunning ? (
+      <Badge className="bg-emerald-600 hover:bg-emerald-600">
+        <span className="h-2 w-2 rounded-full bg-white/80 animate-pulse mr-1.5" />
+        Парсер работает
+      </Badge>
+    ) : lastFailed ? (
+      <Badge variant="destructive">Парсер: ошибка</Badge>
+    ) : (
+      <Badge variant="secondary">Парсер ожидает</Badge>
+    );
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Управление парсером</h2>
-        <Badge variant={status.isRunning ? "default" : "secondary"}>
-          {status.isRunning ? "Работает" : "Остановлен"}
-        </Badge>
+        {statusBadge}
       </div>
 
       {/* Controls */}
@@ -46,17 +159,19 @@ export default function ParserPage() {
         <CardHeader><CardTitle className="text-lg">Управление</CardTitle></CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Button onClick={handleStart} disabled={status.isRunning}><Play className="h-4 w-4 mr-1" />Запустить</Button>
-            <Button variant="destructive" disabled={!status.isRunning} onClick={() => setStatus({ ...mockParserStatus })}><Square className="h-4 w-4 mr-1" />Остановить</Button>
-            <Button variant="outline" disabled={status.isRunning}><RotateCcw className="h-4 w-4 mr-1" />Перезапустить</Button>
+            <Button onClick={handleStart} disabled={isRunning}><Play className="h-4 w-4 mr-1" />Запустить</Button>
+            <Button variant="destructive" disabled={!isRunning} onClick={handleStop}><Square className="h-4 w-4 mr-1" />Остановить</Button>
           </div>
-          {status.isRunning && (
+          {isRunning && (
             <div className="mt-4 space-y-2">
               <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Прогресс: {status.processedCount}/{status.totalCount}</span>
-                <span>{status.progress}%</span>
+                <span>Прогресс: {processedCount}/{totalProducts || "—"}</span>
+                <span>{progress}%</span>
               </div>
-              <Progress value={status.progress} />
+              <Progress value={progress} />
+              {activeJob?.progress?.current_action && (
+                <p className="text-xs text-muted-foreground">{activeJob.progress.current_action}</p>
+              )}
             </div>
           )}
         </CardContent>
@@ -67,18 +182,22 @@ export default function ParserPage() {
         <Card>
           <CardHeader><CardTitle className="text-lg">Переключатели</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            {([
-              ['withPhotos', 'Парсить с фото'],
-              ['saveToDB', 'Сохранять в БД'],
-              ['previewOnly', 'Только предпросмотр'],
-              ['autoCheckRelevance', 'Авто-проверка актуальности'],
-              ['retryOnError', 'Повтор при ошибке'],
-            ] as const).map(([key, label]) => (
-              <div key={key} className="flex items-center justify-between">
-                <Label>{label}</Label>
-                <Switch checked={config[key] as boolean} onCheckedChange={(v) => setConfig({ ...config, [key]: v })} />
-              </div>
-            ))}
+            <div className="flex items-center justify-between">
+              <Label>Парсить с фото</Label>
+              <Switch checked={config.withPhotos} onCheckedChange={(v) => setConfig({ ...config, withPhotos: v })} />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Сохранять в БД</Label>
+              <Switch checked={config.saveToDB} onCheckedChange={(v) => setConfig({ ...config, saveToDB: v })} />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Только предпросмотр</Label>
+              <Switch checked={config.previewOnly} onCheckedChange={(v) => setConfig({ ...config, previewOnly: v })} />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Только связанные категории</Label>
+              <Switch checked={config.linkedOnly} onCheckedChange={(v) => setConfig({ ...config, linkedOnly: v })} />
+            </div>
           </CardContent>
         </Card>
 
@@ -87,48 +206,40 @@ export default function ParserPage() {
           <CardContent className="space-y-4">
             <div>
               <Label>Категория</Label>
-              <Select value={config.category || 'all'} onValueChange={(v) => setConfig({ ...config, category: v === 'all' ? '' : v })}>
+              <Select value={config.category || "all"} onValueChange={(v) => setConfig({ ...config, category: v === "all" ? "" : v })}>
                 <SelectTrigger><SelectValue placeholder="Все категории" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Все</SelectItem>
-                  {mockCategories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.slug}>{c.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Глубина вложенности</Label>
-              <Input type="number" value={config.depthLimit} onChange={(e) => setConfig({ ...config, depthLimit: +e.target.value })} />
+              <Label>Лимит товаров на категорию</Label>
+              <Input type="number" min={0} value={config.productsPerCategory || ""} onChange={(e) => setConfig({ ...config, productsPerCategory: +e.target.value || 0 })} placeholder="0 = без лимита" />
             </div>
             <div>
-              <Label>Лимит записей</Label>
-              <Input type="number" value={config.recordLimit} onChange={(e) => setConfig({ ...config, recordLimit: +e.target.value })} />
-            </div>
-            <div>
-              <Label>Ограничение потоков</Label>
-              <Input type="number" value={config.threadLimit} onChange={(e) => setConfig({ ...config, threadLimit: +e.target.value })} />
+              <Label>Макс. страниц на категорию</Label>
+              <Input type="number" min={0} value={config.maxPages || ""} onChange={(e) => setConfig({ ...config, maxPages: +e.target.value || 0 })} placeholder="0 = без лимита" />
             </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Cron */}
-      <Card>
-        <CardHeader><CardTitle className="text-lg">Расписание (cron)</CardTitle></CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <Input value={config.cronExpression} onChange={(e) => setConfig({ ...config, cronExpression: e.target.value })} className="max-w-xs font-mono" />
-            <span className="text-sm text-muted-foreground">Каждые 6 часов</span>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Logs */}
       <Card>
         <CardHeader><CardTitle className="text-lg">Логи выполнения</CardTitle></CardHeader>
         <CardContent>
           <div className="bg-muted rounded-lg p-3 font-mono text-xs space-y-1 max-h-48 overflow-auto">
-            {logs.map((l, i) => <div key={i} className="text-muted-foreground">{l}</div>)}
-            {status.isRunning && <div className="text-primary flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />Обработка...</div>}
+            {logs.length === 0 && !isRunning && <div className="text-muted-foreground">Логи появятся при запуске парсинга</div>}
+            {logs.map((l, i) => (
+              <div key={i} className="text-muted-foreground">
+                [{l.logged_at}] [{l.level}] {l.message}
+              </div>
+            ))}
+            {isRunning && <div className="text-primary flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />Обработка...</div>}
           </div>
         </CardContent>
       </Card>

@@ -1,8 +1,22 @@
 /**
- * API client for sadavod.loc Laravel backend
+ * API client for Parser backend (online-parser.siteaacess.store)
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://sadavod.loc/api/v1';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://online-parser.siteaacess.store/api/v1';
+
+// Log API URL in development
+if (import.meta.env.DEV) {
+  console.log('[API] VITE_API_URL:', import.meta.env.VITE_API_URL || '(default)');
+  console.log('[API] BASE_URL:', BASE_URL);
+}
+
+export { BASE_URL as getApiBaseUrl };
+
+// Callback for 401 — logout and redirect (set by AdminAuthProvider)
+let onUnauthorized: (() => void) | null = null;
+export function setOnUnauthorized(cb: () => void) {
+  onUnauthorized = cb;
+}
 
 // ──────────────────────────────────────────────
 // HTTP helpers
@@ -32,19 +46,43 @@ async function request<T>(
     Object.assign(headers, authHeaders());
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  const url = `${BASE_URL}${path}`;
+  try {
+    const res = await fetch(url, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
 
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: res.statusText }));
-    throw new ApiError(res.status, error.error || res.statusText, error.errors);
+    if (res.status === 401) {
+      if (typeof window !== 'undefined' && onUnauthorized) {
+        onUnauthorized();
+      }
+      const err = await res.json().catch(() => ({ error: 'Unauthorized' }));
+      throw new ApiError(401, err.error || 'Unauthorized');
+    }
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ error: res.statusText }));
+      if (import.meta.env.DEV) {
+        console.error('[API] Error:', res.status, url, error);
+      }
+      throw new ApiError(res.status, error.error || res.statusText, error.errors);
+    }
+
+    if (res.status === 204) return undefined as T;
+    const data = await res.json();
+    if (import.meta.env.DEV && import.meta.env.VITE_LOG_API === '1') {
+      console.log('[API]', method, path, data);
+    }
+    return data;
+  } catch (e) {
+    if (e instanceof ApiError) throw e;
+    if (import.meta.env.DEV) {
+      console.error('[API] Network/request error:', url, e);
+    }
+    throw e;
   }
-
-  if (res.status === 204) return undefined as T;
-  return res.json();
 }
 
 export class ApiError extends Error {
@@ -120,6 +158,9 @@ export interface Category {
   icon: string | null;
   enabled: boolean;
   linked_to_parser: boolean;
+  parser_products_limit?: number | null;
+  parser_max_pages?: number | null;
+  parser_depth_limit?: number | null;
   products_count: number;
   last_parsed_at: string | null;
   children?: Category[];
@@ -274,6 +315,32 @@ export const dashboardApi = {
 };
 
 // ──────────────────────────────────────────────
+// SYSTEM MONITORING
+// ──────────────────────────────────────────────
+
+export interface SystemStatus {
+  parser_running: boolean;
+  queue_workers: number;
+  queue_size: number;
+  products_total: number;
+  products_today: number;
+  errors_today: number;
+  last_parser_run: string | null;
+  redis_status: string;
+  websocket: string;
+  cpu_load: string;
+  memory_usage: string;
+  timestamp: string;
+  requests_per_minute?: number;
+  blocked_requests?: number;
+  retry_count?: number;
+}
+
+export const systemApi = {
+  status: () => get<SystemStatus>('/system/status'),
+};
+
+// ──────────────────────────────────────────────
 // PARSER
 // ──────────────────────────────────────────────
 
@@ -289,8 +356,18 @@ export interface StartParserOptions {
   category_slug?: string;
 }
 
+export interface ParserStats {
+  products_total: number;
+  products_today: number;
+  parser_running: boolean;
+  queue_size: number;
+  errors_today: number;
+  last_parser_run: string | null;
+}
+
 export const parserApi = {
   status: () => get<ParserStatus>('/parser/status'),
+  stats: () => get<ParserStats>('/parser/stats'),
   start: (opts?: StartParserOptions) => post<{ message: string; job_id: number; job: ParserJob }>('/parser/start', opts),
   stop: () => post<{ message: string }>('/parser/stop'),
   jobs: (page = 1, perPage = 20) => get<PaginatedResponse<ParserJob>>(`/parser/jobs?page=${page}&per_page=${perPage}`),
@@ -298,10 +375,17 @@ export const parserApi = {
   downloadPhotos: (opts?: { limit?: number; product_id?: number }) =>
     post<{ downloaded: number; failed: number; skipped: number; products: number }>('/parser/photos/download', opts),
 
+  /** URL for SSE progress stream (EventSource doesn't support Auth header) */
+  progressUrl: (jobId?: number): string => {
+    const params = new URLSearchParams();
+    if (jobId) params.set('job_id', String(jobId));
+    const t = getToken();
+    if (t) params.set('token', t);
+    return `${BASE_URL}/parser/progress${params.toString() ? '?' + params : ''}`;
+  },
   /** SSE stream — возвращает EventSource */
   progressStream: (jobId?: number): EventSource => {
-    const url = `${BASE_URL}/parser/progress${jobId ? `?job_id=${jobId}` : ''}&token=${getToken()}`;
-    return new EventSource(url);
+    return new EventSource(parserApi.progressUrl(jobId));
   },
 };
 
@@ -489,6 +573,14 @@ export const publicApi = {
 
   featured: (limit = 24) =>
     get<{ data: Product[] }>(`/public/featured?limit=${limit}`, true),
+};
+
+// Health check — /up is at Laravel root, not under /api/v1
+export const healthApi = {
+  check: () => {
+    const base = BASE_URL.replace(/\/api\/v1\/?$/, '');
+    return fetch(`${base}/up`, { method: 'GET' });
+  },
 };
 
 export default {

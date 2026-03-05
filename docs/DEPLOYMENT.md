@@ -79,19 +79,81 @@ scp -r dist/* user@host:path/to/public_html/
 1. Соберите проект: `npm run build`
 2. Загрузите содержимое `dist/` в корень сайта через FTP-клиент
 
-## Продакшн сервер
+## Продакшн сервер (VPS siteaacess.store)
 
-**Текущий хостинг**: Beget
+**Сервер**: 85.117.235.93  
+**Домен**: https://siteaacess.store  
+**SSH**: `ssh root@85.117.235.93`
 
-**URL**: https://cheepy.siteaccess.ru
+### Структура на сервере
 
-**Путь на сервере**: `cheepy.siteaccess.ru/public_html/`
+| Назначение | Домен | Путь на сервере |
+|------------|--------|------------------|
+| Фронтенд (SPA) | https://siteaacess.store | `/var/www/siteaacess.store` |
+| API (бекенд) | https://api.siteaacess.store | `/var/www/api.siteaacess.store` |
+| Фото | https://photos.siteaacess.store | `/var/www/photos.siteaacess.store` |
 
-### SSH подключение
+### Деплой фронтенда на VPS
 
-```bash
-ssh dsc23ytp@dragon.beget.ru
+1. Создайте `.env.deploy` (или добавьте в него):
+   ```
+   DEPLOY_TARGET=root@85.117.235.93:/var/www/siteaacess.store
+   ```
+2. Соберите и залейте:
+   ```bash
+   npm run build
+   npm run deploy
+   ```
+   Или вручную: `scp -r dist/* root@85.117.235.93:/var/www/siteaacess.store/`
+
+### SSL (Let's Encrypt)
+
+- Для **siteaacess.store** и **www.siteaacess.store** сертификат уже выпущен, продление автоматическое (certbot.timer).
+- Для поддоменов **api** и **photos** нужно сначала добавить DNS-записи:
+  - `api.siteaacess.store` → A-запись на `85.117.235.93`
+  - `photos.siteaacess.store` → A-запись на `85.117.235.93`
+  После этого на сервере выполните:
+  ```bash
+  ssh root@85.117.235.93
+  certbot --nginx -d api.siteaacess.store -d photos.siteaacess.store --non-interactive
+  ```
+
+### Переменные для продакшена (фронтенд)
+
+В билде укажите API по поддомену. В `.env.production` или при сборке:
 ```
+VITE_API_URL=https://api.siteaacess.store
+```
+
+### Laravel (Sadavod Parser) — online-parser.siteaacess.store
+
+**URL**: https://online-parser.siteaacess.store  
+**Путь на сервере**: `/var/www/online-parser.siteaacess.store`  
+**Публичная папка**: `/var/www/online-parser.siteaacess.store/public`
+
+**БД на сервере** (MariaDB):
+- База: `sadavod_parser`
+- Пользователь: `sadavod`
+- Пароль: `SadavodParser2025` (при необходимости смените в `.env` на сервере)
+
+**Повторный деплой Laravel** (из папки `sadavod-laravel`):
+```bash
+tar --exclude=node_modules --exclude=vendor --exclude=.git --exclude=.env -cf sadavod-laravel.tar .
+scp sadavod-laravel.tar root@85.117.235.93:/var/www/online-parser.siteaacess.store/
+# На сервере:
+cd /var/www/online-parser.siteaacess.store && tar xf sadavod-laravel.tar && rm sadavod-laravel.tar
+COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --no-interaction
+php artisan migrate --force
+chown -R www-data:www-data storage bootstrap/cache
+```
+
+---
+
+## Beget (альтернативный хостинг)
+
+**URL**: https://cheepy.siteaccess.ru  
+**Путь на сервере**: `cheepy.siteaccess.ru/public_html/`  
+**SSH**: `ssh dsc23ytp@dragon.beget.ru`
 
 ## Проверка деплоя
 
