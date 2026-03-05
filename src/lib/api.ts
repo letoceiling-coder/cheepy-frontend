@@ -513,6 +513,51 @@ export const filtersApi = {
 };
 
 // ──────────────────────────────────────────────
+// ADMIN USERS (Admin — users.manage)
+// ──────────────────────────────────────────────
+
+export interface AdminUserRecord {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  is_active: boolean;
+  roles: Array<{ id: number; name: string; slug: string }>;
+  created_at?: string;
+}
+
+export interface RoleRecord {
+  id: number;
+  name: string;
+  slug: string;
+  users_count?: number;
+}
+
+export const adminUsersApi = {
+  list: (params?: { search?: string; page?: number; per_page?: number }) => {
+    const q = new URLSearchParams();
+    if (params) Object.entries(params).forEach(([k, v]) => { if (v !== undefined) q.set(k, String(v)); });
+    return get<{ data: AdminUserRecord[]; meta: { total: number; per_page: number; current_page: number; last_page: number } }>(`/admin/users?${q}`);
+  },
+  create: (data: { name: string; email: string; password: string; role?: string; is_active?: boolean; role_ids?: number[] }) =>
+    post<AdminUserRecord>('/admin/users', data),
+  update: (id: number, data: Partial<{ name: string; email: string; password?: string; role: string; is_active: boolean; role_ids: number[] }>) =>
+    put<AdminUserRecord>(`/admin/users/${id}`, data),
+  delete: (id: number) => del(`/admin/users/${id}`),
+};
+
+export const adminRolesApi = {
+  list: (params?: { page?: number; per_page?: number }) => {
+    const q = new URLSearchParams();
+    if (params) Object.entries(params).forEach(([k, v]) => { if (v !== undefined) q.set(k, String(v)); });
+    return get<{ data: RoleRecord[]; meta: { total: number; per_page: number; current_page: number; last_page: number } }>(`/admin/roles?${q}`);
+  },
+  create: (data: { name: string; slug: string }) => post<RoleRecord>('/admin/roles', data),
+  update: (id: number, data: Partial<{ name: string; slug: string }>) => put<RoleRecord>(`/admin/roles/${id}`, data),
+  delete: (id: number) => del(`/admin/roles/${id}`),
+};
+
+// ──────────────────────────────────────────────
 // LOGS (Admin)
 // ──────────────────────────────────────────────
 
@@ -593,6 +638,8 @@ export default {
   brands: brandsApi,
   excluded: excludedApi,
   filters: filtersApi,
+  adminUsers: adminUsersApi,
+  adminRoles: adminRolesApi,
   logs: logsApi,
   settings: settingsApi,
   public: publicApi,

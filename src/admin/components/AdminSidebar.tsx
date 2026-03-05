@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Bug, Package, FolderTree, Brain, Clock, FileText, Settings, Ban, ShieldCheck, ArrowLeft, Tag, SlidersHorizontal,
+  LayoutDashboard, Bug, Package, FolderTree, Brain, Clock, FileText, Settings, Ban, ShieldCheck, ArrowLeft, Tag, SlidersHorizontal, Users,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, Link } from "react-router-dom";
@@ -19,6 +19,7 @@ const items = [
   { title: "Планировщик", url: "/admin/scheduler", icon: Clock },
   { title: "Исключения", url: "/admin/excluded", icon: Ban },
   { title: "Логи", url: "/admin/logs", icon: FileText },
+  { title: "Пользователи", url: "/admin/users", icon: Users },
   { title: "Роли", url: "/admin/roles", icon: ShieldCheck },
   { title: "Настройки", url: "/admin/settings", icon: Settings },
 ];

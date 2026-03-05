@@ -123,6 +123,7 @@ function AnimatedRoutes() {
           <Route path="scheduler" element={<SchedulerPage />} />
           <Route path="excluded" element={<ExcludedPage />} />
           <Route path="logs" element={<LogsPage />} />
+          <Route path="users" element={<UsersPage />} />
           <Route path="roles" element={<RolesPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
