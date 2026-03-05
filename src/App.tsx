@@ -44,6 +44,7 @@ import AiPage from "./admin/pages/AiPage";
 import SchedulerPage from "./admin/pages/SchedulerPage";
 import ExcludedPage from "./admin/pages/ExcludedPage";
 import LogsPage from "./admin/pages/LogsPage";
+import UsersPage from "./admin/pages/UsersPage";
 import RolesPage from "./admin/pages/RolesPage";
 import SettingsPage from "./admin/pages/SettingsPage";
 import { CrmLayout } from "./crm/layout/CrmLayout";
