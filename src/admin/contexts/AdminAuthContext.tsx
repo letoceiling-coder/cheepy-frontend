@@ -63,6 +63,21 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("admin_token", res.token);
     setUser(res.user);
     navigate("/admin", { replace: true });
+
+    // Auto sync categories if last sync > 24h
+    try {
+      const last = localStorage.getItem("categories_last_sync");
+      const lastMs = last ? new Date(last).getTime() : 0;
+      const now = Date.now();
+      const dayMs = 24 * 60 * 60 * 1000;
+      if (!last || now - lastMs > dayMs) {
+        parserApi.categoriesSync().then((data) => {
+          if (data.last_synced_at) {
+            localStorage.setItem("categories_last_sync", data.last_synced_at);
+          }
+        }).catch(() => {});
+      }
+    } catch { /* ignore */ }
   };
 
   return (

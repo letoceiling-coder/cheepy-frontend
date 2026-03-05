@@ -153,6 +153,7 @@ export interface Category {
   external_slug: string | null;
   name: string;
   slug: string;
+  source_url?: string | null;
   parent_id: number | null;
   sort_order: number;
   icon: string | null;
@@ -170,25 +171,29 @@ export interface Seller {
   id: number;
   slug: string;
   name: string;
+  avatar?: string | null;
   pavilion: string | null;
-  pavilion_line: string | null;
-  pavilion_number: string | null;
+  pavilion_line?: string | null;
+  pavilion_number?: string | null;
+  source_url?: string | null;
   status: string;
   is_verified: boolean;
   products_count: number;
+  created_at?: string | null;
 }
 
 export interface SellerFull extends Seller {
   source_url: string | null;
   description: string | null;
-  contacts: {
+  last_parsed_at?: string | null;
+  contacts?: {
     phone: string | null;
     whatsapp_url: string | null;
     whatsapp_number: string | null;
     telegram_url: string | null;
     vk_url: string | null;
   };
-  seller_categories: string[];
+  seller_categories?: string[];
 }
 
 export interface Brand {
@@ -330,6 +335,9 @@ export interface SystemStatus {
   websocket: string;
   cpu_load: string;
   memory_usage: string;
+  disk_total?: number;
+  disk_used?: number;
+  disk_free?: number;
   timestamp: string;
   requests_per_minute?: number;
   blocked_requests?: number;
@@ -374,6 +382,10 @@ export const parserApi = {
   jobDetail: (id: number) => get<ParserJob & { logs: LogEntry[] }>(`/parser/jobs/${id}`),
   downloadPhotos: (opts?: { limit?: number; product_id?: number }) =>
     post<{ downloaded: number; failed: number; skipped: number; products: number }>('/parser/photos/download', opts),
+
+  /** Sync categories from donor. Parses donor menu, creates/updates categories, builds tree. */
+  categoriesSync: () =>
+    post<{ message: string; created: number; updated: number; last_synced_at?: string }>('/parser/categories/sync'),
 
   /** URL for SSE progress stream (EventSource doesn't support Auth header) */
   progressUrl: (jobId?: number): string => {
@@ -446,14 +458,30 @@ export const categoriesApi = {
 // SELLERS (Admin)
 // ──────────────────────────────────────────────
 
+export interface AdminSellerProductsParams {
+  page?: number;
+  per_page?: number;
+  category_id?: number;
+  status?: string;
+  price_from?: number;
+  price_to?: number;
+  search?: string;
+  sort_by?: 'parsed_at' | 'price_raw' | 'title' | 'created_at';
+  sort_dir?: 'asc' | 'desc';
+}
+
 export const sellersApi = {
-  list: (params?: { search?: string; status?: string; has_products?: boolean; page?: number; per_page?: number }) => {
+  list: (params?: { search?: string; status?: string; pavilion?: string; has_products?: boolean; page?: number; per_page?: number }) => {
     const q = new URLSearchParams();
     if (params) Object.entries(params).forEach(([k, v]) => { if (v !== undefined) q.set(k, String(v)); });
     return get<PaginatedResponse<Seller>>(`/sellers?${q}`);
   },
-  get: (slug: string) => get<SellerFull>(`/sellers/${slug}`),
-  products: (slug: string, page = 1) => get<PaginatedResponse<Product> & { seller: Seller }>(`/sellers/${slug}/products?page=${page}`),
+  get: (idOrSlug: string | number) => get<SellerFull>(`/sellers/${idOrSlug}`),
+  products: (idOrSlug: string | number, params?: AdminSellerProductsParams) => {
+    const q = new URLSearchParams();
+    if (params) Object.entries(params).forEach(([k, v]) => { if (v !== undefined) q.set(k, String(v)); });
+    return get<PaginatedResponse<Product> & { seller: Seller }>(`/sellers/${idOrSlug}/products?${q}`);
+  },
   update: (id: number, data: Partial<Seller>) => patch<Seller>(`/sellers/${id}`, data),
 };
 

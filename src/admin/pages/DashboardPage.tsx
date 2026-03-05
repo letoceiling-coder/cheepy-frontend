@@ -1,4 +1,4 @@
-import { Package, PlusCircle, AlertTriangle, Clock, Brain, Bug, Layers, Activity, Cpu, Database } from "lucide-react";
+import { Package, PlusCircle, AlertTriangle, Clock, Brain, Bug, Layers, Activity, Cpu, Database, HardDrive } from "lucide-react";
 import { StatCard } from "../components/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -131,6 +131,17 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+        {((sys?.disk_total ?? 0) > 0) && (
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <HardDrive className="h-5 w-5 text-primary" />
+              <div>
+                <p className="text-sm text-muted-foreground">Диск</p>
+                <p className="font-medium text-sm">{sys?.disk_used ?? "—"} / {sys?.disk_total ?? "—"} GB (свободно: {sys?.disk_free ?? "—"} GB)</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>

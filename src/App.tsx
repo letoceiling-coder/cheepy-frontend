@@ -118,12 +118,15 @@ function AnimatedRoutes() {
           <Route path="products" element={<ProductsPage />} />
           <Route path="products/:id" element={<ProductDetailPage />} />
           <Route path="categories" element={<CategoriesPage />} />
+          <Route path="sellers" element={<SellersPage />} />
+          <Route path="sellers/:id" element={<SellerDetailPage />} />
           <Route path="brands" element={<BrandsPage />} />
           <Route path="filters" element={<FiltersPage />} />
           <Route path="ai" element={<AiPage />} />
           <Route path="scheduler" element={<SchedulerPage />} />
           <Route path="excluded" element={<ExcludedPage />} />
           <Route path="logs" element={<LogsPage />} />
+          <Route path="docs" element={<DocsPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="roles" element={<RolesPage />} />
             <Route path="settings" element={<SettingsPage />} />

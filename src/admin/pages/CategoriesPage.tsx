@@ -4,8 +4,8 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ChevronDown, GripVertical, Link2, FolderTree, Loader2 } from "lucide-react";
-import { categoriesApi, type Category } from "@/lib/api";
+import { ChevronRight, ChevronDown, GripVertical, Link2, FolderTree, Loader2, RefreshCw } from "lucide-react";
+import { categoriesApi, parserApi, type Category } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -130,6 +130,21 @@ export default function CategoriesPage() {
     queryFn: () => categoriesApi.list({ tree: true }),
   });
 
+  const syncMutation = useMutation({
+    mutationFn: () => parserApi.categoriesSync(),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      const msg = data.created !== undefined || data.updated !== undefined
+        ? `Синхронизация: создано ${data.created ?? 0}, обновлено ${data.updated ?? 0}`
+        : "Категории синхронизированы";
+      toast.success(msg);
+      if (data.last_synced_at) {
+        try { localStorage.setItem("categories_last_sync", data.last_synced_at); } catch {}
+      }
+    },
+    onError: () => toast.error("Ошибка синхронизации категорий"),
+  });
+
   const updateMutation = useMutation({
     mutationFn: (params: { id: number; enabled?: boolean; parser_depth_limit?: number; parser_max_pages?: number; parser_products_limit?: number }) =>
       categoriesApi.update(params.id, {
@@ -152,6 +167,17 @@ export default function CategoriesPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-2xl font-bold">Категории</h2>
+        <Button
+          onClick={() => syncMutation.mutate()}
+          disabled={syncMutation.isPending}
+        >
+          {syncMutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <RefreshCw className="h-4 w-4 mr-2" />
+          )}
+          Синхронизировать категории
+        </Button>
       </div>
 
       <Card>
