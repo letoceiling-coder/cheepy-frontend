@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Bug, Package, FolderTree, Brain, Clock, FileText, Settings, Ban, ShieldCheck, ArrowLeft, Tag, SlidersHorizontal, Users, Store, BookOpen,
+  LayoutDashboard, Bug, Package, FolderTree, Brain, Clock, FileText, Settings, Ban, ShieldCheck, ArrowLeft, Tag, SlidersHorizontal, Users, Store, BookOpen, Wand2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, Link } from "react-router-dom";
