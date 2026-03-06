@@ -672,6 +672,53 @@ export interface AttributeSynonym {
   normalized_value: string;
 }
 
+export interface AttributeDictionaryEntry {
+  id: number;
+  attribute_key: string;
+  value: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AttributeCanonical {
+  id: number;
+  attribute_key: string;
+  raw_value: string;
+  normalized_value: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AttributeFacetValue {
+  value: string;
+  count: number;
+}
+
+export interface AttributeFacet {
+  attribute_key: string;
+  display_name: string;
+  values: AttributeFacetValue[];
+}
+
+export interface AttributeAuditAttribute {
+  attr_name: string;
+  attr_type: string;
+  count: number;
+  unique_values: number;
+  avg_confidence: number;
+  top_values: Array<{ value: string; count: number; avg_conf: number }>;
+}
+
+export interface AttributeExtracted {
+  attribute_key: string;
+  attr_name: string;
+  attr_value: string;
+  attr_type: string;
+  confidence: number;
+  match_type: string;
+}
+
 export const attributeRulesApi = {
   list: (params?: { attribute_key?: string }) => {
     const q = new URLSearchParams();
@@ -681,8 +728,14 @@ export const attributeRulesApi = {
   create: (data: Partial<AttributeRule>) => post<AttributeRule>('/attribute-rules', data),
   update: (id: number, data: Partial<AttributeRule>) => patch<AttributeRule>(`/attribute-rules/${id}`, data),
   remove: (id: number) => del<{ message: string }>(`/attribute-rules/${id}`),
-  test: (text: string) => post<{ extracted: Array<{ attribute_key: string; attr_name: string; attr_value: string; attr_type: string }> }>('/attribute-rules/test', { text }),
-  rebuild: (productId?: number) => post<{ message: string; processed?: number; saved?: number }>('/attribute-rules/rebuild', productId ? { product_id: productId } : {}),
+  test: (text: string) => post<{ extracted: AttributeExtracted[]; data: AttributeExtracted[] }>('/attribute-rules/test', { text }),
+  rebuild: () => post<{ message: string; processed?: number; saved?: number }>('/attribute-rules/rebuild', {}),
+  audit: () => get<{
+    total_products: number;
+    products_with_attributes: number;
+    total_attribute_rows: number;
+    attributes: AttributeAuditAttribute[];
+  }>('/attribute-rules/audit'),
 
   synonyms: (params?: { attribute_key?: string }) => {
     const q = new URLSearchParams();
@@ -691,6 +744,37 @@ export const attributeRulesApi = {
   },
   createSynonym: (data: Partial<AttributeSynonym>) => post<AttributeSynonym>('/attribute-rules/synonyms', data),
   removeSynonym: (id: number) => del<{ message: string }>(`/attribute-rules/synonyms/${id}`),
+
+  // Dictionary
+  dictionary: (params?: { attribute_key?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.attribute_key) q.set('attribute_key', params.attribute_key);
+    return get<{ data: AttributeDictionaryEntry[] }>(`/attribute-dictionary?${q}`);
+  },
+  createDictionary: (data: Partial<AttributeDictionaryEntry>) => post<AttributeDictionaryEntry>('/attribute-dictionary', data),
+  updateDictionary: (id: number, data: Partial<AttributeDictionaryEntry>) => patch<AttributeDictionaryEntry>(`/attribute-dictionary/${id}`, data),
+  removeDictionary: (id: number) => del<{ message: string }>(`/attribute-dictionary/${id}`),
+
+  // Canonical normalization
+  canonical: (params?: { attribute_key?: string; search?: string; page?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.attribute_key) q.set('attribute_key', params.attribute_key);
+    if (params?.search) q.set('search', params.search);
+    if (params?.page) q.set('page', String(params.page));
+    return get<{ data: { data: AttributeCanonical[]; total: number; current_page: number; last_page: number } }>(`/attribute-canonical?${q}`);
+  },
+  createCanonical: (data: Partial<AttributeCanonical>) => post<AttributeCanonical>('/attribute-canonical', data),
+  updateCanonical: (id: number, data: { normalized_value: string }) => patch<AttributeCanonical>(`/attribute-canonical/${id}`, data),
+  removeCanonical: (id: number) => del<{ message: string }>(`/attribute-canonical/${id}`),
+
+  // Facets
+  facets: (params?: { category_id?: number; min_confidence?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.category_id) q.set('category_id', String(params.category_id));
+    if (params?.min_confidence !== undefined) q.set('min_confidence', String(params.min_confidence));
+    return get<{ data: AttributeFacet[]; category_id: number | null }>(`/attribute-facets?${q}`);
+  },
+  rebuildFacets: (categoryId?: number) => post<{ data: AttributeFacet[] }>('/attribute-facets/rebuild', categoryId ? { category_id: categoryId } : {}),
 };
 
 // Health check — /up is at Laravel root, not under /api/v1
@@ -717,4 +801,6 @@ export default {
   settings: settingsApi,
   public: publicApi,
   attributeRules: attributeRulesApi,
+  attributeDictionary: attributeRulesApi.dictionary,
+  attributeCanonical: attributeRulesApi.canonical,
 };
