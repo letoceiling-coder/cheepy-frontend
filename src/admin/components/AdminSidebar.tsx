@@ -16,6 +16,7 @@ const items = [
   { title: "Продавцы", url: "/admin/sellers", icon: Store },
   { title: "Бренды", url: "/admin/brands", icon: Tag },
   { title: "Фильтры", url: "/admin/filters", icon: SlidersHorizontal },
+  { title: "Атрибуты / Правила", url: "/admin/attribute-rules", icon: Wand2 },
   { title: "AI Модуль", url: "/admin/ai", icon: Brain },
   { title: "Планировщик", url: "/admin/scheduler", icon: Clock },
   { title: "Исключения", url: "/admin/excluded", icon: Ban },

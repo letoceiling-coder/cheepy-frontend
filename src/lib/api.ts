@@ -647,6 +647,52 @@ export const publicApi = {
     get<{ data: Product[] }>(`/public/featured?limit=${limit}`, true),
 };
 
+// ──────────────────────────────────────────────
+// ATTRIBUTE RULES
+// ──────────────────────────────────────────────
+
+export interface AttributeRule {
+  id: number;
+  attribute_key: string;
+  display_name: string;
+  rule_type: 'regex' | 'keyword';
+  pattern: string;
+  apply_synonyms: boolean;
+  attr_type: 'text' | 'size' | 'color' | 'number';
+  priority: number;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AttributeSynonym {
+  id: number;
+  attribute_key: string | null;
+  word: string;
+  normalized_value: string;
+}
+
+export const attributeRulesApi = {
+  list: (params?: { attribute_key?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.attribute_key) q.set('attribute_key', params.attribute_key);
+    return get<{ data: AttributeRule[] }>(`/attribute-rules?${q}`);
+  },
+  create: (data: Partial<AttributeRule>) => post<AttributeRule>('/attribute-rules', data),
+  update: (id: number, data: Partial<AttributeRule>) => patch<AttributeRule>(`/attribute-rules/${id}`, data),
+  remove: (id: number) => del<{ message: string }>(`/attribute-rules/${id}`),
+  test: (text: string) => post<{ extracted: Array<{ attribute_key: string; attr_name: string; attr_value: string; attr_type: string }> }>('/attribute-rules/test', { text }),
+  rebuild: (productId?: number) => post<{ message: string; processed?: number; saved?: number }>('/attribute-rules/rebuild', productId ? { product_id: productId } : {}),
+
+  synonyms: (params?: { attribute_key?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.attribute_key) q.set('attribute_key', params.attribute_key);
+    return get<{ data: AttributeSynonym[] }>(`/attribute-rules/synonyms?${q}`);
+  },
+  createSynonym: (data: Partial<AttributeSynonym>) => post<AttributeSynonym>('/attribute-rules/synonyms', data),
+  removeSynonym: (id: number) => del<{ message: string }>(`/attribute-rules/synonyms/${id}`),
+};
+
 // Health check — /up is at Laravel root, not under /api/v1
 export const healthApi = {
   check: () => {
@@ -670,4 +716,5 @@ export default {
   logs: logsApi,
   settings: settingsApi,
   public: publicApi,
+  attributeRules: attributeRulesApi,
 };

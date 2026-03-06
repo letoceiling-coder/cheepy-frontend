@@ -50,6 +50,7 @@ import DocsPage from "./admin/pages/DocsPage";
 import UsersPage from "./admin/pages/UsersPage";
 import RolesPage from "./admin/pages/RolesPage";
 import SettingsPage from "./admin/pages/SettingsPage";
+import AttributeRulesPage from "./admin/pages/AttributeRulesPage";
 import { CrmLayout } from "./crm/layout/CrmLayout";
 import CrmDashboardPage from "./crm/pages/CrmDashboardPage";
 import CrmContentPage from "./crm/pages/CrmContentPage";
@@ -130,6 +131,7 @@ function AnimatedRoutes() {
           <Route path="excluded" element={<ExcludedPage />} />
           <Route path="logs" element={<LogsPage />} />
           <Route path="docs" element={<DocsPage />} />
+          <Route path="attribute-rules" element={<AttributeRulesPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="roles" element={<RolesPage />} />
             <Route path="settings" element={<SettingsPage />} />
