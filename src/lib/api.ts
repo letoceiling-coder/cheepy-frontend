@@ -335,9 +335,7 @@ export interface SystemStatus {
   websocket: string;
   cpu_load: string;
   memory_usage: string;
-  disk_total?: number;
-  disk_used?: number;
-  disk_free?: number;
+  disk?: { used: number; total: number };
   timestamp: string;
   requests_per_minute?: number;
   blocked_requests?: number;
