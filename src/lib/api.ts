@@ -376,7 +376,9 @@ export const parserApi = {
   status: () => get<ParserStatus>('/parser/status'),
   stats: () => get<ParserStats>('/parser/stats'),
   start: (opts?: StartParserOptions) => post<{ message: string; job_id: number; job: ParserJob }>('/parser/start', opts),
+  startDaemon: () => post<{ message: string; daemon_enabled: boolean }>('/parser/start-daemon'),
   stop: () => post<{ message: string }>('/parser/stop'),
+  stopDaemon: () => post<{ message: string; daemon_enabled: boolean }>('/parser/stop-daemon'),
   jobs: (page = 1, perPage = 20) => get<PaginatedResponse<ParserJob>>(`/parser/jobs?page=${page}&per_page=${perPage}`),
   jobDetail: (id: number) => get<ParserJob & { logs: LogEntry[] }>(`/parser/jobs/${id}`),
   downloadPhotos: (opts?: { limit?: number; product_id?: number }) =>

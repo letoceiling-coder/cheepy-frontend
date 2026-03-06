@@ -53,6 +53,7 @@ export default function ParserPage() {
   };
   const categories = flattenCategories(categoriesData?.data ?? []);
   const isRunning = statusData?.is_running ?? false;
+  const daemonEnabled = statusData?.daemon_enabled ?? false;
   const activeJob = statusData?.current_job ?? currentJob;
 
   const fetchLogs = useCallback((jid: number | null) => {
@@ -135,6 +136,28 @@ export default function ParserPage() {
     }
   };
 
+  const handleStartDaemon = async () => {
+    try {
+      await parserApi.startDaemon();
+      refetchStatus();
+      toast.success("Непрерывный парсер запущен");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    }
+  };
+
+  const handleStopDaemon = async () => {
+    try {
+      await parserApi.stopDaemon();
+      refetchStatus();
+      toast.success("Непрерывный парсер отключён");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    }
+  };
+
   const progress = activeJob?.progress?.percent ?? 0;
   const totalProducts = activeJob?.progress?.products?.total ?? 0;
   const processedCount = activeJob?.progress?.products?.done ?? activeJob?.progress?.saved ?? 0;
@@ -165,6 +188,8 @@ export default function ParserPage() {
           <div className="flex flex-wrap gap-3">
             <Button onClick={handleStart} disabled={isRunning}><Play className="h-4 w-4 mr-1" />Запустить</Button>
             <Button variant="destructive" disabled={!isRunning} onClick={handleStop}><Square className="h-4 w-4 mr-1" />Остановить</Button>
+            <Button variant="outline" onClick={handleStartDaemon} disabled={daemonEnabled || isRunning}><Play className="h-4 w-4 mr-1" />Непрерывный парсер</Button>
+            <Button variant="outline" onClick={handleStopDaemon} disabled={!daemonEnabled}>Стоп демон</Button>
           </div>
           {isRunning && (
             <div className="mt-4 space-y-2">
