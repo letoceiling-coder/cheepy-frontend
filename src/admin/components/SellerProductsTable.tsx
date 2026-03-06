@@ -41,13 +41,12 @@ export function SellerProductsTable({ sellerId }: SellerProductsTableProps) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-seller-products", sellerId, search, categoryFilter, statusFilter, page],
     queryFn: () =>
-      productsApi.list({
-        seller_id: Number(sellerId),
+      sellersApi.products(sellerId, {
+        page,
+        per_page: PRODUCTS_PER_PAGE,
         search: search || undefined,
         category_id: categoryFilter === "all" ? undefined : Number(categoryFilter),
         status: statusFilter === "all" ? undefined : statusFilter,
-        page,
-        per_page: PRODUCTS_PER_PAGE,
       }),
     enabled: !!sellerId,
   });

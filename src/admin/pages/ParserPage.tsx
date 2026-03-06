@@ -19,6 +19,7 @@ export default function ParserPage() {
     saveToDB: true,
     previewOnly: false,
     category: "",
+    selectedCategoryIds: [] as number[],
     linkedOnly: false,
     productsPerCategory: 0,
     maxPages: 0,
@@ -109,6 +110,9 @@ export default function ParserPage() {
         max_pages: config.maxPages || undefined,
       };
       if (config.category) opts.category_slug = config.category;
+      if (opts.type === "full" && config.selectedCategoryIds.length > 0) {
+        opts.categories = config.selectedCategoryIds;
+      }
       const res = await parserApi.start(opts);
       setJobId(res.job_id);
       setCurrentJob(res.job);
@@ -205,7 +209,7 @@ export default function ParserPage() {
           <CardHeader><CardTitle className="text-lg">Фильтрация</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>Категория</Label>
+              <Label>Одна категория (режим «категория»)</Label>
               <Select value={config.category || "all"} onValueChange={(v) => setConfig({ ...config, category: v === "all" ? "" : v })}>
                 <SelectTrigger><SelectValue placeholder="Все категории" /></SelectTrigger>
                 <SelectContent>
@@ -215,6 +219,28 @@ export default function ParserPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Выбор категорий (полный режим)</Label>
+              <p className="text-xs text-muted-foreground mb-2">Если выбраны — парсятся только они. Пусто = все включённые.</p>
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-auto rounded border p-2">
+                {categories.map((c) => {
+                  const checked = config.selectedCategoryIds.includes(c.id);
+                  return (
+                    <label key={c.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const next = checked ? config.selectedCategoryIds.filter((id) => id !== c.id) : [...config.selectedCategoryIds, c.id];
+                          setConfig({ ...config, selectedCategoryIds: next });
+                        }}
+                      />
+                      <span className="truncate max-w-[140px]">{c.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
             <div>
               <Label>Лимит товаров на категорию</Label>

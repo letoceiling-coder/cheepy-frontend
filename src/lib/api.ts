@@ -352,7 +352,8 @@ export const systemApi = {
 
 export interface StartParserOptions {
   type?: 'full' | 'menu_only' | 'category' | 'seller';
-  categories?: string[];
+  /** Category IDs to parse (e.g. [1, 2, 3]). Backend filters to these only when provided. */
+  categories?: number[];
   linked_only?: boolean;
   products_per_category?: number;
   max_pages?: number;
