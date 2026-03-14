@@ -40,6 +40,18 @@ export default function ParserPage() {
     queryFn: () => categoriesApi.list({ tree: true }),
   });
 
+  const { data: diagnostics } = useQuery({
+    queryKey: ["parser-diagnostics"],
+    queryFn: () => parserApi.diagnostics(),
+    refetchInterval: 15000,
+  });
+
+  const { data: failedJobsData, refetch: refetchFailedJobs } = useQuery({
+    queryKey: ["parser-failed-jobs"],
+    queryFn: () => parserApi.failedJobs(),
+    refetchInterval: 30000,
+  });
+
   const flattenCategories = (items: Category[]): Category[] => {
     const out: Category[] = [];
     const walk = (arr: Category[]) => {
