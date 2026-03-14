@@ -445,7 +445,7 @@ export interface ParserDiagnostics {
   workers_running: number;
   worker_status?: 'running' | 'stopped';
   parser_running: boolean;
-  parser_state?: 'running' | 'stopped' | 'paused';
+  parser_state?: 'running' | 'stopped' | 'paused' | 'paused_network';
   parser_queue_size: number;
   photos_queue_size: number;
   failed_jobs_count: number;
@@ -465,12 +465,15 @@ export interface ParserDiagnostics {
   error_frequency?: {
     last_hour?: number;
   };
+  proxy_status?: 'ok' | 'failed';
+  sadovodbaza_status?: 'ok' | 'failed';
   progress?: {
     job_id?: number;
     total_items: number;
     processed_items: number;
     failed_items: number;
     current_url?: string | null;
+    speed_per_min?: number;
     updated_at?: string | null;
   } | null;
   metrics?: {
@@ -481,6 +484,19 @@ export interface ParserDiagnostics {
   };
 }
 
+export interface ParserHealth {
+  parser_state: 'running' | 'stopped' | 'paused' | 'paused_network';
+  queue_size: {
+    parser: number;
+    photos: number;
+    total: number;
+  };
+  workers: number;
+  proxy_status: 'ok' | 'failed';
+  sadovodbaza_status: 'ok' | 'failed';
+  timestamp: string;
+}
+
 export interface ParserSettings {
   id: number;
   download_photos: boolean;
@@ -489,6 +505,11 @@ export interface ParserSettings {
   request_delay_min: number;
   request_delay_max: number;
   timeout_seconds: number;
+  workers_parser: number;
+  workers_photos: number;
+  proxy_enabled: boolean;
+  proxy_url?: string | null;
+  queue_threshold: number;
 }
 
 export interface ParserProgressOverview {
@@ -496,11 +517,12 @@ export interface ParserProgressOverview {
   processed_items: number;
   failed_items: number;
   current_url: string | null;
+  speed_per_min: number;
   updated_at: string | null;
 }
 
 export interface ParserStateResponse {
-  status: 'running' | 'stopped' | 'paused';
+  status: 'running' | 'stopped' | 'paused' | 'paused_network';
   locked: boolean;
   last_start: string | null;
   last_stop: string | null;
@@ -515,6 +537,7 @@ export const parserApi = {
     post<{ message: string; data: ParserSettings }>('/parser/settings', payload),
   stats: () => get<ParserStats>('/parser/stats'),
   diagnostics: () => get<ParserDiagnostics>('/parser/diagnostics'),
+  health: () => get<ParserHealth>('/parser/health'),
   progressOverview: (jobId?: number) =>
     get<ParserProgressOverview>(`/parser/progress-overview${jobId ? `?job_id=${jobId}` : ''}`),
   start: (opts?: StartParserOptions) => post<{ message: string; job_id: number; job: ParserJob }>('/parser/start', opts),

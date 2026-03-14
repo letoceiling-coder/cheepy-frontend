@@ -46,6 +46,12 @@ export default function ParserPage() {
     refetchInterval: 15000,
   });
 
+  const { data: parserHealth } = useQuery({
+    queryKey: ["parser-health"],
+    queryFn: () => parserApi.health(),
+    refetchInterval: 15000,
+  });
+
   const { data: failedJobsData, refetch: refetchFailedJobs } = useQuery({
     queryKey: ["parser-failed-jobs"],
     queryFn: () => parserApi.failedJobs(),
@@ -75,9 +81,14 @@ export default function ParserPage() {
     download_photos: true,
     store_photo_links: true,
     max_workers: 3,
-    request_delay_min: 800,
-    request_delay_max: 2000,
+    request_delay_min: 1500,
+    request_delay_max: 3000,
     timeout_seconds: 60,
+    workers_parser: 2,
+    workers_photos: 1,
+    proxy_enabled: true,
+    proxy_url: "http://89.169.39.244:3128",
+    queue_threshold: 500,
   });
 
   useEffect(() => {
@@ -89,6 +100,11 @@ export default function ParserPage() {
       request_delay_min: parserSettings.request_delay_min,
       request_delay_max: parserSettings.request_delay_max,
       timeout_seconds: parserSettings.timeout_seconds,
+      workers_parser: parserSettings.workers_parser,
+      workers_photos: parserSettings.workers_photos,
+      proxy_enabled: parserSettings.proxy_enabled,
+      proxy_url: parserSettings.proxy_url ?? "http://89.169.39.244:3128",
+      queue_threshold: parserSettings.queue_threshold,
     });
   }, [parserSettings]);
 
@@ -318,7 +334,13 @@ export default function ParserPage() {
   const processedCount = activeJob?.progress?.products?.done ?? activeJob?.progress?.saved ?? 0;
   const lastFailed = statusData?.last_completed?.status === "failed";
   const statusBadge =
-    isRunning ? (
+    parserState?.status === "paused_network" ? (
+      <Badge variant="destructive">Network blocked</Badge>
+    ) : parserState?.status === "paused" ? (
+      <Badge variant="secondary">Paused</Badge>
+    ) : parserState?.status === "stopped" ? (
+      <Badge variant="secondary">Stopped</Badge>
+    ) : isRunning ? (
       <Badge className="bg-emerald-600 hover:bg-emerald-600">
         <span className="h-2 w-2 rounded-full bg-white/80 animate-pulse mr-1.5" />
         Парсер работает
@@ -403,11 +425,29 @@ export default function ParserPage() {
                   {diagnostics.parser_lock_status === "held" ? "Удерживается" : "Свободна"}
                 </Badge>
               </div>
+              <div>
+                <p className="text-muted-foreground">Proxy</p>
+                <Badge variant={diagnostics.proxy_status === "ok" ? "secondary" : "destructive"}>
+                  {diagnostics.proxy_status === "ok" ? "OK" : "FAIL"}
+                </Badge>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Sadovodbaza</p>
+                <Badge variant={diagnostics.sadovodbaza_status === "ok" ? "secondary" : "destructive"}>
+                  {diagnostics.sadovodbaza_status === "ok" ? "OK" : "FAIL"}
+                </Badge>
+              </div>
             </div>
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div className="rounded border p-3">
                 <p className="text-muted-foreground">Worker status</p>
                 <p className="font-medium">{diagnostics.worker_status ?? (diagnostics.workers_running > 0 ? "running" : "stopped")}</p>
+                <p className="text-muted-foreground mt-1">
+                  Proxy: {(parserHealth?.proxy_status ?? diagnostics.proxy_status ?? "failed") === "ok" ? "OK" : "FAIL"}
+                </p>
+                <p className="text-muted-foreground mt-1">
+                  Donor: {(parserHealth?.sadovodbaza_status ?? diagnostics.sadovodbaza_status ?? "failed") === "ok" ? "OK" : "FAIL"}
+                </p>
                 <p className="text-muted-foreground mt-1">Memory usage: {String(diagnostics.memory_usage ?? "—")}</p>
                 <p className="text-muted-foreground mt-1">Errors / hour: {diagnostics.error_frequency?.last_hour ?? 0}</p>
               </div>
@@ -418,6 +458,7 @@ export default function ParserPage() {
                   {(progressOverview?.total_items ?? diagnostics.progress?.total_items ?? 0)}
                 </p>
                 <p className="text-muted-foreground mt-1">Failed: {progressOverview?.failed_items ?? diagnostics.progress?.failed_items ?? 0}</p>
+                <p className="text-muted-foreground mt-1">Speed: {progressOverview?.speed_per_min ?? diagnostics.progress?.speed_per_min ?? 0} items/min</p>
                 <p className="text-muted-foreground mt-1 truncate" title={progressOverview?.current_url ?? diagnostics.progress?.current_url ?? ""}>
                   URL: {progressOverview?.current_url ?? diagnostics.progress?.current_url ?? "—"}
                 </p>
@@ -506,13 +547,33 @@ export default function ParserPage() {
               />
             </div>
             <div>
+              <Label>Parser workers</Label>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={settingsForm.workers_parser}
+                onChange={(e) => setSettingsForm({ ...settingsForm, workers_parser: Math.max(1, Number(e.target.value) || 2) })}
+              />
+            </div>
+            <div>
+              <Label>Photo workers</Label>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={settingsForm.workers_photos}
+                onChange={(e) => setSettingsForm({ ...settingsForm, workers_photos: Math.max(1, Number(e.target.value) || 1) })}
+              />
+            </div>
+            <div>
               <Label>Request delay min (ms)</Label>
               <Input
                 type="number"
                 min={100}
                 max={10000}
                 value={settingsForm.request_delay_min}
-                onChange={(e) => setSettingsForm({ ...settingsForm, request_delay_min: Math.max(100, Number(e.target.value) || 800) })}
+                onChange={(e) => setSettingsForm({ ...settingsForm, request_delay_min: Math.max(100, Number(e.target.value) || 1500) })}
               />
             </div>
             <div>
@@ -522,7 +583,31 @@ export default function ParserPage() {
                 min={100}
                 max={15000}
                 value={settingsForm.request_delay_max}
-                onChange={(e) => setSettingsForm({ ...settingsForm, request_delay_max: Math.max(100, Number(e.target.value) || 2000) })}
+                onChange={(e) => setSettingsForm({ ...settingsForm, request_delay_max: Math.max(100, Number(e.target.value) || 3000) })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Proxy enabled</Label>
+              <Switch
+                checked={settingsForm.proxy_enabled}
+                onCheckedChange={(v) => setSettingsForm({ ...settingsForm, proxy_enabled: v })}
+              />
+            </div>
+            <div>
+              <Label>Proxy URL</Label>
+              <Input
+                value={settingsForm.proxy_url}
+                onChange={(e) => setSettingsForm({ ...settingsForm, proxy_url: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Queue threshold</Label>
+              <Input
+                type="number"
+                min={10}
+                max={1000000}
+                value={settingsForm.queue_threshold}
+                onChange={(e) => setSettingsForm({ ...settingsForm, queue_threshold: Math.max(10, Number(e.target.value) || 500) })}
               />
             </div>
           </div>
