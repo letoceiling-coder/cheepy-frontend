@@ -7,9 +7,9 @@ const PopularCategories = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   return (
-    <section className="mb-10">
-      <div className="flex items-baseline gap-3 mb-5">
-        <h2 className="text-xl font-bold text-foreground">ПОПУЛЯРНЫЕ КАТЕГОРИИ</h2>
+    <section className="mb-6">
+      <div className="flex items-baseline gap-3 mb-3">
+        <h2 className="text-lg font-bold text-foreground">ПОПУЛЯРНЫЕ КАТЕГОРИИ</h2>
         <Link to="/category/all" className="text-sm text-primary hover:underline ml-auto">Все категории</Link>
       </div>
 
@@ -19,7 +19,7 @@ const PopularCategories = () => {
           <Link
             key={cat.slug}
             to={`/category/${cat.slug}`}
-            className="group relative h-[200px] rounded-2xl overflow-hidden"
+            className="group relative h-[180px] rounded-xl overflow-hidden"
           >
             <img
               src={cat.image}
@@ -54,7 +54,7 @@ const PopularCategories = () => {
               <Link
                 key={cat.slug}
                 to={`/category/${cat.slug}`}
-                className="group shrink-0 w-[240px] h-[160px] relative rounded-xl overflow-hidden snap-start"
+                className="group shrink-0 w-[200px] h-[140px] relative rounded-xl overflow-hidden snap-start"
               >
                 <img src={cat.image} alt={cat.name} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-foreground/40" />

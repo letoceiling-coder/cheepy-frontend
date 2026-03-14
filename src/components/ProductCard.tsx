@@ -95,13 +95,16 @@ const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?
 
   return (
     <div
-      className="group relative bg-card rounded-xl overflow-hidden"
+      className="group relative bg-card rounded-xl overflow-hidden border border-border flex flex-col"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setActiveImage(0); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setActiveImage(0);
+      }}
     >
       {/* Image area with 3-zone hover */}
       <div
-        className="relative aspect-[3/4] overflow-hidden cursor-pointer"
+        className="relative aspect-[3/4] overflow-hidden cursor-pointer flex-none bg-secondary"
         onMouseMove={handleMouseMove}
       >
         {product.images.map((img, i) => (
@@ -117,14 +120,15 @@ const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?
 
         {/* Image indicators */}
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-          {product.images.length > 1 && product.images.map((_, i) => (
-            <div
-              key={i}
-              className={`h-0.5 rounded-full transition-all duration-200 ${
-                i === activeImage ? "w-4 bg-primary" : "w-2 bg-foreground/30"
-              }`}
-            />
-          ))}
+          {product.images.length > 1 &&
+            product.images.map((_, i) => (
+              <div
+                key={i}
+                className={`h-0.5 rounded-full transition-all duration-200 ${
+                  i === activeImage ? "w-4 bg-primary" : "w-2 bg-foreground/30"
+                }`}
+              />
+            ))}
         </div>
 
         {/* Discount badge */}
@@ -135,10 +139,19 @@ const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?
         )}
 
         {/* Action icons - visible on hover */}
-        <div className={`absolute top-2 right-2 flex flex-col gap-1.5 transition-opacity duration-200 ${isHovered ? "opacity-100" : "opacity-0"}`}>
+        <div
+          className={`absolute top-2 right-2 flex flex-col gap-1.5 transition-opacity duration-200 ${
+            isHovered ? "opacity-100" : "opacity-0"
+          }`}
+        >
           <button
-            onClick={(e) => { e.stopPropagation(); setIsFavorite(!isFavorite); }}
-            className={`p-1.5 rounded-full bg-background/90 transition-colors ${isFavorite ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsFavorite(!isFavorite);
+            }}
+            className={`p-1.5 rounded-full bg-background/90 transition-colors ${
+              isFavorite ? "text-primary" : "text-muted-foreground hover:text-primary"
+            }`}
           >
             <Heart className={`w-4 h-4 ${isFavorite ? "fill-primary" : ""}`} />
           </button>
@@ -152,7 +165,7 @@ const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?
       </div>
 
       {/* Info - button in flow so it doesn't overlay content and stays clickable */}
-      <div className="p-3 flex flex-col">
+      <div className="flex-1 min-h-0 p-3 flex flex-col">
         <div className="flex items-baseline gap-2 mb-1">
           <span className="text-lg font-bold text-foreground">{product.price.toLocaleString()} ₽</span>
           {product.oldPrice && (
@@ -167,11 +180,18 @@ const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?
           <span>{product.reviews} отзывов</span>
         </div>
         <p className="text-xs text-muted-foreground mt-1">{product.seller}</p>
-        <div className="mt-3 min-h-[32px] flex items-center">
+
+        <div className="mt-auto pt-3 min-h-[32px] flex items-center">
           <button
             type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/product/${product.id}`); }}
-            className={`w-full gradient-primary text-primary-foreground text-xs py-1.5 rounded-full font-medium transition-opacity duration-200 hover:opacity-90 ${isHovered ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate(`/product/${product.id}`);
+            }}
+            className={`w-full gradient-primary text-primary-foreground text-xs py-1.5 rounded-full font-medium transition-opacity duration-200 hover:opacity-90 ${
+              isHovered ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
           >
             В корзину
           </button>

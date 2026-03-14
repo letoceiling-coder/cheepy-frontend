@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { popularCategories } from "@/data/marketplaceData";
@@ -11,22 +11,25 @@ const sliderCategories = [
   { slug: "shorty", name: "Шорты", count: 420, image: popularCategories[2].image },
 ];
 
-const VISIBLE_DESKTOP = 4;
-const VISIBLE_MOBILE = 2;
-
 const LightCategoryNav = () => {
   const [current, setCurrent] = useState(0);
   const total = sliderCategories.length;
-  const [isMobile, setIsMobile] = useState(false);
 
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
+
+  const scrollToIndex = useCallback((index: number) => {
+    itemRefs.current[index]?.scrollIntoView({
+      behavior: "smooth",
+      inline: "start",
+      block: "nearest",
+    });
   }, []);
 
-  const visible = isMobile ? VISIBLE_MOBILE : VISIBLE_DESKTOP;
+  // Keep a tiny delay so layout is ready before the first scrollIntoView
+  useEffect(() => {
+    const t = window.setTimeout(() => scrollToIndex(current), 0);
+    return () => window.clearTimeout(t);
+  }, [current, scrollToIndex]);
 
   const next = useCallback(() => {
     setCurrent((prev) => (prev + 1) % total);
@@ -36,23 +39,17 @@ const LightCategoryNav = () => {
     setCurrent((prev) => (prev - 1 + total) % total);
   }, [total]);
 
-  const extendedItems = [...sliderCategories, ...sliderCategories, ...sliderCategories];
-  const offset = total;
   const progress = ((current + 1) / total) * 100;
 
   return (
-    <section className="mt-12 mb-8">
+    <section className="mb-8 w-full">
       <div className="flex flex-col md:flex-row md:items-center gap-6">
         {/* Left controls */}
         <div className="flex-shrink-0 flex flex-col gap-3 min-w-[140px]">
           {/* Page indicator */}
           <div className="flex items-baseline gap-1 text-foreground">
-            <span className="text-lg font-bold leading-none">
-              {String(current + 1).padStart(2, "0")}
-            </span>
-            <span className="text-sm text-muted-foreground font-normal">
-              / {String(total).padStart(2, "0")}
-            </span>
+            <span className="text-lg font-bold leading-none">{String(current + 1).padStart(2, "0")}</span>
+            <span className="text-sm text-muted-foreground font-normal">/ {String(total).padStart(2, "0")}</span>
           </div>
 
           {/* Progress bar */}
@@ -85,25 +82,18 @@ const LightCategoryNav = () => {
           </div>
         </div>
 
-        {/* Right - cards carousel */}
-        <div className="flex-1 overflow-hidden">
-          <div
-            className="flex transition-transform duration-[350ms] ease-in-out"
-            style={{
-              width: `${(extendedItems.length / visible) * 100}%`,
-              transform: `translateX(-${((current + offset) * (100 / extendedItems.length))}%)`,
-            }}
-          >
-            {extendedItems.map((cat, i) => (
+        {/* Right - cards (native horizontal scroll; no transform/oversized widths) */}
+        <div className="flex-1 overflow-x-auto no-scrollbar">
+          <div className="flex gap-2 min-w-max pr-2">
+            {sliderCategories.map((cat, i) => (
               <div
-                key={`light-${cat.slug}-${i}`}
-                className="flex-shrink-0"
-                style={{ width: `${100 / extendedItems.length}%` }}
+                key={`light-${cat.slug}`}
+                ref={(el) => {
+                  itemRefs.current[i] = el;
+                }}
+                className="shrink-0"
               >
-                <Link
-                  to={`/category/${cat.slug}`}
-                  className="group flex items-center gap-3 px-3 py-2"
-                >
+                <Link to={`/category/${cat.slug}`} className="group flex items-center gap-3 px-3 py-2">
                   <div className="w-14 h-14 rounded-md overflow-hidden bg-muted flex-shrink-0">
                     <img
                       src={cat.image}

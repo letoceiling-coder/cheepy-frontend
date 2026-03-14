@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import CategoryCard from "./CategoryCard";
 import CategorySliderControls from "./CategorySliderControls";
 import { popularCategories } from "@/data/marketplaceData";
@@ -12,12 +12,11 @@ const sliderCategories = [
   { slug: "shorty", name: "Шорты", count: 420, image: popularCategories[2].image },
 ];
 
-const VISIBLE_DESKTOP = 4;
-const VISIBLE_MOBILE = 2;
-
 const CategorySliderSection = () => {
   const [current, setCurrent] = useState(0);
   const total = sliderCategories.length;
+
+  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -27,56 +26,59 @@ const CategorySliderSection = () => {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  const visible = isMobile ? VISIBLE_MOBILE : VISIBLE_DESKTOP;
+  const scrollToIndex = useCallback((index: number) => {
+    itemRefs.current[index]?.scrollIntoView({
+      behavior: "smooth",
+      inline: "start",
+      block: "nearest",
+    });
+  }, []);
 
   const next = useCallback(() => {
-    setCurrent((prev) => (prev + 1) % total);
-  }, [total]);
+    setCurrent((prev) => {
+      const n = (prev + 1) % total;
+      scrollToIndex(n);
+      return n;
+    });
+  }, [scrollToIndex, total]);
 
   const prev = useCallback(() => {
-    setCurrent((prev) => (prev - 1 + total) % total);
-  }, [total]);
-
-  // For infinite loop, we duplicate items so translateX works seamlessly
-  const extendedItems = [...sliderCategories, ...sliderCategories, ...sliderCategories];
-  const offset = total; // start from the middle copy
+    setCurrent((prev) => {
+      const n = (prev - 1 + total) % total;
+      scrollToIndex(n);
+      return n;
+    });
+  }, [scrollToIndex, total]);
 
   return (
-    <section className="mb-8 rounded-2xl overflow-hidden" style={{ background: "hsl(0, 0%, 13%)" }}>
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-0">
-        {/* Left control panel */}
-        <div className="md:col-span-3 p-6 md:p-8 flex flex-col justify-center border-b md:border-b-0 md:border-r border-primary-foreground/10">
-          <CategorySliderControls
-            current={current}
-            total={total}
-            onPrev={prev}
-            onNext={next}
-          />
-        </div>
+    <section className="mb-8 w-full">
+      <div className="rounded-2xl" style={{ background: "hsl(0, 0%, 13%)" }}>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-0">
+          {/* Left control panel */}
+          <div className="md:col-span-3 p-6 md:p-8 flex flex-col justify-center border-b md:border-b-0 md:border-r border-primary-foreground/10">
+            <CategorySliderControls current={current} total={total} onPrev={prev} onNext={next} />
+          </div>
 
-        {/* Right - category cards with translateX carousel */}
-        <div className="md:col-span-9 overflow-hidden">
-          <div
-            className="flex transition-transform duration-[350ms] ease-in-out h-full"
-            style={{
-              width: `${(extendedItems.length / visible) * 100}%`,
-              transform: `translateX(-${((current + offset) * (100 / extendedItems.length))}%)`,
-            }}
-          >
-            {extendedItems.map((cat, i) => (
-              <div
-                key={`${cat.slug}-${i}`}
-                className="flex-shrink-0 flex items-center justify-center"
-                style={{ width: `${100 / extendedItems.length}%` }}
-              >
-                <CategoryCard
-                  slug={cat.slug}
-                  name={cat.name}
-                  count={cat.count}
-                  image={cat.image}
-                />
-              </div>
-            ))}
+          {/* Right - category cards (native horizontal scroll; no transform/oversized widths) */}
+          <div className="md:col-span-9">
+            <div
+              className={
+                "flex gap-4 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory " +
+                (isMobile ? "p-4" : "p-6")
+              }
+            >
+              {sliderCategories.map((cat, i) => (
+                <div
+                  key={cat.slug}
+                  ref={(el) => {
+                    itemRefs.current[i] = el;
+                  }}
+                  className="flex-shrink-0 snap-start"
+                >
+                  <CategoryCard slug={cat.slug} name={cat.name} count={cat.count} image={cat.image} />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

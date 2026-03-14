@@ -4,7 +4,6 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import ProductCard from "@/components/ProductCard";
-import BrandLogo from "@/components/BrandLogo";
 import { brandsData } from "@/data/marketplaceData";
 import { mockProducts } from "@/data/mock-data";
 
@@ -28,7 +27,7 @@ const BrandPage = () => {
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4 flex-wrap">
           <Link to="/" className="hover:text-primary transition-colors">Главная</Link>
           <ChevronRight className="w-3 h-3" />
-          <Link to="/brand" className="hover:text-primary transition-colors">Бренды</Link>
+          <Link to="/category/all" className="hover:text-primary transition-colors">Бренды</Link>
           <ChevronRight className="w-3 h-3" />
           <span className="text-foreground">{brand.name}</span>
         </div>
@@ -36,8 +35,8 @@ const BrandPage = () => {
         {/* Hero */}
         <div className="gradient-primary rounded-2xl p-8 md:p-12 mb-8 text-primary-foreground">
           <div className="flex items-center gap-6">
-            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-background flex items-center justify-center p-3">
-              <BrandLogo brand={brand.logo} className="w-full h-full text-foreground" />
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-background/20 flex items-center justify-center text-4xl md:text-5xl font-extrabold">
+              {brand.logo}
             </div>
             <div>
               <h1 className="text-2xl md:text-4xl font-bold mb-1">{brand.name}</h1>

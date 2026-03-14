@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Heart, ShoppingCart, BarChart2 } from "lucide-react";
+import { useState, useRef } from "react";
+import { Heart, ShoppingCart, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { bestsellers, type BestsellProduct } from "@/data/marketplaceData";
 
@@ -17,66 +17,60 @@ const BestsellerCard = ({ product }: { product: BestsellProduct }) => {
 
   return (
     <div
-      className="group bg-card rounded-xl overflow-hidden border border-border"
+      className="group bg-card rounded-xl overflow-hidden border border-border shrink-0 w-[180px] xl:w-[200px] flex flex-col hover:-translate-y-1 hover:shadow-lg transition-all duration-250"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => { setIsHovered(false); setActiveImage(0); }}
     >
-      <Link to={`/product/${product.id}`} className="block relative aspect-[3/4] overflow-hidden bg-secondary" onMouseMove={handleMouseMove}>
+      <Link to={`/product/${product.id}`} className="block relative h-[160px] overflow-hidden bg-secondary" onMouseMove={handleMouseMove}>
         {product.images.map((img, i) => (
           <img
             key={i}
             src={img}
             alt={product.name}
             loading="lazy"
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${i === activeImage ? "opacity-100" : "opacity-0"}`}
+            className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 ${i === activeImage ? "opacity-100" : "opacity-0"} ${isHovered && i === activeImage ? "scale-110" : "scale-100"}`}
           />
         ))}
-        {/* Hit badge */}
-        <span className="absolute top-2 left-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
+        <span className="absolute top-2 left-2 bg-primary text-primary-foreground text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
           Хит
         </span>
         {discount > 0 && (
-          <span className="absolute top-2 right-2 bg-destructive text-destructive-foreground text-xs font-semibold px-2 py-0.5 rounded-full">
+          <span className="absolute top-2 right-2 bg-destructive text-destructive-foreground text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
             -{discount}%
           </span>
         )}
-        {/* Image indicators */}
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-0.5">
           {product.images.length > 1 && product.images.map((_, i) => (
-            <div key={i} className={`h-0.5 rounded-full transition-all duration-200 ${i === activeImage ? "w-4 bg-primary" : "w-2 bg-foreground/30"}`} />
+            <div key={i} className={`h-0.5 rounded-full transition-all duration-200 ${i === activeImage ? "w-3 bg-primary" : "w-1.5 bg-foreground/30"}`} />
           ))}
         </div>
-        {/* Hover actions */}
-        <div className={`absolute top-10 right-2 flex flex-col gap-1.5 transition-opacity duration-200 ${isHovered ? "opacity-100" : "opacity-0"}`}>
+        {/* Hover icons */}
+        <div className={`absolute top-9 right-2 flex flex-col gap-1 transition-all duration-200 ${isHovered ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"}`}>
           <button className="p-1.5 rounded-full bg-background/90 text-muted-foreground hover:text-primary transition-colors" aria-label="В избранное">
-            <Heart className="w-4 h-4" />
-          </button>
-          <button className="p-1.5 rounded-full bg-background/90 text-muted-foreground hover:text-primary transition-colors" aria-label="Сравнить">
-            <BarChart2 className="w-4 h-4" />
+            <Heart className="w-3.5 h-3.5" />
           </button>
         </div>
       </Link>
-      <div className="p-3">
-        <div className="flex items-baseline gap-2 mb-1">
-          <span className="text-lg font-bold text-foreground">{product.price.toLocaleString()} ₽</span>
-          {product.oldPrice && (
-            <span className="text-sm text-muted-foreground line-through">{product.oldPrice.toLocaleString()} ₽</span>
-          )}
-        </div>
-        <p className="text-sm text-foreground line-clamp-2 mb-1">{product.name}</p>
-        <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+      <div className="p-2.5">
+        <p className="text-[11px] text-foreground line-clamp-1 mb-1">{product.name}</p>
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
           <span className="text-accent">★</span>
           <span>{product.rating}</span>
           <span>·</span>
-          <span>{product.reviews} отзывов</span>
+          <span>{product.reviews} отз.</span>
         </div>
-        <p className="text-xs text-muted-foreground">{product.seller} · {product.sold.toLocaleString()} продаж</p>
-        <div className="mt-3 min-h-[32px]">
+        <div className="flex items-center justify-between">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-sm font-bold text-foreground">{product.price.toLocaleString()} ₽</span>
+            {product.oldPrice && (
+              <span className="text-[10px] text-muted-foreground line-through">{product.oldPrice.toLocaleString()} ₽</span>
+            )}
+          </div>
           <button
-            className={`w-full gradient-primary text-primary-foreground text-xs py-1.5 rounded-full font-medium flex items-center justify-center gap-1 transition-opacity duration-200 hover:opacity-90 ${isHovered ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+            className={`p-1.5 rounded-full gradient-primary text-primary-foreground transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5 active:translate-y-0 ${isHovered ? "opacity-100 scale-100" : "opacity-0 scale-90 pointer-events-none"}`}
+            aria-label="В корзину"
           >
             <ShoppingCart className="w-3.5 h-3.5" />
-            В корзину
           </button>
         </div>
       </div>
@@ -86,15 +80,30 @@ const BestsellerCard = ({ product }: { product: BestsellProduct }) => {
 
 const Bestsellers = () => {
   const sorted = [...bestsellers].sort((a, b) => b.sold - a.sold);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (dir: number) => {
+    scrollRef.current?.scrollBy({ left: dir * 260, behavior: "smooth" });
+  };
 
   return (
-    <section className="mb-10">
-      <div className="flex items-baseline gap-3 mb-5">
-        <h2 className="text-xl font-bold text-foreground">ХИТЫ ПРОДАЖ</h2>
+    <section className="py-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-bold text-foreground">ХИТЫ ПРОДАЖ</h2>
+        <div className="flex gap-1">
+          <button onClick={() => scroll(-1)} className="p-1.5 rounded-full border border-border hover:bg-primary/5 transition-colors">
+            <ChevronLeft size={14} className="text-muted-foreground" />
+          </button>
+          <button onClick={() => scroll(1)} className="p-1.5 rounded-full border border-border hover:bg-primary/5 transition-colors">
+            <ChevronRight size={14} className="text-muted-foreground" />
+          </button>
+        </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+      <div ref={scrollRef} className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1 snap-x snap-mandatory">
         {sorted.map((product) => (
-          <BestsellerCard key={product.id} product={product} />
+          <div key={product.id} className="snap-start">
+            <BestsellerCard product={product} />
+          </div>
         ))}
       </div>
     </section>

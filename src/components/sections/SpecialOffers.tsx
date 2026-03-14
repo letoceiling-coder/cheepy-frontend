@@ -44,22 +44,22 @@ const SpecialOffers = () => {
   const smalls = promotions.filter(p => p.size === "small");
 
   return (
-    <section className="mb-10">
-      <div className="flex items-baseline gap-3 mb-5">
-        <h2 className="text-xl font-bold text-foreground">АКЦИИ И СПЕЦПРЕДЛОЖЕНИЯ</h2>
+    <section className="mb-6">
+      <div className="flex items-baseline gap-3 mb-3">
+        <h2 className="text-lg font-bold text-foreground">АКЦИИ И СПЕЦПРЕДЛОЖЕНИЯ</h2>
       </div>
 
       {/* Desktop: 1 large + 2 small */}
-      <div className="hidden md:grid grid-cols-2 gap-4">
+      <div className="hidden md:grid grid-cols-2 gap-3">
         {/* Large banner */}
         <Link
           to="/category/sale"
-          className="group relative row-span-2 rounded-2xl overflow-hidden min-h-[420px]"
+          className="group relative row-span-2 rounded-xl overflow-hidden h-[340px]"
         >
           <img src={large.image} alt={large.title} loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/20 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-6">
-            <h3 className="text-2xl font-bold text-primary-foreground mb-1">{large.title}</h3>
+            <h3 className="text-xl font-bold text-primary-foreground mb-1">{large.title}</h3>
             <p className="text-sm text-primary-foreground/80 mb-4">{large.subtitle}</p>
             <div className="flex items-end justify-between">
               <button className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity">
@@ -75,7 +75,7 @@ const SpecialOffers = () => {
           <Link
             key={promo.id}
             to="/category/sale"
-            className="group relative rounded-2xl overflow-hidden min-h-[200px]"
+            className="group relative rounded-xl overflow-hidden h-[160px]"
           >
             <img src={promo.image} alt={promo.title} loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
             <div className="absolute inset-0 bg-gradient-to-r from-foreground/60 to-transparent" />
@@ -101,7 +101,7 @@ const SpecialOffers = () => {
           <Link
             key={promo.id}
             to="/category/sale"
-            className="group relative block rounded-xl overflow-hidden h-[200px]"
+            className="group relative block rounded-xl overflow-hidden h-[140px]"
           >
             <img src={promo.image} alt={promo.title} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent" />

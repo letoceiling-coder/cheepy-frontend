@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Play, Square, Loader2 } from "lucide-react";
+import { Play, Square, Loader2, RotateCcw, Trash2, RefreshCw, RotateCw } from "lucide-react";
 import { parserApi, categoriesApi, logsApi } from "@/lib/api";
 import type { ParserJob, Category } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -15,7 +15,7 @@ import { toast } from "sonner";
 
 export default function ParserPage() {
   const [config, setConfig] = useState({
-    withPhotos: true,
+    withPhotos: false,
     saveToDB: true,
     previewOnly: false,
     category: "",
@@ -158,6 +158,84 @@ export default function ParserPage() {
     }
   };
 
+  const [sysAction, setSysAction] = useState<string | null>(null);
+  const handleQueueFlush = async () => {
+    setSysAction("flush");
+    try {
+      await parserApi.queueFlush();
+      refetchStatus();
+      toast.success("Очереди сброшены");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    } finally {
+      setSysAction(null);
+    }
+  };
+  const handleLogsClear = async () => {
+    setSysAction("logs");
+    try {
+      await logsApi.clear();
+      toast.success("Логи и ошибки очищены");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    } finally {
+      setSysAction(null);
+    }
+  };
+  const handleQueueRestart = async () => {
+    setSysAction("restart");
+    try {
+      await parserApi.queueRestart();
+      refetchStatus();
+      toast.success("Воркеры очередей перезапущены");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    } finally {
+      setSysAction(null);
+    }
+  };
+  const handleReleaseLock = async () => {
+    setSysAction("lock");
+    try {
+      await parserApi.releaseLock();
+      refetchStatus();
+      toast.success("Блокировка снята");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    } finally {
+      setSysAction(null);
+    }
+  };
+  const handleClearFailedJobs = async () => {
+    setSysAction("clearFailed");
+    try {
+      await parserApi.clearFailedJobs();
+      refetchFailedJobs();
+      refetchStatus();
+      toast.success("Failed jobs очищены");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    } finally {
+      setSysAction(null);
+    }
+  };
+  const handleRetryJob = async (id: number) => {
+    try {
+      await parserApi.retryJob(id);
+      refetchFailedJobs();
+      refetchStatus();
+      toast.success("Job возвращён в очередь");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    }
+  };
+
   const progress = activeJob?.progress?.percent ?? 0;
   const totalProducts = activeJob?.progress?.products?.total ?? 0;
   const processedCount = activeJob?.progress?.products?.done ?? activeJob?.progress?.saved ?? 0;
@@ -203,6 +281,110 @@ export default function ParserPage() {
               )}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Parser Diagnostics */}
+      {diagnostics && (
+        <Card>
+          <CardHeader><CardTitle className="text-lg">Parser Diagnostics</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Очередь парсера</p>
+                <p className="font-medium">{diagnostics.parser_queue_size ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Очередь фото</p>
+                <p className="font-medium">{diagnostics.photos_queue_size ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Failed jobs</p>
+                <p className={`font-medium ${(diagnostics.failed_jobs_count ?? 0) > 0 ? "text-destructive" : ""}`}>
+                  {diagnostics.failed_jobs_count ?? "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Блокировка</p>
+                <Badge variant={diagnostics.parser_lock_status === "held" ? "destructive" : "secondary"}>
+                  {diagnostics.parser_lock_status === "held" ? "Удерживается" : "Свободна"}
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* System controls */}
+      <Card>
+        <CardHeader><CardTitle className="text-lg">Управление системой</CardTitle></CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" onClick={handleQueueFlush} disabled={!!sysAction || isRunning} title="Reset Queue">
+              <RotateCcw className="h-4 w-4 mr-1" />Reset Queue
+            </Button>
+            <Button variant="outline" onClick={handleClearFailedJobs} disabled={!!sysAction} title="Clear Failed Jobs">
+              <Trash2 className="h-4 w-4 mr-1" />Clear Failed Jobs
+            </Button>
+            <Button variant="outline" onClick={handleQueueRestart} disabled={!!sysAction} title="Restart Workers">
+              <RefreshCw className="h-4 w-4 mr-1" />Restart Workers
+            </Button>
+            <Button variant="outline" onClick={handleStartDaemon} disabled={daemonEnabled || isRunning} title="Resume Daemon">
+              <Play className="h-4 w-4 mr-1" />Resume Daemon
+            </Button>
+            <Button variant="outline" onClick={handleStopDaemon} disabled={!daemonEnabled} title="Stop Daemon">
+              Stop Daemon
+            </Button>
+            <Button variant="outline" onClick={handleReleaseLock} disabled={!!sysAction || isRunning} title="Release lock">
+              Освободить блокировку
+            </Button>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="ghost" size="sm" onClick={handleLogsClear} disabled={!!sysAction}>
+              Очистка логов
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Parser Errors (Failed Jobs) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Parser Errors</CardTitle>
+          <p className="text-sm text-muted-foreground">Последние 20 failed jobs</p>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="p-2 text-left">Time</th>
+                  <th className="p-2 text-left">Queue</th>
+                  <th className="p-2 text-left">Job</th>
+                  <th className="p-2 text-left">Error</th>
+                  <th className="p-2 text-right">Retry</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(failedJobsData?.data ?? []).length === 0 && (
+                  <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">Нет failed jobs</td></tr>
+                )}
+                {(failedJobsData?.data ?? []).map((job) => (
+                  <tr key={job.id} className="border-b hover:bg-muted/30">
+                    <td className="p-2 whitespace-nowrap">{job.failed_at ? new Date(job.failed_at).toLocaleString("ru") : "—"}</td>
+                    <td className="p-2">{job.queue ?? "—"}</td>
+                    <td className="p-2 truncate max-w-[150px]" title={job.display_name}>{job.display_name ?? "—"}</td>
+                    <td className="p-2 text-destructive text-xs max-w-[250px] truncate" title={job.exception ?? ""}>{job.exception ?? "—"}</td>
+                    <td className="p-2 text-right">
+                      <Button variant="ghost" size="sm" onClick={() => handleRetryJob(job.id)}>
+                        <RotateCw className="h-4 w-4 mr-1" />Retry
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
 

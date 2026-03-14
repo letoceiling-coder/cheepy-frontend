@@ -40,25 +40,44 @@ const ProductGrid = ({ title, subtitle, initialCount = 6 }: ProductGridProps) =>
   };
 
   return (
-    <section className="mb-10">
-      <div className="flex items-baseline gap-3 mb-5">
-        <h2 className="text-xl font-bold text-foreground">{title}</h2>
+    <section className="mb-6">
+      <div className="flex items-baseline gap-3 mb-3">
+        <h2 className="text-lg font-bold text-foreground">{title}</h2>
         {subtitle && <span className="text-sm text-muted-foreground">{subtitle}</span>}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-        {products.map((product, i) => (
-          <div key={product.id} className="animate-fade-in" style={{ animationDelay: `${(i % 6) * 50}ms` }}>
+      {/* Desktop: 4 cards */}
+      <div className="hidden md:grid grid-cols-4 gap-4 mb-4">
+        {products.slice(0, 8).map((product, i) => (
+          <div key={product.id} className="animate-fade-in" style={{ animationDelay: `${(i % 4) * 50}ms` }}>
             <ProductCard product={product} />
           </div>
         ))}
       </div>
 
-      <div className="text-center mt-6">
+      {/* Tablet: 2 cards */}
+      <div className="hidden sm:grid md:hidden grid-cols-2 gap-4 mb-4">
+        {products.slice(0, 4).map((product, i) => (
+          <div key={product.id} className="animate-fade-in" style={{ animationDelay: `${(i % 2) * 50}ms` }}>
+            <ProductCard product={product} />
+          </div>
+        ))}
+      </div>
+
+      {/* Mobile: horizontal carousel */}
+      <div className="sm:hidden overflow-x-auto flex gap-3 snap-x snap-mandatory no-scrollbar pb-2">
+        {products.slice(0, 12).map((product, i) => (
+          <div key={product.id} className="shrink-0 w-[200px] snap-start">
+            <ProductCard product={product} />
+          </div>
+        ))}
+      </div>
+
+      <div className="text-center mt-4">
         <button
           onClick={loadMore}
           disabled={loading}
-          className="px-8 py-2.5 border-2 border-primary text-primary rounded-full text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition-colors disabled:opacity-50"
+          className="px-6 py-2 border-2 border-primary text-primary rounded-full text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition-colors disabled:opacity-50"
         >
           {loading ? "Загрузка..." : "Смотреть ещё"}
         </button>

@@ -2,7 +2,42 @@
  * API client for Parser backend (online-parser.siteaacess.store)
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'https://online-parser.siteaacess.store/api/v1';
+const DEFAULT_API_URL = 'https://online-parser.siteaacess.store/api/v1';
+
+function resolveApiBaseUrl(): string {
+  const raw = String(import.meta.env.VITE_API_URL || '').trim();
+  if (!raw) return DEFAULT_API_URL;
+
+  try {
+    const u = new URL(raw);
+    const host = (u.hostname || '').toLowerCase();
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.loc');
+    const isPrivateLan =
+      /^10\./.test(host) ||
+      /^192\.168\./.test(host) ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(host);
+
+    // Never allow local/LAN endpoints in production build runtime.
+    if (import.meta.env.PROD && (isLocalHost || isPrivateLan)) {
+      return DEFAULT_API_URL;
+    }
+
+    // Avoid mixed content on HTTPS pages.
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && u.protocol === 'http:') {
+      if (import.meta.env.PROD) {
+        return DEFAULT_API_URL;
+      }
+      u.protocol = 'https:';
+      return u.toString().replace(/\/$/, '');
+    }
+
+    return u.toString().replace(/\/$/, '');
+  } catch {
+    return DEFAULT_API_URL;
+  }
+}
+
+const BASE_URL = resolveApiBaseUrl();
 
 // Log API URL in development
 if (import.meta.env.DEV) {
@@ -258,8 +293,11 @@ export interface ParserJob {
 
 export interface ParserStatus {
   is_running: boolean;
+  daemon_enabled?: boolean;
   current_job: ParserJob | null;
   last_completed: ParserJob | null;
+  queue_parser_size?: number;
+  queue_photos_size?: number;
 }
 
 export interface DashboardData {
@@ -324,8 +362,39 @@ export const dashboardApi = {
 // ──────────────────────────────────────────────
 
 export interface SystemStatus {
+  error_metrics?: {
+    today_total: number;
+    today_products: number;
+    today_parser_logs: number;
+    last_15m: number;
+    last_1h: number;
+    last_24h: number;
+  };
+  error_reasons?: Array<{
+    module: string;
+    message: string;
+    count: number;
+    last_seen: string;
+    age_minutes?: number;
+    is_active_15m?: boolean;
+  }>;
+  error_reasons_last_1h?: Array<{
+    module: string;
+    message: string;
+    count: number;
+    last_seen: string;
+    age_minutes?: number;
+    is_active_15m?: boolean;
+  }>;
+  recent_error_logs?: Array<{
+    id: number;
+    module: string;
+    message: string;
+    logged_at: string;
+  }>;
   parser_running: boolean;
   queue_workers: number;
+  parser_warning?: string | null;
   queue_size: number;
   products_total: number;
   products_today: number;
@@ -372,13 +441,44 @@ export interface ParserStats {
   last_parser_run: string | null;
 }
 
+export interface ParserDiagnostics {
+  workers_running: number;
+  parser_running: boolean;
+  parser_queue_size: number;
+  photos_queue_size: number;
+  failed_jobs_count: number;
+  parser_lock_status: 'held' | 'free';
+  products_total: number;
+  products_today: number;
+  errors_today: number;
+  metrics?: {
+    products_per_minute?: number;
+    requests_per_minute?: number;
+    blocked_requests?: number;
+    retry_count?: number;
+  };
+}
+
 export const parserApi = {
   status: () => get<ParserStatus>('/parser/status'),
   stats: () => get<ParserStats>('/parser/stats'),
+  diagnostics: () => get<ParserDiagnostics>('/parser/diagnostics'),
   start: (opts?: StartParserOptions) => post<{ message: string; job_id: number; job: ParserJob }>('/parser/start', opts),
   startDaemon: () => post<{ message: string; daemon_enabled: boolean }>('/parser/start-daemon'),
   stop: () => post<{ message: string }>('/parser/stop'),
   stopDaemon: () => post<{ message: string; daemon_enabled: boolean }>('/parser/stop-daemon'),
+  restart: () => post<{ message: string }>('/parser/restart'),
+  queueClear: (queue: 'parser' | 'photos' | 'default' = 'parser') =>
+    post<{ message: string }>('/parser/queue-clear', { queue }),
+  queueFlush: () => post<{ message: string; queues: string[] }>('/parser/queue-flush'),
+  queueRestart: () => post<{ message: string }>('/parser/queue-restart'),
+  clearFailedJobs: () => post<{ message: string }>('/parser/clear-failed'),
+  failedJobs: () => get<{ data: Array<{ id: number; uuid: string; queue: string; display_name: string; exception: string | null; failed_at: string }> }>('/parser/failed-jobs'),
+  retryJob: (id: number) => post<{ message: string }>(`/parser/retry-job/${id}`),
+  killStuck: (idleMinutes?: number) =>
+    post<{ message: string }>('/parser/kill-stuck', idleMinutes ? { idle_minutes: idleMinutes } : undefined),
+  releaseLock: () => post<{ message: string }>('/parser/release-lock'),
+  reset: () => post<{ message: string }>('/parser/reset'),
   jobs: (page = 1, perPage = 20) => get<PaginatedResponse<ParserJob>>(`/parser/jobs?page=${page}&per_page=${perPage}`),
   jobDetail: (id: number) => get<ParserJob & { logs: LogEntry[] }>(`/parser/jobs/${id}`),
   downloadPhotos: (opts?: { limit?: number; product_id?: number }) =>

@@ -29,7 +29,7 @@ const HeroSlider = () => {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <div className="relative h-[320px] md:h-[400px]">
+      <div className="relative h-[320px] md:h-[420px] lg:h-[520px]">
         {slides.map((slide, i) => (
           <div
             key={i}
@@ -37,9 +37,9 @@ const HeroSlider = () => {
           >
             <img src={slide.image} alt={slide.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-r from-foreground/60 to-transparent flex items-center">
-              <div className="px-10 md:px-16">
+              <div className="px-10 md:px-16 max-w-[480px]">
                 <p className="text-primary-foreground/80 text-sm mb-1">{slide.subtitle}</p>
-                <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-4">{slide.title}</h2>
+                <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-primary-foreground mb-4">{slide.title}</h2>
                 <button className="gradient-primary text-primary-foreground px-6 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity">
                   {slide.cta}
                 </button>

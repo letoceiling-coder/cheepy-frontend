@@ -1,18 +1,35 @@
 import { MapPin, Phone, Mail } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   const columns = [
     {
       title: "Покупателям",
-      links: ["Как сделать заказ", "Способы оплаты", "Доставка", "Возврат товара", "Вопросы и ответы"],
+      links: [
+        { label: "Как сделать заказ", to: "/how-to-order" },
+        { label: "Способы оплаты", to: "/payment" },
+        { label: "Доставка", to: "/delivery" },
+        { label: "Возврат товара", to: "/returns" },
+        { label: "Вопросы и ответы", to: "/faq" },
+      ],
     },
     {
       title: "Продавцам",
-      links: ["Как начать продавать", "Правила площадки", "Комиссия", "Помощь продавцам"],
+      links: [
+        { label: "Как начать продавать", to: "/sell" },
+        { label: "Правила площадки", to: "/rules" },
+        { label: "Комиссия", to: "/commission" },
+        { label: "Помощь продавцам", to: "/seller-help" },
+      ],
     },
     {
       title: "Компания",
-      links: ["О нас", "Контакты", "Вакансии", "Блог"],
+      links: [
+        { label: "О нас", to: "/about" },
+        { label: "Контакты", to: "/contacts" },
+        { label: "Вакансии", to: "/careers" },
+        { label: "Блог", to: "/blog" },
+      ],
     },
   ];
 
@@ -45,8 +62,8 @@ const Footer = () => {
               <h4 className="font-semibold text-foreground mb-3">{col.title}</h4>
               <ul className="space-y-2">
                 {col.links.map(link => (
-                  <li key={link}>
-                    <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">{link}</a>
+                  <li key={link.label}>
+                    <Link to={link.to} className="text-sm text-muted-foreground hover:text-primary transition-colors">{link.label}</Link>
                   </li>
                 ))}
               </ul>
