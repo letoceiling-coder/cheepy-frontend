@@ -443,7 +443,9 @@ export interface ParserStats {
 
 export interface ParserDiagnostics {
   workers_running: number;
+  worker_status?: 'running' | 'stopped';
   parser_running: boolean;
+  parser_state?: 'running' | 'stopped' | 'paused';
   parser_queue_size: number;
   photos_queue_size: number;
   failed_jobs_count: number;
@@ -451,12 +453,50 @@ export interface ParserDiagnostics {
   products_total: number;
   products_today: number;
   errors_today: number;
+  memory_usage?: number | string | null;
+  last_errors?: Array<{
+    id: number;
+    level: string;
+    message: string;
+    logged_at: string;
+    url?: string | null;
+    attempt?: number | null;
+  }>;
+  error_frequency?: {
+    last_hour?: number;
+  };
+  progress?: {
+    job_id?: number;
+    total_items: number;
+    processed_items: number;
+    failed_items: number;
+    current_url?: string | null;
+    updated_at?: string | null;
+  } | null;
   metrics?: {
     products_per_minute?: number;
     requests_per_minute?: number;
     blocked_requests?: number;
     retry_count?: number;
   };
+}
+
+export interface ParserSettings {
+  id: number;
+  download_photos: boolean;
+  store_photo_links: boolean;
+  max_workers: number;
+  request_delay_min: number;
+  request_delay_max: number;
+  timeout_seconds: number;
+}
+
+export interface ParserProgressOverview {
+  total_items: number;
+  processed_items: number;
+  failed_items: number;
+  current_url: string | null;
+  updated_at: string | null;
 }
 
 export interface ParserStateResponse {
@@ -470,8 +510,13 @@ export interface ParserStateResponse {
 export const parserApi = {
   status: () => get<ParserStatus>('/parser/status'),
   state: () => get<ParserStateResponse>('/parser/state'),
+  settings: () => get<ParserSettings>('/parser/settings'),
+  updateSettings: (payload: Partial<ParserSettings>) =>
+    post<{ message: string; data: ParserSettings }>('/parser/settings', payload),
   stats: () => get<ParserStats>('/parser/stats'),
   diagnostics: () => get<ParserDiagnostics>('/parser/diagnostics'),
+  progressOverview: (jobId?: number) =>
+    get<ParserProgressOverview>(`/parser/progress-overview${jobId ? `?job_id=${jobId}` : ''}`),
   start: (opts?: StartParserOptions) => post<{ message: string; job_id: number; job: ParserJob }>('/parser/start', opts),
   startDaemon: () => post<{ message: string; daemon_enabled: boolean }>('/parser/start-daemon'),
   stop: () => post<{ message: string }>('/parser/stop'),

@@ -58,6 +58,39 @@ export default function ParserPage() {
     refetchInterval: 15000,
   });
 
+  const { data: progressOverview } = useQuery({
+    queryKey: ["parser-progress-overview", activeJob?.id ?? 0],
+    queryFn: () => parserApi.progressOverview(activeJob?.id),
+    refetchInterval: 5000,
+  });
+
+  const { data: parserSettings, refetch: refetchParserSettings } = useQuery({
+    queryKey: ["parser-settings"],
+    queryFn: () => parserApi.settings(),
+    refetchInterval: 30000,
+  });
+
+  const [settingsForm, setSettingsForm] = useState({
+    download_photos: true,
+    store_photo_links: true,
+    max_workers: 3,
+    request_delay_min: 800,
+    request_delay_max: 2000,
+    timeout_seconds: 60,
+  });
+
+  useEffect(() => {
+    if (!parserSettings) return;
+    setSettingsForm({
+      download_photos: parserSettings.download_photos,
+      store_photo_links: parserSettings.store_photo_links,
+      max_workers: parserSettings.max_workers,
+      request_delay_min: parserSettings.request_delay_min,
+      request_delay_max: parserSettings.request_delay_max,
+      timeout_seconds: parserSettings.timeout_seconds,
+    });
+  }, [parserSettings]);
+
   const flattenCategories = (items: Category[]): Category[] => {
     const out: Category[] = [];
     const walk = (arr: Category[]) => {
@@ -268,6 +301,17 @@ export default function ParserPage() {
     }
   };
 
+  const handleSaveParserSettings = async () => {
+    try {
+      await parserApi.updateSettings(settingsForm);
+      refetchParserSettings();
+      toast.success("Настройки парсера сохранены");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    }
+  };
+
   const progress = activeJob?.progress?.percent ?? 0;
   const totalProducts = activeJob?.progress?.products?.total ?? 0;
   const processedCount = activeJob?.progress?.products?.done ?? activeJob?.progress?.saved ?? 0;
@@ -359,6 +403,38 @@ export default function ParserPage() {
                 </Badge>
               </div>
             </div>
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="rounded border p-3">
+                <p className="text-muted-foreground">Worker status</p>
+                <p className="font-medium">{diagnostics.worker_status ?? (diagnostics.workers_running > 0 ? "running" : "stopped")}</p>
+                <p className="text-muted-foreground mt-1">Memory usage: {String(diagnostics.memory_usage ?? "—")}</p>
+                <p className="text-muted-foreground mt-1">Errors / hour: {diagnostics.error_frequency?.last_hour ?? 0}</p>
+              </div>
+              <div className="rounded border p-3">
+                <p className="text-muted-foreground">Progress overview</p>
+                <p className="font-medium">
+                  {(progressOverview?.processed_items ?? diagnostics.progress?.processed_items ?? 0)}/
+                  {(progressOverview?.total_items ?? diagnostics.progress?.total_items ?? 0)}
+                </p>
+                <p className="text-muted-foreground mt-1">Failed: {progressOverview?.failed_items ?? diagnostics.progress?.failed_items ?? 0}</p>
+                <p className="text-muted-foreground mt-1 truncate" title={progressOverview?.current_url ?? diagnostics.progress?.current_url ?? ""}>
+                  URL: {progressOverview?.current_url ?? diagnostics.progress?.current_url ?? "—"}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4">
+              <p className="text-sm font-medium mb-2">Last errors</p>
+              <div className="space-y-1 max-h-28 overflow-auto rounded border p-2">
+                {(diagnostics.last_errors ?? []).length === 0 && (
+                  <p className="text-xs text-muted-foreground">Нет ошибок</p>
+                )}
+                {(diagnostics.last_errors ?? []).map((e) => (
+                  <p key={e.id} className="text-xs text-muted-foreground truncate" title={e.message}>
+                    [{new Date(e.logged_at).toLocaleTimeString("ru")}] {e.message}
+                  </p>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -386,6 +462,70 @@ export default function ParserPage() {
               Очистка логов
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Parser Settings */}
+      <Card>
+        <CardHeader><CardTitle className="text-lg">Parser Settings</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center justify-between">
+              <Label>Download photos</Label>
+              <Switch
+                checked={settingsForm.download_photos}
+                onCheckedChange={(v) => setSettingsForm({ ...settingsForm, download_photos: v })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Store photo links</Label>
+              <Switch
+                checked={settingsForm.store_photo_links}
+                onCheckedChange={(v) => setSettingsForm({ ...settingsForm, store_photo_links: v })}
+              />
+            </div>
+            <div>
+              <Label>Max workers</Label>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={settingsForm.max_workers}
+                onChange={(e) => setSettingsForm({ ...settingsForm, max_workers: Math.max(1, Number(e.target.value) || 1) })}
+              />
+            </div>
+            <div>
+              <Label>Timeout (sec)</Label>
+              <Input
+                type="number"
+                min={5}
+                max={300}
+                value={settingsForm.timeout_seconds}
+                onChange={(e) => setSettingsForm({ ...settingsForm, timeout_seconds: Math.max(5, Number(e.target.value) || 60) })}
+              />
+            </div>
+            <div>
+              <Label>Request delay min (ms)</Label>
+              <Input
+                type="number"
+                min={100}
+                max={10000}
+                value={settingsForm.request_delay_min}
+                onChange={(e) => setSettingsForm({ ...settingsForm, request_delay_min: Math.max(100, Number(e.target.value) || 800) })}
+              />
+            </div>
+            <div>
+              <Label>Request delay max (ms)</Label>
+              <Input
+                type="number"
+                min={100}
+                max={15000}
+                value={settingsForm.request_delay_max}
+                onChange={(e) => setSettingsForm({ ...settingsForm, request_delay_max: Math.max(100, Number(e.target.value) || 2000) })}
+              />
+            </div>
+          </div>
+          <Button variant="outline" onClick={handleSaveParserSettings}>Save parser settings</Button>
         </CardContent>
       </Card>
 
