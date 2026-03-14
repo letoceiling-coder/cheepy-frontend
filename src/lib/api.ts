@@ -459,14 +459,24 @@ export interface ParserDiagnostics {
   };
 }
 
+export interface ParserStateResponse {
+  status: 'running' | 'stopped' | 'paused';
+  locked: boolean;
+  last_start: string | null;
+  last_stop: string | null;
+  updated_at: string;
+}
+
 export const parserApi = {
   status: () => get<ParserStatus>('/parser/status'),
+  state: () => get<ParserStateResponse>('/parser/state'),
   stats: () => get<ParserStats>('/parser/stats'),
   diagnostics: () => get<ParserDiagnostics>('/parser/diagnostics'),
   start: (opts?: StartParserOptions) => post<{ message: string; job_id: number; job: ParserJob }>('/parser/start', opts),
   startDaemon: () => post<{ message: string; daemon_enabled: boolean }>('/parser/start-daemon'),
   stop: () => post<{ message: string }>('/parser/stop'),
   stopDaemon: () => post<{ message: string; daemon_enabled: boolean }>('/parser/stop-daemon'),
+  pause: () => post<{ message: string; status: string }>('/parser/pause'),
   restart: () => post<{ message: string }>('/parser/restart'),
   queueClear: (queue: 'parser' | 'photos' | 'default' = 'parser') =>
     post<{ message: string }>('/parser/queue-clear', { queue }),

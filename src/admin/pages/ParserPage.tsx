@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Play, Square, Loader2, RotateCcw, Trash2, RefreshCw, RotateCw } from "lucide-react";
+import { Play, Square, Pause, Loader2, RotateCcw, Trash2, RefreshCw, RotateCw } from "lucide-react";
 import { parserApi, categoriesApi, logsApi } from "@/lib/api";
 import type { ParserJob, Category } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -152,7 +152,8 @@ export default function ParserPage() {
     try {
       await parserApi.startDaemon();
       refetchStatus();
-      toast.success("Непрерывный парсер запущен");
+      refetchState();
+      toast.success("Парсер запущен");
     } catch (err: unknown) {
       const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
       toast.error(msg);
@@ -163,7 +164,20 @@ export default function ParserPage() {
     try {
       await parserApi.stopDaemon();
       refetchStatus();
-      toast.success("Непрерывный парсер отключён");
+      refetchState();
+      toast.success("Парсер остановлен");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    }
+  };
+
+  const handlePause = async () => {
+    try {
+      await parserApi.pause();
+      refetchStatus();
+      refetchState();
+      toast.success("Парсер приостановлен");
     } catch (err: unknown) {
       const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
       toast.error(msg);
@@ -271,15 +285,31 @@ export default function ParserPage() {
         {statusBadge}
       </div>
 
-      {/* Controls */}
+      {/* Parser Control */}
       <Card>
-        <CardHeader><CardTitle className="text-lg">Управление</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-lg">Parser Control</CardTitle>
+          {parserState && (
+            <p className="text-sm text-muted-foreground">
+              Статус: {parserState.status} | Последний старт: {parserState.last_start ? new Date(parserState.last_start).toLocaleString("ru") : "—"} | Последняя остановка: {parserState.last_stop ? new Date(parserState.last_stop).toLocaleString("ru") : "—"}
+            </p>
+          )}
+        </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Button onClick={handleStart} disabled={isRunning}><Play className="h-4 w-4 mr-1" />Запустить</Button>
-            <Button variant="destructive" disabled={!isRunning} onClick={handleStop}><Square className="h-4 w-4 mr-1" />Остановить</Button>
-            <Button variant="outline" onClick={handleStartDaemon} disabled={daemonEnabled || isRunning}><Play className="h-4 w-4 mr-1" />Непрерывный парсер</Button>
-            <Button variant="outline" onClick={handleStopDaemon} disabled={!daemonEnabled}>Стоп демон</Button>
+            <Button onClick={handleStartDaemon} disabled={daemonEnabled || isRunning} title="Start Parser (continuous)">
+              <Play className="h-4 w-4 mr-1" />Start Parser
+            </Button>
+            <Button variant="destructive" disabled={!daemonEnabled && !isRunning} onClick={handleStop} title="Stop Parser">
+              <Square className="h-4 w-4 mr-1" />Stop Parser
+            </Button>
+            <Button variant="outline" onClick={handlePause} disabled={!daemonEnabled && !isRunning} title="Pause Parser">
+              <Pause className="h-4 w-4 mr-1" />Pause Parser
+            </Button>
+          </div>
+          <div className="mt-3 pt-3 border-t">
+            <p className="text-xs text-muted-foreground mb-2">Один прогон (не daemon):</p>
+            <Button variant="outline" size="sm" onClick={handleStart} disabled={isRunning}><Play className="h-4 w-4 mr-1" />Один прогон</Button>
           </div>
           {isRunning && (
             <div className="mt-4 space-y-2">
@@ -327,9 +357,9 @@ export default function ParserPage() {
         </Card>
       )}
 
-      {/* System controls */}
+      {/* System Tools */}
       <Card>
-        <CardHeader><CardTitle className="text-lg">Управление системой</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">System Tools</CardTitle></CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
             <Button variant="outline" onClick={handleQueueFlush} disabled={!!sysAction || isRunning} title="Reset Queue">
@@ -340,12 +370,6 @@ export default function ParserPage() {
             </Button>
             <Button variant="outline" onClick={handleQueueRestart} disabled={!!sysAction} title="Restart Workers">
               <RefreshCw className="h-4 w-4 mr-1" />Restart Workers
-            </Button>
-            <Button variant="outline" onClick={handleStartDaemon} disabled={daemonEnabled || isRunning} title="Resume Daemon">
-              <Play className="h-4 w-4 mr-1" />Resume Daemon
-            </Button>
-            <Button variant="outline" onClick={handleStopDaemon} disabled={!daemonEnabled} title="Stop Daemon">
-              Stop Daemon
             </Button>
             <Button variant="outline" onClick={handleReleaseLock} disabled={!!sysAction || isRunning} title="Release lock">
               Освободить блокировку
