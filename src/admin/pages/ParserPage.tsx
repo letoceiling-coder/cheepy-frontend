@@ -52,6 +52,12 @@ export default function ParserPage() {
     refetchInterval: 30000,
   });
 
+  const { data: parserState, refetch: refetchState } = useQuery({
+    queryKey: ["parser-state"],
+    queryFn: () => parserApi.state(),
+    refetchInterval: 15000,
+  });
+
   const flattenCategories = (items: Category[]): Category[] => {
     const out: Category[] = [];
     const walk = (arr: Category[]) => {
