@@ -58,9 +58,10 @@ export default function ParserPage() {
     refetchInterval: 15000,
   });
 
+  const progressJobId = statusData?.current_job?.id ?? currentJob?.id;
   const { data: progressOverview } = useQuery({
-    queryKey: ["parser-progress-overview", activeJob?.id ?? 0],
-    queryFn: () => parserApi.progressOverview(activeJob?.id),
+    queryKey: ["parser-progress-overview", progressJobId ?? 0],
+    queryFn: () => parserApi.progressOverview(progressJobId),
     refetchInterval: 5000,
   });
 
