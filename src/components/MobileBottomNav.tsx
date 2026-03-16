@@ -1,21 +1,20 @@
 import { Home, Grid2X2, Heart, ShoppingCart, User } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 
 const MobileBottomNav = () => {
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
   const { totalItems } = useCart();
   const { count: favCount } = useFavorites();
 
+  // Профиль всегда ведёт на /account (без авторизации; только /admin защищён)
   const items = [
     { icon: Home, label: "Главная", to: "/" },
     { icon: Grid2X2, label: "Категории", to: "/category/all" },
     { icon: Heart, label: "Избранное", to: "/favorites", badge: favCount },
     { icon: ShoppingCart, label: "Корзина", to: "/cart", badge: totalItems },
-    { icon: User, label: "Профиль", to: isAuthenticated ? "/account" : "/auth" },
+    { icon: User, label: "Профиль", to: "/account" },
   ];
 
   return (

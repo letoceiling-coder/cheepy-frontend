@@ -1,0 +1,17 @@
+# Project Rules
+
+## Deploy After Any Changes (обязательно)
+
+**Всегда выполнять деплой после любых изменений кода или конфигурации. Без исключений.**
+
+- После любых правок (frontend, скрипты деплоя, nginx-конфиги в репо) — сразу деплой на сервер.
+- Сервер должен всегда отражать актуальное состояние репозитория.
+- Команды: `npm run deploy` (полный деплой) или `node scripts/run-stabilize-remote.cjs` (только фронт + nginx + стабилизация).
+
+## SSH Access — Production Server
+
+**SSH:** `ssh root@85.117.235.93`
+
+- Server hostname: aoltwgicbj
+- Use this connection to run commands, inspect logs, and manage the parser/queue on production
+- Example: `ssh root@85.117.235.93 "php /path/to/artisan parser:diagnostics"`

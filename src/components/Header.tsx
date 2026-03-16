@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { Search, User, Heart, ShoppingCart, Grid2X2, ChevronDown, Send, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import MegaMenu from "./MegaMenu";
-import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 
@@ -27,7 +26,6 @@ const Header = () => {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
   const { totalItems } = useCart();
   const { count: favCount } = useFavorites();
 
@@ -218,9 +216,9 @@ const Header = () => {
 
             {/* Icons */}
             <div className="hidden md:flex items-center gap-5 shrink-0">
-              <button onClick={() => navigate(isAuthenticated ? "/account" : "/auth")} className="flex flex-col items-center gap-0.5 text-foreground hover:text-primary transition-colors">
+              <button onClick={() => navigate("/account")} className="flex flex-col items-center gap-0.5 text-foreground hover:text-primary transition-colors">
                 <User className="w-5 h-5" />
-                <span className="text-xs">{isAuthenticated ? "Кабинет" : "Войти"}</span>
+                <span className="text-xs">Кабинет</span>
               </button>
               <Link to="/favorites" className="flex flex-col items-center gap-0.5 text-primary hover:opacity-80 transition-opacity relative">
                 <Heart className="w-5 h-5" />
