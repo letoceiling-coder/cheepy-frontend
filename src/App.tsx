@@ -2,9 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation, Outlet, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Outlet } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { FavoritesProvider } from "@/contexts/FavoritesContext";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -115,14 +114,6 @@ import CrmTenantsPage from "./crm/pages/CrmTenantsPage";
 
 const queryClient = new QueryClient();
 
-function UserAuthGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />;
-  }
-  return <>{children}</>;
-}
-
 function AnimatedRoutes() {
   const location = useLocation();
 
@@ -140,15 +131,8 @@ function AnimatedRoutes() {
         <Route path="/seller" element={<PageTransition><SellersListPage /></PageTransition>} />
         <Route path="/seller/:id" element={<PageTransition><SellerPage /></PageTransition>} />
 
-        {/* Account routes */}
-        <Route
-          path="/account"
-          element={
-            <UserAuthGuard>
-              <PageTransition><AccountLayout /></PageTransition>
-            </UserAuthGuard>
-          }
-        >
+        {/* Account routes — public, no auth redirect (demo mode) */}
+        <Route path="/account" element={<PageTransition><AccountLayout /></PageTransition>}>
           <Route index element={<PersonalDataPage />} />
           <Route path="orders" element={<OrdersPage />} />
           <Route path="payment" element={<PaymentMethodsPage />} />
@@ -160,15 +144,8 @@ function AnimatedRoutes() {
           <Route path="password" element={<ChangePasswordPage />} />
         </Route>
 
-        {/* Person routes */}
-        <Route
-          path="/person"
-          element={
-            <UserAuthGuard>
-              <PageTransition><PersonLayout /></PageTransition>
-            </UserAuthGuard>
-          }
-        >
+        {/* Person routes — public (demo); no auth redirect */}
+        <Route path="/person" element={<PageTransition><PersonLayout /></PageTransition>}>
           <Route index element={<PersonDashboard />} />
           <Route path="dashboard" element={<PersonDashboard />} />
           <Route path="profile" element={<PersonProfile />} />
