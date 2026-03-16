@@ -32,35 +32,37 @@ npm run build
 
 ## Деплой на продакшн
 
-### Автоматический деплой (рекомендуется)
+### Правило: всегда деплой после изменений
 
-Проект настроен для автоматического деплоя на Beget:
+После любых изменений кода или конфигурации обязательно выполнять деплой. Сервер должен всегда отражать актуальное состояние.
+
+### Рекомендуемый способ (фронт): локальная сборка + загрузка dist
+
+Гарантирует, что на сервере оказывается именно та сборка, которую вы собрали (нет кэша и старого JS):
 
 ```bash
-npm run deploy
+npm run build
+npm run deploy:frontend
 ```
+
+Скрипт `scripts/deploy-frontend-upload.cjs` упаковывает `dist/`, заливает на сервер в `/var/www/siteaacess.store/dist`, перезагружает nginx.
+
+### Альтернативы деплоя
+
+- **Полный деплой (фронт + бекенд):** `npm run deploy` — копирует `deploy.sh` на сервер и запускает его (сборка выполняется на сервере: git pull → npm run build).
+- **Стабилизация (только фронт на сервере):** `node scripts/run-stabilize-remote.cjs` — git pull в репо на сервере, npm run build там, проверка nginx.
 
 ### Конфигурация деплоя
 
 1. Создайте файл `.env.deploy` (не коммитится в git):
 
 ```bash
-DEPLOY_TARGET=user@host:path/to/public_html
+DEPLOY_SSH=root@85.117.235.93
 ```
 
-Пример:
-```bash
-DEPLOY_TARGET=dsc23ytp@dragon.beget.ru:cheepy.siteaccess.ru/public_html
-```
+2. Используйте `env.deploy.example.txt` как шаблон.
 
-2. Используйте `env.deploy.example.txt` как шаблон
-
-### Скрипт деплоя
-
-Файл `scripts/deploy.cjs`:
-- Собирает проект (`npm run build`)
-- Копирует `dist/*` на сервер через SCP
-- Автоматически читает креденшелы из `.env.deploy`
+Скрипты деплоя читают `DEPLOY_SSH` из `.env.deploy` для SSH/SCP.
 
 ## Ручной деплой
 
@@ -87,24 +89,24 @@ scp -r dist/* user@host:path/to/public_html/
 
 ### Структура на сервере
 
-| Назначение | Домен | Путь на сервере |
-|------------|--------|------------------|
-| Фронтенд (SPA) | https://siteaacess.store | `/var/www/siteaacess.store` |
-| API (бекенд) | https://api.siteaacess.store | `/var/www/api.siteaacess.store` |
-| Фото | https://photos.siteaacess.store | `/var/www/photos.siteaacess.store` |
+| Назначение | Домен | Путь на сервере | Nginx root (фронт) |
+|------------|--------|------------------|---------------------|
+| Фронтенд (SPA) | https://siteaacess.store | `/var/www/siteaacess.store` | `/var/www/siteaacess.store/dist` |
+| API (бекенд) | https://api.siteaacess.store | `/var/www/api.siteaacess.store` | — |
+| Фото | https://photos.siteaacess.store | `/var/www/photos.siteaacess.store` | — |
+
+**Важно:** Фронтенд отдаётся из каталога **dist** (результат `npm run build`). Nginx root для siteaacess.store должен быть **`/var/www/siteaacess.store/dist`**. Маршруты фронта публичные; только `/admin/*` защищён авторизацией.
 
 ### Деплой фронтенда на VPS
 
-1. Создайте `.env.deploy` (или добавьте в него):
-   ```
-   DEPLOY_TARGET=root@85.117.235.93:/var/www/siteaacess.store
-   ```
-2. Соберите и залейте:
-   ```bash
-   npm run build
-   npm run deploy
-   ```
-   Или вручную: `scp -r dist/* root@85.117.235.93:/var/www/siteaacess.store/`
+**Рекомендуемый способ (локальная сборка + загрузка):**
+```bash
+npm run build
+npm run deploy:frontend
+```
+Содержимое локального `dist/` заливается в `/var/www/siteaacess.store/dist`. Путь на сервере и Nginx root: **`/var/www/siteaacess.store/dist`**.
+
+**Сборка на сервере:** `npm run deploy` копирует `deploy.sh` и запускает `bash /var/www/deploy.sh frontend` (git pull → npm run build в репо на сервере).
 
 ### SSL (Let's Encrypt)
 

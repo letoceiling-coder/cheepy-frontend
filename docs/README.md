@@ -28,9 +28,14 @@ npm run build
 
 ### Деплой
 
+После изменений всегда выполнять деплой. Рекомендуемый способ для фронта:
+
 ```bash
-npm run deploy
+npm run build
+npm run deploy:frontend
 ```
+
+Полный деплой (фронт + бекенд на сервере): `npm run deploy`. Подробнее: [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ## 🛠 Технологический стек
 

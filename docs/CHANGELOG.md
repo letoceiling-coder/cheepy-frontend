@@ -10,6 +10,18 @@
 - Live чат с продавцами
 - Фильтрация и поиск
 
+## [2.1.0] - 2026-03-16
+
+### Добавлено
+- Деплой фронта: **`npm run deploy:frontend`** — локальная сборка + загрузка `dist/` на сервер в `/var/www/siteaacess.store/dist` (скрипт `scripts/deploy-frontend-upload.cjs`).
+- Правило в `.cursorrules`: всегда выполнять деплой после изменений; рекомендуемый способ для фронта — build + deploy:frontend.
+- Документация: обновлены `docs/DEPLOYMENT.md`, `docs/06_DEPLOYMENT.md`, `docs/ROUTES.md`, `docs/03_FRONTEND_ARCHITECTURE.md`, `docs/README.md`, `docs/audit/AUTH_REDIRECT_AUDIT.md`.
+
+### Изменено
+- Навигация: кнопка «Профиль» / «Кабинет» в Header и MobileBottomNav всегда ведёт на `/account` (без редиректа неавторизованных на `/auth`).
+- Защита маршрутов: только `/admin/*` требует авторизации (редирект на `/admin/login`); `/account/*`, `/person/*`, `/cart` и остальные — публичные.
+- Документация по маршрутам и деплою приведена в соответствие с текущим поведением.
+
 ## [2.0.0] - 2026-02-25
 
 ### Добавлено
