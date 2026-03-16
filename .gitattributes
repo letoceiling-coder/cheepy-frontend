@@ -1,0 +1,3 @@
+# Ensure shell scripts use LF so they run on the server (no CRLF)
+*.sh text eol=lf
+scripts/*.sh text eol=lf
