@@ -2,8 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Outlet, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { FavoritesProvider } from "@/contexts/FavoritesContext";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -29,6 +30,37 @@ import CouponsPage from "./pages/account/CouponsPage";
 import ReceiptsPage from "./pages/account/ReceiptsPage";
 import ReferralPage from "./pages/account/ReferralPage";
 import ChangePasswordPage from "./pages/account/ChangePasswordPage";
+import PersonLayout from "./pages/person/PersonLayout";
+import PersonDashboard from "./pages/person/PersonDashboard";
+import PersonProfile from "./pages/person/PersonProfile";
+import PersonOrders from "./pages/person/PersonOrders";
+import PersonOrderDetail from "./pages/person/PersonOrderDetail";
+import PersonPayments from "./pages/person/PersonPayments";
+import PersonPassword from "./pages/person/PersonPassword";
+import PersonReturns from "./pages/person/PersonReturns";
+import PersonFavorites from "./pages/person/PersonFavorites";
+import PersonRecentlyViewed from "./pages/person/PersonRecentlyViewed";
+import PersonAddresses from "./pages/person/PersonAddresses";
+import PersonSubscriptions from "./pages/person/PersonSubscriptions";
+import PersonCoupons from "./pages/person/PersonCoupons";
+import PersonNotifications from "./pages/person/PersonNotifications";
+import PersonSupport from "./pages/person/PersonSupport";
+import PersonSecurity from "./pages/person/PersonSecurity";
+import PersonSettings from "./pages/person/PersonSettings";
+import HowToOrderPage from "./pages/info/HowToOrderPage";
+import PaymentInfoPage from "./pages/info/PaymentInfoPage";
+import DeliveryPage from "./pages/info/DeliveryPage";
+import ReturnsPage from "./pages/info/ReturnsPage";
+import FaqPage from "./pages/info/FaqPage";
+import SellPage from "./pages/info/SellPage";
+import RulesPage from "./pages/info/RulesPage";
+import CommissionPage from "./pages/info/CommissionPage";
+import SellerHelpPage from "./pages/info/SellerHelpPage";
+import AboutPage from "./pages/info/AboutPage";
+import ContactsPage from "./pages/info/ContactsPage";
+import CareersPage from "./pages/info/CareersPage";
+import BlogPage from "./pages/info/BlogPage";
+import ConstructorPage from "./constructor/pages/ConstructorPage";
 import { AdminLayout } from "./admin/components/AdminLayout";
 import { AdminAuthGuard } from "./admin/components/AdminAuthGuard";
 import { AdminAuthProvider } from "./admin/contexts/AdminAuthContext";
@@ -83,6 +115,14 @@ import CrmTenantsPage from "./crm/pages/CrmTenantsPage";
 
 const queryClient = new QueryClient();
 
+function UserAuthGuard({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  return <>{children}</>;
+}
+
 function AnimatedRoutes() {
   const location = useLocation();
 
@@ -101,7 +141,14 @@ function AnimatedRoutes() {
         <Route path="/seller/:id" element={<PageTransition><SellerPage /></PageTransition>} />
 
         {/* Account routes */}
-        <Route path="/account" element={<PageTransition><AccountLayout /></PageTransition>}>
+        <Route
+          path="/account"
+          element={
+            <UserAuthGuard>
+              <PageTransition><AccountLayout /></PageTransition>
+            </UserAuthGuard>
+          }
+        >
           <Route index element={<PersonalDataPage />} />
           <Route path="orders" element={<OrdersPage />} />
           <Route path="payment" element={<PaymentMethodsPage />} />
@@ -113,7 +160,54 @@ function AnimatedRoutes() {
           <Route path="password" element={<ChangePasswordPage />} />
         </Route>
 
-        {/* Admin routes */}
+        {/* Person routes */}
+        <Route
+          path="/person"
+          element={
+            <UserAuthGuard>
+              <PageTransition><PersonLayout /></PageTransition>
+            </UserAuthGuard>
+          }
+        >
+          <Route index element={<PersonDashboard />} />
+          <Route path="dashboard" element={<PersonDashboard />} />
+          <Route path="profile" element={<PersonProfile />} />
+          <Route path="orders" element={<PersonOrders />} />
+          <Route path="order/:id" element={<PersonOrderDetail />} />
+          <Route path="payments" element={<PersonPayments />} />
+          <Route path="password" element={<PersonPassword />} />
+          <Route path="returns" element={<PersonReturns />} />
+          <Route path="favorites" element={<PersonFavorites />} />
+          <Route path="viewed" element={<PersonRecentlyViewed />} />
+          <Route path="addresses" element={<PersonAddresses />} />
+          <Route path="subscriptions" element={<PersonSubscriptions />} />
+          <Route path="coupons" element={<PersonCoupons />} />
+          <Route path="notifications" element={<PersonNotifications />} />
+          <Route path="support" element={<PersonSupport />} />
+          <Route path="security" element={<PersonSecurity />} />
+          <Route path="settings" element={<PersonSettings />} />
+        </Route>
+
+        {/* Info pages */}
+        <Route path="/how-to-order" element={<PageTransition><HowToOrderPage /></PageTransition>} />
+        <Route path="/payment" element={<PageTransition><PaymentInfoPage /></PageTransition>} />
+        <Route path="/delivery" element={<PageTransition><DeliveryPage /></PageTransition>} />
+        <Route path="/returns" element={<PageTransition><ReturnsPage /></PageTransition>} />
+        <Route path="/faq" element={<PageTransition><FaqPage /></PageTransition>} />
+        <Route path="/sell" element={<PageTransition><SellPage /></PageTransition>} />
+        <Route path="/rules" element={<PageTransition><RulesPage /></PageTransition>} />
+        <Route path="/commission" element={<PageTransition><CommissionPage /></PageTransition>} />
+        <Route path="/seller-help" element={<PageTransition><SellerHelpPage /></PageTransition>} />
+        <Route path="/about" element={<PageTransition><AboutPage /></PageTransition>} />
+        <Route path="/contacts" element={<PageTransition><ContactsPage /></PageTransition>} />
+        <Route path="/careers" element={<PageTransition><CareersPage /></PageTransition>} />
+        <Route path="/blog" element={<PageTransition><BlogPage /></PageTransition>} />
+
+        {/* Constructor */}
+        <Route path="/constructor" element={<PageTransition><ConstructorPage /></PageTransition>} />
+        <Route path="/constructor/*" element={<PageTransition><ConstructorPage /></PageTransition>} />
+
+        {/* Admin routes — НЕ ТРОГАТЬ, парсер работает */}
         <Route path="/admin" element={<AdminAuthProvider><Outlet /></AdminAuthProvider>}>
           <Route path="login" element={<AdminLoginPage />} />
           <Route element={<AdminAuthGuard><PageTransition><AdminLayout /></PageTransition></AdminAuthGuard>}>
