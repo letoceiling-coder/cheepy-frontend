@@ -90,7 +90,9 @@ async function request<T>(
     });
 
     if (res.status === 401) {
-      if (typeof window !== 'undefined' && onUnauthorized) {
+      // Only run redirect (e.g. to /admin/login) when we're on admin — never on /person, /account, /cart
+      const onAdmin = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+      if (onAdmin && onUnauthorized) {
         onUnauthorized();
       }
       const err = await res.json().catch(() => ({ error: 'Unauthorized' }));
@@ -631,6 +633,61 @@ export const categoriesApi = {
   availableFilters: (id: number) => get<{ category_id: number; attributes: Array<{ attr_name: string; values: string[] }> }>(
     `/categories/${id}/filters`
   ),
+};
+
+// ──────────────────────────────────────────────
+// ADMIN CATALOG (donor/catalog mapping)
+// ──────────────────────────────────────────────
+
+export interface MappingSuggestion {
+  donor_id: number;
+  donor_name: string;
+  catalog_id: number;
+  catalog_name: string;
+  score: number;
+}
+
+export interface CatalogCategoryItem {
+  id: number;
+  name: string;
+  slug: string;
+  parent_id?: number | null;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface CategoryMappingItem {
+  id: number;
+  donor_category_id: number;
+  catalog_category_id: number;
+  confidence?: number;
+  is_manual?: boolean;
+  donor_category?: { id: number; name: string; slug: string };
+  catalog_category?: { id: number; name: string; slug: string };
+}
+
+export const adminCatalogApi = {
+  mappingSuggestions: (params?: { limit?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set('limit', String(params.limit));
+    return get<{ data: MappingSuggestion[] }>(`/admin/catalog/mapping/suggestions${q.toString() ? `?${q}` : ''}`);
+  },
+  categoryMappingList: (params?: { per_page?: number; page?: number }) => {
+    const q = new URLSearchParams();
+    if (params) Object.entries(params).forEach(([k, v]) => { if (v !== undefined) q.set(k, String(v)); });
+    return get<{ data: CategoryMappingItem[]; meta: { total: number; per_page: number; current_page: number; last_page: number } }>(
+      `/admin/catalog/category-mapping${q.toString() ? `?${q}` : ''}`
+    );
+  },
+  catalogCategoriesList: (params?: { per_page?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.per_page != null) q.set('per_page', String(params.per_page));
+    return get<{ data: CatalogCategoryItem[]; meta?: { total: number } }>(
+      `/admin/catalog/categories${q.toString() ? `?${q}` : ''}`
+    );
+  },
+  createMapping: (body: { donor_category_id: number; catalog_category_id: number; confidence?: number; is_manual?: boolean }) =>
+    post<CategoryMappingItem>('/admin/catalog/category-mapping', body),
 };
 
 // ──────────────────────────────────────────────

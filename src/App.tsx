@@ -144,7 +144,7 @@ function AnimatedRoutes() {
           <Route path="password" element={<ChangePasswordPage />} />
         </Route>
 
-        {/* Person routes — public (demo); no auth redirect */}
+        {/* Person — без авторизации */}
         <Route path="/person" element={<PageTransition><PersonLayout /></PageTransition>}>
           <Route index element={<PersonDashboard />} />
           <Route path="dashboard" element={<PersonDashboard />} />
@@ -203,6 +203,7 @@ function AnimatedRoutes() {
           <Route path="logs" element={<LogsPage />} />
           <Route path="docs" element={<DocsPage />} />
           <Route path="attribute-rules" element={<AttributeRulesPage />} />
+          <Route path="catalog/mapping" element={<MappingPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="roles" element={<RolesPage />} />
             <Route path="settings" element={<SettingsPage />} />
@@ -218,6 +219,7 @@ function AnimatedRoutes() {
           <Route path="products" element={<CrmProductsPage />} />
           <Route path="products/:id" element={<CrmProductDetailPage />} />
           <Route path="categories" element={<CrmCategoriesPage />} />
+          <Route path="catalog/mapping" element={<MappingPage />} />
           <Route path="moderation" element={<CrmModerationPage />} />
           <Route path="moderation/:id" element={<CrmModerationDetailPage />} />
           <Route path="orders" element={<CrmOrdersPage />} />
