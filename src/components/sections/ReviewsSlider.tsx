@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { Link } from "react-router-dom";
 
 interface Review {
@@ -103,7 +104,7 @@ const ReviewsSlider = () => {
 
         <div
           ref={scrollContainerRef}
-          className="flex-1 overflow-x-auto flex gap-4 py-2 no-scrollbar snap-x snap-mandatory"
+          className="flex-1 overflow-x-auto flex gap-4 py-2 no-scrollbar snap-x snap-mandatory cursor-grab active:cursor-grabbing"
         >
           {reviews.map((review) => (
             <div

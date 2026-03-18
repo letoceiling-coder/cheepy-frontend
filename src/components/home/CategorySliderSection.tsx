@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import CategoryCard from "./CategoryCard";
 import CategorySliderControls from "./CategorySliderControls";
 import { popularCategories } from "@/data/marketplaceData";
@@ -15,7 +16,7 @@ const sliderCategories = [
 const CategorySliderSection = () => {
   const [current, setCurrent] = useState(0);
   const total = sliderCategories.length;
-
+  const scrollRef = useDragScroll<HTMLDivElement>();
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -62,8 +63,9 @@ const CategorySliderSection = () => {
           {/* Right - category cards (native horizontal scroll; no transform/oversized widths) */}
           <div className="md:col-span-9">
             <div
+              ref={scrollRef}
               className={
-                "flex gap-4 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory " +
+                "flex gap-4 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory cursor-grab active:cursor-grabbing " +
                 (isMobile ? "p-4" : "p-6")
               }
             >

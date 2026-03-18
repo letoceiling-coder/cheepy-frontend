@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { popularCategories } from "@/data/marketplaceData";
@@ -14,7 +15,7 @@ const sliderCategories = [
 const LightCategoryNav = () => {
   const [current, setCurrent] = useState(0);
   const total = sliderCategories.length;
-
+  const scrollRef = useDragScroll<HTMLDivElement>();
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   const scrollToIndex = useCallback((index: number) => {
@@ -83,7 +84,7 @@ const LightCategoryNav = () => {
         </div>
 
         {/* Right - cards (native horizontal scroll; no transform/oversized widths) */}
-        <div className="flex-1 overflow-x-auto no-scrollbar">
+        <div ref={scrollRef} className="flex-1 overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing">
           <div className="flex gap-2 min-w-max pr-2">
             {sliderCategories.map((cat, i) => (
               <div

@@ -1,5 +1,5 @@
-import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { Link } from "react-router-dom";
 
 interface BrandStripProps {
@@ -20,7 +20,7 @@ const brands = [
 ];
 
 const BrandStrip = ({ visible = true }: BrandStripProps) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useDragScroll<HTMLDivElement>();
 
   if (!visible) return null;
 
@@ -35,7 +35,7 @@ const BrandStrip = ({ visible = true }: BrandStripProps) => {
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
-        <div ref={scrollRef} className="flex-1 overflow-x-auto flex gap-3 no-scrollbar py-1">
+        <div ref={scrollRef} className="flex-1 overflow-x-auto flex gap-3 no-scrollbar py-1 cursor-grab active:cursor-grabbing">
           {brands.map((brand) => (
             <Link
               key={brand.slug}

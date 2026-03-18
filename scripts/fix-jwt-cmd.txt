@@ -1,0 +1,1 @@
+cd /var/www/online-parser.siteaacess.store && K=$(openssl rand -hex 32) && sed -i "s/^JWT_SECRET=.*/JWT_SECRET=$K/" .env && php artisan config:clear && php artisan config:cache && echo OK

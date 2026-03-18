@@ -1,4 +1,5 @@
 import { ArrowRight } from "lucide-react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import product1 from "@/assets/product-1.jpg";
 import product3 from "@/assets/product-3.jpg";
@@ -27,12 +28,13 @@ const MiniVideoCard = ({ card }: { card: (typeof cards)[0] }) => (
 
 const MiniVideoGallery = () => {
   const { ref, isVisible } = useScrollAnimation();
+  const scrollRef = useDragScroll<HTMLDivElement>();
 
   return (
     <section ref={ref} className={`py-12 transition-all duration-700 ${isVisible ? "opacity-100" : "opacity-0"}`}>
       <h2 className="text-xl font-bold text-foreground mb-1">Видеоподборки</h2>
       <p className="text-muted-foreground text-sm mb-4">Автоматическое воспроизведение</p>
-      <div className="flex sm:grid sm:grid-cols-3 gap-3 overflow-x-auto sm:overflow-visible no-scrollbar pb-1">
+      <div ref={scrollRef} className="flex sm:grid sm:grid-cols-3 gap-3 overflow-x-auto sm:overflow-visible no-scrollbar pb-1 cursor-grab active:cursor-grabbing sm:cursor-default sm:active:cursor-default">
         {cards.map((card, i) => <MiniVideoCard key={i} card={card} />)}
       </div>
     </section>

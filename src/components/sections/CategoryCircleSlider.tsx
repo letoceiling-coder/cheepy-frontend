@@ -1,5 +1,5 @@
-import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import product1 from "@/assets/product-1.jpg";
 import product2 from "@/assets/product-2.jpg";
@@ -25,7 +25,7 @@ const categories = [
 
 const CategoryCircleSlider = () => {
   const { ref, isVisible } = useScrollAnimation();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useDragScroll<HTMLDivElement>();
 
   const scroll = (dir: number) => scrollRef.current?.scrollBy({ left: dir * 200, behavior: "smooth" });
 
@@ -38,7 +38,7 @@ const CategoryCircleSlider = () => {
           <button onClick={() => scroll(1)} className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors"><ChevronRight size={16} /></button>
         </div>
       </div>
-      <div ref={scrollRef} className="flex gap-6 overflow-x-auto no-scrollbar pb-2">
+      <div ref={scrollRef} className="flex gap-6 overflow-x-auto no-scrollbar pb-2 cursor-grab active:cursor-grabbing">
         {categories.map((c, i) => (
           <div key={i} className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer group">
             <div className="w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-border group-hover:border-primary transition-colors">

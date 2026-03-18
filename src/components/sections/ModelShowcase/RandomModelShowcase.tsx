@@ -1,10 +1,12 @@
 import { useMemo } from "react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import ModelVideoCard from "./ModelVideoCard";
 import { modelVideoProducts } from "./modelVideoData";
 
 const RandomModelShowcase = () => {
   const { ref, isVisible } = useScrollAnimation();
+  const scrollRef = useDragScroll<HTMLDivElement>();
   const products = useMemo(
     () => [...modelVideoProducts].sort(() => Math.random() - 0.5),
     [],
@@ -30,7 +32,7 @@ const RandomModelShowcase = () => {
       </div>
 
       {/* Mobile carousel */}
-      <div className="md:hidden flex gap-3 overflow-x-auto snap-x snap-mandatory pb-3 -mx-4 px-4 scrollbar-hide">
+      <div ref={scrollRef} className="md:hidden flex gap-3 overflow-x-auto snap-x snap-mandatory pb-3 -mx-4 px-4 scrollbar-hide cursor-grab active:cursor-grabbing">
         {products.map((p) => (
           <div key={p.id} className="snap-start shrink-0 w-[72vw] max-w-[260px]">
             <ModelVideoCard {...p} />

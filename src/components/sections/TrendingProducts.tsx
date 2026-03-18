@@ -1,5 +1,6 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Heart, ShoppingCart, ChevronLeft, ChevronRight } from "lucide-react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { Link } from "react-router-dom";
 import { trendingProducts, type TrendProduct } from "@/data/marketplaceData";
 
@@ -72,7 +73,7 @@ const TrendCard = ({ product }: { product: TrendProduct }) => {
 };
 
 const TrendingProducts = () => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useDragScroll<HTMLDivElement>();
 
   const scroll = (dir: number) => {
     scrollRef.current?.scrollBy({ left: dir * 180, behavior: "smooth" });
@@ -107,7 +108,7 @@ const TrendingProducts = () => {
       </div>
 
       {/* Mobile: horizontal carousel */}
-      <div ref={scrollRef} className="sm:hidden overflow-x-auto flex gap-2.5 snap-x snap-mandatory no-scrollbar pb-2">
+      <div ref={scrollRef} className="sm:hidden overflow-x-auto flex gap-2.5 snap-x snap-mandatory no-scrollbar pb-2 cursor-grab active:cursor-grabbing">
         {trendingProducts.slice(0, 8).map((product) => (
           <div key={product.id} className="shrink-0 w-[150px] snap-start">
             <TrendCard product={product} />

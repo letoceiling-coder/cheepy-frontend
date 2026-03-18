@@ -1,5 +1,6 @@
-import { useRef, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, ShoppingCart } from "lucide-react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { Link } from "react-router-dom";
 import { hotDeals, type HotDeal } from "@/data/marketplaceData";
 
@@ -75,7 +76,7 @@ const DealCard = ({ deal }: { deal: HotDeal }) => {
 };
 
 const HotDeals = () => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useDragScroll<HTMLDivElement>();
 
   return (
     <section className="mb-6">
@@ -91,7 +92,7 @@ const HotDeals = () => {
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <div ref={scrollRef} className="flex-1 overflow-x-auto flex gap-4 py-2 no-scrollbar snap-x snap-mandatory">
+        <div ref={scrollRef} className="flex-1 overflow-x-auto flex gap-4 py-2 no-scrollbar snap-x snap-mandatory cursor-grab active:cursor-grabbing">
           {hotDeals.map((deal) => (
             <DealCard key={deal.id} deal={deal} />
           ))}

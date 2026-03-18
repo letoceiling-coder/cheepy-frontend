@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { ShoppingCart, Heart } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { mockProducts } from "@/data/mock-data";
 
 const TrendingGrid = () => {
   const { ref, isVisible } = useScrollAnimation();
+  const scrollRef = useDragScroll<HTMLDivElement>();
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const products = mockProducts.slice(0, 8);
 
@@ -108,7 +110,7 @@ const TrendingGrid = () => {
       </div>
 
       {/* Mobile: horizontal carousel */}
-      <div className="sm:hidden overflow-x-auto flex gap-3 snap-x snap-mandatory no-scrollbar pb-2">
+      <div ref={scrollRef} className="sm:hidden overflow-x-auto flex gap-3 snap-x snap-mandatory no-scrollbar pb-2 cursor-grab active:cursor-grabbing">
         {products.slice(0, 12).map((p) => (
           <div
             key={p.id}

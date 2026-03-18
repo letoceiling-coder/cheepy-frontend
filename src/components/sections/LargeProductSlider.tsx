@@ -1,11 +1,12 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { ChevronLeft, ChevronRight, Heart, ShoppingCart } from "lucide-react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { mockProducts } from "@/data/mock-data";
 
 const LargeProductSlider = () => {
   const { ref, isVisible } = useScrollAnimation();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useDragScroll<HTMLDivElement>();
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const products = mockProducts.slice(0, 10);
 
@@ -23,7 +24,7 @@ const LargeProductSlider = () => {
           <button onClick={() => scroll(1)} className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors"><ChevronRight size={18} /></button>
         </div>
       </div>
-      <div ref={scrollRef} className="flex gap-5 overflow-x-auto no-scrollbar pb-2">
+      <div ref={scrollRef} className="flex gap-5 overflow-x-auto no-scrollbar pb-2 cursor-grab active:cursor-grabbing">
         {products.map((p) => {
           const isHovered = hoveredId === p.id;
           const discount = p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0;

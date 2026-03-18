@@ -6,10 +6,15 @@ interface ModelPreviewVideoProps {
   className?: string;
 }
 
+// placehold.co returns images, not video — video element can't play them
+const isImagePlaceholder = (url: string) =>
+  /placehold\.co|\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
+
 const ModelPreviewVideo = ({ src, alt, className }: ModelPreviewVideoProps) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
+  const useImg = isImagePlaceholder(src);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -32,6 +37,19 @@ const ModelPreviewVideo = ({ src, alt, className }: ModelPreviewVideoProps) => {
 
   const videoSrc = useMemo(() => (shouldLoad ? src : undefined), [shouldLoad, src]);
 
+  if (useImg && shouldLoad) {
+    return (
+      <div className={className} aria-label={alt}>
+        <img
+          src={src}
+          alt={alt}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+      </div>
+    );
+  }
+
   return (
     <div ref={containerRef} className={className} aria-label={alt}>
       <video
@@ -47,7 +65,6 @@ const ModelPreviewVideo = ({ src, alt, className }: ModelPreviewVideoProps) => {
         disablePictureInPicture
         disableRemotePlayback
         onCanPlay={() => {
-          // iOS/Safari sometimes needs an explicit play() even with autoPlay
           videoRef.current?.play().catch(() => undefined);
         }}
       />

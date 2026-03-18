@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { Sparkles } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import ModelCard from "./ModelCard";
@@ -6,6 +7,7 @@ import { allModels, shuffleArray } from "./modelData";
 
 const NewCollectionModels = () => {
   const { ref, isVisible } = useScrollAnimation();
+  const scrollRef = useDragScroll<HTMLDivElement>();
   const models = useMemo(() => shuffleArray(allModels), []);
 
   return (
@@ -31,7 +33,7 @@ const NewCollectionModels = () => {
         ))}
       </div>
 
-      <div className="md:hidden flex gap-3 overflow-x-auto snap-x snap-mandatory pb-3 -mx-4 px-4 scrollbar-hide">
+      <div ref={scrollRef} className="md:hidden flex gap-3 overflow-x-auto snap-x snap-mandatory pb-3 -mx-4 px-4 scrollbar-hide cursor-grab active:cursor-grabbing">
         {models.map((m, i) => (
           <div key={m.id} className="snap-start shrink-0 w-[70vw]">
             <ModelCard {...m} delay={i * 60} />

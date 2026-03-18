@@ -1,10 +1,10 @@
-import { useRef } from "react";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { Link } from "react-router-dom";
 import { popularCategories } from "@/data/marketplaceData";
 
 const PopularCategories = () => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useDragScroll<HTMLDivElement>();
 
   return (
     <section className="mb-6">
@@ -49,7 +49,7 @@ const PopularCategories = () => {
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <div ref={scrollRef} className="flex-1 overflow-x-auto flex gap-3 no-scrollbar snap-x snap-mandatory py-1">
+          <div ref={scrollRef} className="flex-1 overflow-x-auto flex gap-3 no-scrollbar snap-x snap-mandatory py-1 cursor-grab active:cursor-grabbing">
             {popularCategories.map((cat) => (
               <Link
                 key={cat.slug}

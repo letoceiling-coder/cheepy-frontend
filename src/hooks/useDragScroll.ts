@@ -1,5 +1,9 @@
 import { useRef, useEffect, RefObject } from "react";
 
+/**
+ * Хук для горизонтальных слайдеров: перетаскивание мышью при зажатии и
+ * прокрутка колёсиком мыши при наведении.
+ */
 export const useDragScroll = <T extends HTMLElement>(): RefObject<T> => {
   const ref = useRef<T>(null);
 
@@ -38,17 +42,26 @@ export const useDragScroll = <T extends HTMLElement>(): RefObject<T> => {
       element.scrollLeft = scrollLeft - walk;
     };
 
+    const handleWheel = (e: WheelEvent) => {
+      const canScrollHorizontal = element.scrollWidth > element.clientWidth;
+      if (!canScrollHorizontal) return;
+      e.preventDefault();
+      element.scrollLeft += e.deltaY;
+    };
+
     element.style.cursor = "grab";
     element.addEventListener("mousedown", handleMouseDown);
     element.addEventListener("mouseleave", handleMouseLeave);
     element.addEventListener("mouseup", handleMouseUp);
     element.addEventListener("mousemove", handleMouseMove);
+    element.addEventListener("wheel", handleWheel, { passive: false });
 
     return () => {
       element.removeEventListener("mousedown", handleMouseDown);
       element.removeEventListener("mouseleave", handleMouseLeave);
       element.removeEventListener("mouseup", handleMouseUp);
       element.removeEventListener("mousemove", handleMouseMove);
+      element.removeEventListener("wheel", handleWheel);
     };
   }, []);
 

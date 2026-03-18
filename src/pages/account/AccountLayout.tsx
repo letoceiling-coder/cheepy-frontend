@@ -1,4 +1,4 @@
-import { NavLink, Outlet, Navigate } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { User, Package, CreditCard, Wallet, Heart, Tag, FileText, Users, Lock, LogOut } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -20,8 +20,6 @@ const navItems = [
 const AccountLayout = () => {
   const { isAuthenticated, user, logout } = useAuth();
 
-  if (!isAuthenticated) return <Navigate to="/auth" replace />;
-
   return (
     <div className="min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
       <Header />
@@ -34,11 +32,11 @@ const AccountLayout = () => {
               {/* User card */}
               <div className="flex items-center gap-3 p-4 rounded-2xl bg-secondary mb-4">
                 <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold text-lg">
-                  {user?.name?.[0] || "U"}
+                  {user?.name?.[0] || "Г"}
                 </div>
                 <div className="min-w-0">
-                  <p className="font-semibold text-foreground text-sm truncate">{user?.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                  <p className="font-semibold text-foreground text-sm truncate">{user?.name || "Гость"}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.email || "Войдите для полного доступа"}</p>
                 </div>
               </div>
 
@@ -50,10 +48,17 @@ const AccountLayout = () => {
                     {item.label}
                   </NavLink>
                 ))}
-                <button onClick={logout} className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-destructive hover:bg-destructive/10 transition-colors w-full">
-                  <LogOut className="w-4 h-4 shrink-0" />
-                  Выход
-                </button>
+                {isAuthenticated ? (
+                  <button onClick={logout} className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-destructive hover:bg-destructive/10 transition-colors w-full">
+                    <LogOut className="w-4 h-4 shrink-0" />
+                    Выход
+                  </button>
+                ) : (
+                  <NavLink to="/auth" className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-primary hover:bg-primary/10 transition-colors">
+                    <LogOut className="w-4 h-4 shrink-0" />
+                    Войти
+                  </NavLink>
+                )}
               </nav>
             </div>
           </aside>

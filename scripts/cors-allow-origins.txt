@@ -1,0 +1,4 @@
+'allowed_origins' => [
+        'https://siteaacess.store',
+        'http://cheepy.loc'
+    ],

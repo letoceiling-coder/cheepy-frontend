@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { ChevronLeft, ChevronRight, Star, Check } from "lucide-react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import seller1 from "@/assets/cheepy/seller-1.jpg";
 import seller2 from "@/assets/cheepy/seller-2.jpg";
 import seller3 from "@/assets/cheepy/seller-3.jpg";
@@ -114,7 +115,7 @@ const SliderRow = ({
     </button>
     <div
       ref={scrollRef}
-      className="flex-1 overflow-x-auto flex gap-4 py-2 scroll-smooth no-scrollbar overflow-y-hidden snap-x snap-mandatory"
+      className="flex-1 overflow-x-auto flex gap-4 py-2 scroll-smooth no-scrollbar overflow-y-hidden snap-x snap-mandatory cursor-grab active:cursor-grabbing"
     >
       {children}
     </div>
@@ -130,8 +131,8 @@ const SliderRow = ({
 );
 
 const SellersSection = () => {
-  const bestRef = useRef<HTMLDivElement>(null);
-  const verifiedRef = useRef<HTMLDivElement>(null);
+  const bestRef = useDragScroll<HTMLDivElement>();
+  const verifiedRef = useDragScroll<HTMLDivElement>();
   const [sortType, setSortType] = useState<"rating" | "verified">("rating");
 
   const filteredBest =

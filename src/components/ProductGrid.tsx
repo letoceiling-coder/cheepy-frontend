@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import ProductCard from "./ProductCard";
 import product1 from "@/assets/product-1.jpg";
 import product2 from "@/assets/product-2.jpg";
@@ -28,6 +29,7 @@ interface ProductGridProps {
 }
 
 const ProductGrid = ({ title, subtitle, initialCount = 6 }: ProductGridProps) => {
+  const scrollRef = useDragScroll<HTMLDivElement>();
   const [products, setProducts] = useState(() => generateProducts(1, initialCount));
   const [loading, setLoading] = useState(false);
 
@@ -65,7 +67,7 @@ const ProductGrid = ({ title, subtitle, initialCount = 6 }: ProductGridProps) =>
       </div>
 
       {/* Mobile: horizontal carousel */}
-      <div className="sm:hidden overflow-x-auto flex gap-3 snap-x snap-mandatory no-scrollbar pb-2">
+      <div ref={scrollRef} className="sm:hidden overflow-x-auto flex gap-3 snap-x snap-mandatory no-scrollbar pb-2 cursor-grab active:cursor-grabbing">
         {products.slice(0, 12).map((product, i) => (
           <div key={product.id} className="shrink-0 w-[200px] snap-start">
             <ProductCard product={product} />

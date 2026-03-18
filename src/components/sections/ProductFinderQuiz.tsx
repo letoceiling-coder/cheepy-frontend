@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, ArrowLeft, Sparkles, ShoppingBag, Laptop, Watch, Home, Gift, User, Users, CheckCircle } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { useQuizScrollIntoView } from "@/hooks/useQuizScrollIntoView";
 import product1 from "@/assets/product-1.jpg";
 import product2 from "@/assets/product-2.jpg";
 import product3 from "@/assets/product-3.jpg";
@@ -86,7 +87,7 @@ const ProductFinderQuiz = () => {
                 </button>
               </div>
             ) : !done ? (
-              <div key={step} className="animate-fade-in">
+              <div key={step} className="animate-fade-in min-h-[200px] transition-all duration-300">
                 <p className="text-[11px] text-muted-foreground mb-2">Шаг {step + 1} из {steps.length}</p>
                 <p className="text-sm font-semibold text-foreground mb-3">{steps[step].question}</p>
 

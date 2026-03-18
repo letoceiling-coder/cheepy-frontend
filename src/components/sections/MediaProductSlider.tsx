@@ -1,5 +1,5 @@
-import { useRef } from "react";
 import { ChevronLeft, ChevronRight, ShoppingCart } from "lucide-react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import product1 from "@/assets/product-1.jpg";
 import product2 from "@/assets/product-2.jpg";
@@ -73,7 +73,7 @@ const VideoSlide = ({ s }: { s: Slide }) => (
 
 const MediaProductSlider = () => {
   const { ref, isVisible } = useScrollAnimation();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useDragScroll<HTMLDivElement>();
   const scroll = (d: number) => scrollRef.current?.scrollBy({ left: d * 220, behavior: "smooth" });
 
   return (
@@ -88,7 +88,7 @@ const MediaProductSlider = () => {
           <button onClick={() => scroll(1)} className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors"><ChevronRight size={16} /></button>
         </div>
       </div>
-      <div ref={scrollRef} className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+      <div ref={scrollRef} className="flex gap-3 overflow-x-auto no-scrollbar pb-1 cursor-grab active:cursor-grabbing">
         {slides.map((s, i) => (
           <div key={i}>
             {s.type === "product" && <ProductSlide s={s} />}

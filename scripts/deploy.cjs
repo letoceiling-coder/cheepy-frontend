@@ -1,6 +1,8 @@
 /**
+ * DEPRECATED: Use deploy-remote.cjs (git + build on server) instead.
+ * Kept for emergency SCP deploy: npm run deploy:scp
+ *
  * Deploy dist/ to server via SCP.
- * Configure: copy .env.deploy.example to .env.deploy and set DEPLOY_TARGET.
  * Or env: DEPLOY_TARGET=user@host:path (e.g. u12345@cheepy.siteaccess.ru:public_html)
  */
 const { execSync } = require("child_process");

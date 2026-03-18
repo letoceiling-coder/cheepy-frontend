@@ -1,11 +1,11 @@
-import { useRef } from "react";
 import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { mockProducts } from "@/data/mock-data";
 
 const RecentlyViewed = () => {
   const { ref, isVisible } = useScrollAnimation();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useDragScroll<HTMLDivElement>();
   const products = mockProducts.slice(8, 18);
 
   const scroll = (dir: number) => scrollRef.current?.scrollBy({ left: dir * 160, behavior: "smooth" });
@@ -25,7 +25,7 @@ const RecentlyViewed = () => {
           <button onClick={() => scroll(1)} className="w-7 h-7 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors"><ChevronRight size={14} /></button>
         </div>
       </div>
-      <div ref={scrollRef} className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+      <div ref={scrollRef} className="flex gap-3 overflow-x-auto no-scrollbar pb-1 cursor-grab active:cursor-grabbing">
         {products.map((p) => (
           <div key={p.id} className="min-w-[110px] flex-shrink-0 group cursor-pointer">
             <div className="h-[100px] rounded-lg overflow-hidden mb-1 relative">

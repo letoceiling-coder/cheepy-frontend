@@ -23,11 +23,11 @@ const ShopTheLookGallery = () => {
   const [active, setActive] = useState<number | null>(null);
 
   return (
-    <section ref={ref} className={`py-8 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+    <section ref={ref} className={`py-4 md:py-6 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
       <h2 className="text-xl font-bold text-foreground mb-1">Собери образ</h2>
-      <p className="text-sm text-muted-foreground mb-4">Нажми на точку, чтобы увидеть товар</p>
+      <p className="text-sm text-muted-foreground mb-3">Нажми на точку, чтобы увидеть товар</p>
       <div className="relative rounded-xl overflow-hidden">
-        <div className="aspect-[16/9] w-full">
+        <div className="h-[min(320px,42vh)] w-full">
           <img src={look1} alt="Look" className="w-full h-full object-cover block" loading="lazy" />
         </div>
         {hotspots.map((h, i) => (

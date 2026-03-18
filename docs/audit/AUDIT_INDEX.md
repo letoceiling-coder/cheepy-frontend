@@ -21,6 +21,7 @@ Full system audit and production validation for parser + admin.
 | 11 | [SECURITY_AUDIT_REPORT.md](SECURITY_AUDIT_REPORT.md) |
 | 12 | [E2E_VALIDATION_REPORT.md](E2E_VALIDATION_REPORT.md) |
 | 13 | [FINAL_SYSTEM_AUDIT.md](FINAL_SYSTEM_AUDIT.md) |
+| — | [AUTH_REDIRECT_AUDIT.md](AUTH_REDIRECT_AUDIT.md) (demo: no auto-redirect to `/auth`) |
 
 ---
 

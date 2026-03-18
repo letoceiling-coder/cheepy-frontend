@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Heart, ShoppingCart } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import ModelPreviewVideo from "./ModelPreviewVideo";
 
 interface ModelCardProps {
-  image: string;
+  image?: string;
+  videoSrc: string;
   name: string;
   price: number;
   oldPrice?: number;
@@ -11,7 +13,7 @@ interface ModelCardProps {
   delay?: number;
 }
 
-const ModelCard = ({ image, name, price, oldPrice, id, delay = 0 }: ModelCardProps) => {
+const ModelCard = ({ image, videoSrc, name, price, oldPrice, id, delay = 0 }: ModelCardProps) => {
   const [isFav, setIsFav] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -47,12 +49,7 @@ const ModelCard = ({ image, name, price, oldPrice, id, delay = 0 }: ModelCardPro
               transform: isHovered ? "rotateY(0deg) scale(1.05)" : undefined,
             }}
           >
-            <img
-              src={image}
-              alt={name}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
+            <ModelPreviewVideo src={videoSrc} alt={name} className="absolute inset-0 w-full h-full" />
           </div>
 
           {/* Discount badge */}

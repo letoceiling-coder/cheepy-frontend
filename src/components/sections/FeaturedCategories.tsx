@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { ChevronLeft, ChevronRight, Shirt, Footprints, Watch, Gem, ShoppingBag, Glasses } from "lucide-react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import product1 from "@/assets/product-1.jpg";
 import product2 from "@/assets/product-2.jpg";
@@ -20,7 +21,7 @@ const categories = [
 ];
 
 const FeaturedCategories = () => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useDragScroll<HTMLDivElement>();
   const { ref, isVisible } = useScrollAnimation();
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
@@ -47,7 +48,7 @@ const FeaturedCategories = () => {
           </button>
         </div>
       </div>
-      <div ref={scrollRef} className="flex gap-5 overflow-x-auto no-scrollbar pb-2">
+      <div ref={scrollRef} className="flex gap-5 overflow-x-auto no-scrollbar pb-2 cursor-grab active:cursor-grabbing">
         {categories.map((cat, i) => {
           const Icon = cat.icon;
           return (

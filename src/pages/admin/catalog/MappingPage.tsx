@@ -55,8 +55,12 @@ function filterByConfidence(
 export default function MappingPage() {
   const queryClient = useQueryClient();
   const [confidenceFilter, setConfidenceFilter] = useState<ConfidenceFilter>("all");
-  const [selectedCatalogByDonor, setSelectedCatalogByDonor] = useState<Record<number, number>>({});
-  const [applyingId, setApplyingId] = useState<number | null>(null);
+  /** Per-row catalog choice: selectedCatalogId[donor_id] → catalog_category_id */
+  const [selectedCatalogId, setSelectedCatalogIdState] = useState<Record<number, number>>({});
+  const setSelectedCatalogId = (donorId: number, catalogId: number) => {
+    setSelectedCatalogIdState((prev) => ({ ...prev, [donorId]: catalogId }));
+  };
+  const [applyingDonorId, setApplyingDonorId] = useState<number | null>(null);
   const [bulkApplying, setBulkApplying] = useState(false);
 
   const { data: suggestionsData, isLoading: loadingSuggestions } = useQuery({
@@ -119,12 +123,18 @@ export default function MappingPage() {
   );
 
   const handleApply = (suggestion: MappingSuggestion) => {
-    const catalogId = selectedCatalogByDonor[suggestion.donor_id] ?? suggestion.catalog_id;
-    setApplyingId(suggestion.donor_id);
+    const catalog_category_id =
+      selectedCatalogId[suggestion.donor_id] ?? suggestion.catalog_id;
+    setApplyingDonorId(suggestion.donor_id);
     createMapping.mutate(
-      { donor_category_id: suggestion.donor_id, catalog_category_id: catalogId },
       {
-        onSettled: () => setApplyingId(null),
+        donor_category_id: suggestion.donor_id,
+        catalog_category_id,
+        confidence: suggestion.score,
+        is_manual: true,
+      },
+      {
+        onSettled: () => setApplyingDonorId(null),
       }
     );
   };
@@ -259,10 +269,8 @@ export default function MappingPage() {
                 ) : (
                   filteredSuggestions.map((s) => {
                     const isMapped = mappedDonorIds.has(s.donor_id);
-                    const selectedCatalogId = selectedCatalogByDonor[s.donor_id] ?? s.catalog_id;
-                    const catalogName =
-                      catalogCategories.find((c) => c.id === selectedCatalogId)?.name ?? s.catalog_name;
-                    const busy = applyingId === s.donor_id;
+                    const rowCatalogId = selectedCatalogId[s.donor_id] ?? s.catalog_id;
+                    const rowBusy = applyingDonorId === s.donor_id;
 
                     return (
                       <TableRow key={s.donor_id}>
@@ -315,9 +323,9 @@ export default function MappingPage() {
                               variant="default"
                               className="gap-1"
                               onClick={() => handleApply(s)}
-                              disabled={busy || createMapping.isPending}
+                              disabled={rowBusy}
                             >
-                              {busy ? (
+                              {rowBusy ? (
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                               ) : (
                                 <Link2 className="h-3.5 w-3.5" />

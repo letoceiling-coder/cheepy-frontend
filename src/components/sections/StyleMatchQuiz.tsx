@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, ArrowLeft, Palette } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { useQuizScrollIntoView } from "@/hooks/useQuizScrollIntoView";
 import hero1 from "@/assets/hero-1.jpg";
 import hero2 from "@/assets/hero-2.jpg";
 import hero3 from "@/assets/hero-3.jpg";
@@ -70,8 +71,10 @@ const StyleMatchQuiz = () => {
 
   const current = steps[step];
 
+  useQuizScrollIntoView(ref, step, done);
+
   return (
-    <section ref={ref} className={`py-8 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+    <section ref={ref} className={`py-8 scroll-mt-24 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
       <div className="rounded-xl border border-border bg-card p-5 md:p-7 max-w-2xl mx-auto">
         <div className="flex items-center gap-2 mb-1">
           <Palette size={16} className="text-primary" />
@@ -84,7 +87,7 @@ const StyleMatchQuiz = () => {
         </div>
 
         {!done ? (
-          <div key={step} className="animate-fade-in">
+          <div key={step} className="animate-fade-in min-h-[200px] transition-all duration-300">
             <p className="text-xs text-muted-foreground mb-3">Шаг {step + 1} из {steps.length}</p>
             <p className="text-sm font-semibold text-foreground mb-4">{current.question}</p>
 

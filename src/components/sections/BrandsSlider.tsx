@@ -1,5 +1,5 @@
-import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { Link } from "react-router-dom";
 
 const brands = [
@@ -16,7 +16,7 @@ const brands = [
 ];
 
 const BrandsSlider = () => {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useDragScroll<HTMLDivElement>();
 
   const scroll = (direction: "left" | "right") => {
     if (scrollContainerRef.current) {
@@ -43,7 +43,7 @@ const BrandsSlider = () => {
 
         <div
           ref={scrollContainerRef}
-          className="flex-1 overflow-x-auto flex gap-3 no-scrollbar py-1"
+          className="flex-1 overflow-x-auto flex gap-3 no-scrollbar py-1 cursor-grab active:cursor-grabbing"
         >
           {brands.map((brand) => (
             <Link

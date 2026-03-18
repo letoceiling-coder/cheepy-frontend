@@ -1,4 +1,10 @@
 import { Link } from "react-router-dom";
+import hero1 from "@/assets/hero-1.jpg";
+import hero2 from "@/assets/hero-2.jpg";
+import product3 from "@/assets/product-3.jpg";
+import product4 from "@/assets/product-4.jpg";
+import product5 from "@/assets/product-5.jpg";
+import product6 from "@/assets/product-6.jpg";
 
 interface Category {
   slug: string;
@@ -8,60 +14,15 @@ interface Category {
 }
 
 const categories: Category[] = [
-  {
-    slug: "verkhnyaya-odezhda",
-    name: "Верхняя одежда",
-    count: 1240,
-    image: "/hero-1.jpg",
-  },
-  {
-    slug: "obuv",
-    name: "Обувь",
-    count: 890,
-    image: "/product-3.jpg",
-  },
-  {
-    slug: "sumki",
-    name: "Сумки и рюкзаки",
-    count: 560,
-    image: "/product-4.jpg",
-  },
-  {
-    slug: "platya",
-    name: "Платья",
-    count: 720,
-    image: "/hero-2.jpg",
-  },
-  {
-    slug: "sportivnaya",
-    name: "Спортивная одежда",
-    count: 430,
-    image: "/product-5.jpg",
-  },
-  {
-    slug: "aksessuary",
-    name: "Аксессуары",
-    count: 980,
-    image: "/product-6.jpg",
-  },
-  {
-    slug: "dzhinsy",
-    name: "Джинсы",
-    count: 340,
-    image: "/product-3.jpg",
-  },
-  {
-    slug: "kostyumy",
-    name: "Костюмы",
-    count: 215,
-    image: "/hero-2.jpg",
-  },
-  {
-    slug: "futbolki",
-    name: "Футболки",
-    count: 1890,
-    image: "/product-5.jpg",
-  },
+  { slug: "verkhnyaya-odezhda", name: "Верхняя одежда", count: 1240, image: hero1 },
+  { slug: "obuv", name: "Обувь", count: 890, image: product3 },
+  { slug: "sumki", name: "Сумки и рюкзаки", count: 560, image: product4 },
+  { slug: "platya", name: "Платья", count: 720, image: hero2 },
+  { slug: "sportivnaya", name: "Спортивная одежда", count: 430, image: product5 },
+  { slug: "aksessuary", name: "Аксессуары", count: 980, image: product6 },
+  { slug: "dzhinsy", name: "Джинсы", count: 340, image: product3 },
+  { slug: "kostyumy", name: "Костюмы", count: 215, image: hero2 },
+  { slug: "futbolki", name: "Футболки", count: 1890, image: product5 },
 ];
 
 const AllCategoriesGrid = () => {

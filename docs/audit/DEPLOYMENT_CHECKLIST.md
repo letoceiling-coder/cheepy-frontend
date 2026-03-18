@@ -82,6 +82,19 @@ Expect: GET /up → 200, GET /health → 200
 
 ---
 
+## Frontend deploy (siteaacess.store)
+
+Рекомендуемый способ — локальная сборка и загрузка в `dist` на сервере:
+
+```bash
+npm run build
+npm run deploy:frontend
+```
+
+Требуется `.env.deploy` с `DEPLOY_SSH=root@85.117.235.93`. Путь на сервере: `/var/www/siteaacess.store/dist`. См. [DEPLOYMENT.md](../DEPLOYMENT.md).
+
+---
+
 ## Git-based deployment (alternative)
 
 If server pulls from Git:

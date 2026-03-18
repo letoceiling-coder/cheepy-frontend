@@ -1,0 +1,11 @@
+    // Admin Users and Roles (requires users.manage)
+    Route::middleware(AdminRoleMiddleware::class)->prefix('admin')->group(function () {
+        Route::get('users', [AdminUserController::class, 'index']);
+        Route::post('users', [AdminUserController::class, 'store']);
+        Route::put('users/{id}', [AdminUserController::class, 'update']);
+        Route::delete('users/{id}', [AdminUserController::class, 'destroy']);
+        Route::get('roles', [AdminRoleController::class, 'index']);
+        Route::post('roles', [AdminRoleController::class, 'store']);
+        Route::put('roles/{id}', [AdminRoleController::class, 'update']);
+        Route::delete('roles/{id}', [AdminRoleController::class, 'destroy']);
+    });

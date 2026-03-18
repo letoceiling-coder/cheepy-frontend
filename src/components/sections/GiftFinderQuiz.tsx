@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, ArrowLeft, Gift, User, Users } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { useQuizScrollIntoView } from "@/hooks/useQuizScrollIntoView";
 import product1 from "@/assets/product-1.jpg";
 import product2 from "@/assets/product-2.jpg";
 import product3 from "@/assets/product-3.jpg";
@@ -52,8 +53,10 @@ const GiftFinderQuiz = () => {
   const back = () => { if (step > 0) { setStep(step - 1); setAnswers(answers.slice(0, -1)); } };
   const reset = () => { setStep(0); setAnswers([]); };
 
+  useQuizScrollIntoView(ref, step, done);
+
   return (
-    <section ref={ref} className={`py-8 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+    <section ref={ref} className={`py-8 scroll-mt-24 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
       <div className="rounded-xl border border-border bg-card p-5 md:p-7 max-w-2xl mx-auto">
         <div className="flex items-center gap-2 mb-1">
           <Gift size={16} className="text-primary" />
@@ -66,7 +69,7 @@ const GiftFinderQuiz = () => {
         </div>
 
         {!done ? (
-          <div key={step} className="animate-fade-in">
+          <div key={step} className="animate-fade-in min-h-[200px] transition-all duration-300">
             <p className="text-xs text-muted-foreground mb-3">Шаг {step + 1} из {steps.length}</p>
             <p className="text-sm font-semibold text-foreground mb-4">{steps[step].question}</p>
             <div className="grid grid-cols-2 gap-2">

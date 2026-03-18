@@ -4,9 +4,9 @@
 
 **Всегда выполнять деплой после любых изменений кода или конфигурации. Без исключений.**
 
-- После любых правок (frontend, скрипты деплоя, nginx-конфиги в репо) — сразу деплой на сервер.
-- Сервер должен всегда отражать актуальное состояние репозитория.
-- Команды: `npm run deploy` (полный деплой) или `node scripts/run-stabilize-remote.cjs` (только фронт + nginx + стабилизация).
+- **Рекомендуемый способ (фронт):** `npm run build` затем `npm run deploy:frontend` — сборка локально, содержимое `dist/` заливается на сервер в `/var/www/siteaacess.store/dist`. Так на сервере всегда та сборка, которую ты собрал (нет кэша/старого JS).
+- Путь на сервере: **Nginx root** = `/var/www/siteaacess.store/dist` (см. deploy/nginx-siteaacess.conf). Сборка должна лежать именно там.
+- Альтернативы: `npm run deploy` (полный деплой, сборка на сервере через deploy.sh) или `node scripts/run-stabilize-remote.cjs` (git pull на сервере + npm run build там).
 
 ## SSH Access — Production Server
 

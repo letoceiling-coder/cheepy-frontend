@@ -1,9 +1,12 @@
-import { Package, PlusCircle, AlertTriangle, Clock, Brain, Bug, Layers, Activity, Cpu, Database } from "lucide-react";
+import { useState } from "react";
+import { Package, PlusCircle, AlertTriangle, Clock, Brain, Bug, Layers, Activity, Cpu, Database, RotateCcw, Trash2, RefreshCw } from "lucide-react";
 import { StatCard } from "../components/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { dashboardApi, parserApi, systemApi } from "@/lib/api";
-import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { dashboardApi, parserApi, systemApi, logsApi } from "@/lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 const statusColors: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-800",
@@ -15,22 +18,91 @@ const statusColors: Record<string, string> = {
 };
 
 export default function DashboardPage() {
+  const queryClient = useQueryClient();
+  const [sysAction, setSysAction] = useState<string | null>(null);
+
   const { data: d, isLoading, error } = useQuery({
     queryKey: ["dashboard"],
     queryFn: () => dashboardApi.get(),
   });
 
-  const { data: stats } = useQuery({
+  const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ["parser-stats"],
     queryFn: () => parserApi.stats(),
     refetchInterval: 30000, // Fallback; WebSocket invalidates on events
   });
 
-  const { data: systemStatus } = useQuery({
+  const { data: systemStatus, refetch: refetchSystem } = useQuery({
     queryKey: ["system-status"],
     queryFn: () => systemApi.status(),
     refetchInterval: 5000, // Refresh every 5 seconds
   });
+
+  const { data: diagnostics } = useQuery({
+    queryKey: ["parser-diagnostics"],
+    queryFn: () => parserApi.diagnostics(),
+    refetchInterval: 10000,
+  });
+
+  const refetchAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    queryClient.invalidateQueries({ queryKey: ["parser-diagnostics"] });
+    refetchStats();
+    refetchSystem();
+  };
+
+  const handleQueueFlush = async () => {
+    setSysAction("flush");
+    try {
+      await parserApi.queueFlush();
+      refetchAll();
+      toast.success("Очереди сброшены");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    } finally {
+      setSysAction(null);
+    }
+  };
+  const handleLogsClear = async () => {
+    setSysAction("logs");
+    try {
+      await logsApi.clear();
+      refetchAll();
+      toast.success("Логи и ошибки очищены");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    } finally {
+      setSysAction(null);
+    }
+  };
+  const handleQueueRestart = async () => {
+    setSysAction("restart");
+    try {
+      await parserApi.queueRestart();
+      refetchAll();
+      toast.success("Воркеры очередей перезапущены");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    } finally {
+      setSysAction(null);
+    }
+  };
+  const handleReleaseLock = async () => {
+    setSysAction("lock");
+    try {
+      await parserApi.releaseLock();
+      refetchAll();
+      toast.success("Блокировка снята");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    } finally {
+      setSysAction(null);
+    }
+  };
 
   if (isLoading || !d) {
     return (
@@ -139,6 +211,57 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-lg">Управление системой</CardTitle></CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" onClick={handleQueueFlush} disabled={!!sysAction || isRunning} title="Очистить все очереди">
+              <RotateCcw className="h-4 w-4 mr-1" />Сброс очередей
+            </Button>
+            <Button variant="outline" onClick={handleLogsClear} disabled={!!sysAction} title="Очистить логи и записи об ошибках">
+              <Trash2 className="h-4 w-4 mr-1" />Очистка ошибок
+            </Button>
+            <Button variant="outline" onClick={handleQueueRestart} disabled={!!sysAction} title="Перезапустить воркеры очередей">
+              <RefreshCw className="h-4 w-4 mr-1" />Восстановить воркеры
+            </Button>
+            <Button variant="outline" onClick={handleReleaseLock} disabled={!!sysAction || isRunning} title="Снять блокировку парсера">
+              Освободить блокировку
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {diagnostics && (
+        <Card>
+          <CardHeader><CardTitle className="text-lg">Диагностика очередей</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Очередь парсера</p>
+                <p className="font-medium">{diagnostics.parser_queue_size ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Очередь фото</p>
+                <p className="font-medium">{diagnostics.photos_queue_size ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Failed jobs</p>
+                <p className={`font-medium ${(diagnostics.failed_jobs_count ?? 0) > 0 ? "text-destructive" : ""}`}>
+                  {diagnostics.failed_jobs_count ?? "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Блокировка</p>
+                <Badge variant={diagnostics.parser_lock_status === "held" ? "destructive" : "secondary"}>
+                  {diagnostics.parser_lock_status === "held" ? "Удерживается" : "Свободна"}
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">

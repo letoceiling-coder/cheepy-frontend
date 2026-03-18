@@ -1,5 +1,5 @@
-import { useRef } from "react";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import hero1 from "@/assets/hero-1.jpg";
 import hero2 from "@/assets/hero-2.jpg";
@@ -19,7 +19,7 @@ const looks = [
 
 const LookbookSlider = () => {
   const { ref, isVisible } = useScrollAnimation();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useDragScroll<HTMLDivElement>();
 
   const scroll = (dir: number) => scrollRef.current?.scrollBy({ left: dir * 400, behavior: "smooth" });
 
@@ -35,7 +35,7 @@ const LookbookSlider = () => {
           <button onClick={() => scroll(1)} className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors"><ChevronRight size={18} /></button>
         </div>
       </div>
-      <div ref={scrollRef} className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+      <div ref={scrollRef} className="flex gap-3 overflow-x-auto no-scrollbar pb-2 cursor-grab active:cursor-grabbing">
         {looks.map((l, i) => (
           <div key={i} className="min-w-[200px] sm:min-w-[220px] md:min-w-[240px] lg:min-w-[260px] max-w-[260px] flex-shrink-0 rounded-xl overflow-hidden relative cursor-pointer group aspect-[3/4]">
             <img src={l.image} alt={l.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
