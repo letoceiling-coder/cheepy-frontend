@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Package, FolderTree, ShoppingCart, Users, Store,
   BarChart3, Megaphone, MessageSquare, Settings, ArrowLeft, Layers,
   Shield, Truck, CreditCard, Wallet, MapPin, Ticket, Mail, FileText,
-  Bell, PackageCheck, Plug, Building2,
+  Bell, PackageCheck, Plug, Building2, Link2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
@@ -40,6 +40,12 @@ const sections: NavSection[] = [
     items: [
       { title: "Товары", url: "/crm/products", icon: Package, permission: "products.read" },
       { title: "Категории", url: "/crm/categories", icon: FolderTree, permission: "products.read" },
+      {
+        title: "Маппинг категорий",
+        url: "/crm/catalog/mapping",
+        icon: Link2,
+        permission: "products.read",
+      },
       { title: "Модерация", url: "/crm/moderation", icon: Shield, permission: "moderation.read" },
     ],
   },
