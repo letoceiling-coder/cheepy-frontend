@@ -111,6 +111,7 @@ import CrmModerationDetailPage from "./crm/pages/CrmModerationDetailPage";
 import CrmSellerDetailPage from "./crm/pages/CrmSellerDetailPage";
 import CrmUserDetailPage from "./crm/pages/CrmUserDetailPage";
 import CrmTenantsPage from "./crm/pages/CrmTenantsPage";
+import MappingPage from "@/pages/admin/catalog/MappingPage";
 
 const queryClient = new QueryClient();
 
