@@ -68,18 +68,6 @@ export interface CrmSeller {
   joinedAt: string;
 }
 
-export interface CrmCategory {
-  id: string;
-  name: string;
-  slug: string;
-  parentId: string | null;
-  icon: string;
-  position: number;
-  active: boolean;
-  productsCount: number;
-  children?: CrmCategory[];
-}
-
 export interface CrmReview {
   id: string;
   productId: string;
@@ -212,22 +200,6 @@ export const crmOrders: CrmOrder[] = Array.from({ length: 100 }, (_, i) => {
     comment: i % 5 === 0 ? 'Позвонить перед доставкой' : undefined,
   };
 });
-
-// ── Categories ──
-export const crmCategories: CrmCategory[] = categoryNames.map((name, i) => ({
-  id: `C${String(i + 1).padStart(4, '0')}`,
-  name,
-  slug: name.toLowerCase().replace(/\s/g, '-'),
-  parentId: null,
-  icon: 'Folder',
-  position: i + 1,
-  active: i !== 12,
-  productsCount: rnd(10, 300),
-  children: i < 5 ? [
-    { id: `C${String(i + 1).padStart(4, '0')}-1`, name: `${name} — подкатегория 1`, slug: '', parentId: `C${String(i + 1).padStart(4, '0')}`, icon: '', position: 1, active: true, productsCount: rnd(5, 80) },
-    { id: `C${String(i + 1).padStart(4, '0')}-2`, name: `${name} — подкатегория 2`, slug: '', parentId: `C${String(i + 1).padStart(4, '0')}`, icon: '', position: 2, active: true, productsCount: rnd(5, 80) },
-  ] : undefined,
-}));
 
 // ── Reviews ──
 export const crmReviews: CrmReview[] = Array.from({ length: 60 }, (_, i) => {

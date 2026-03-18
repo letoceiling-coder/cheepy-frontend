@@ -50,4 +50,14 @@ class CatalogCategoryService
     {
         return CatalogCategory::find($id);
     }
+
+    /**
+     * @param  array<int, array{id: int, sort_order: int}>  $items
+     */
+    public function reorder(array $items): void
+    {
+        foreach ($items as $row) {
+            CatalogCategory::whereKey($row['id'])->update(['sort_order' => $row['sort_order']]);
+        }
+    }
 }

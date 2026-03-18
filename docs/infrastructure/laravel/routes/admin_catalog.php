@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin/catalog')->group(function () {
     Route::get('categories', [AdminCatalogCategoryController::class, 'index']);
+    Route::patch('categories/reorder', [AdminCatalogCategoryController::class, 'reorder']);
     Route::post('categories', [AdminCatalogCategoryController::class, 'store']);
     Route::patch('categories/{id}', [AdminCatalogCategoryController::class, 'update']);
     Route::delete('categories/{id}', [AdminCatalogCategoryController::class, 'destroy']);

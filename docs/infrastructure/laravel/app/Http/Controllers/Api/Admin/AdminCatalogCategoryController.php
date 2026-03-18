@@ -73,4 +73,14 @@ class AdminCatalogCategoryController extends Controller
         $this->service->delete($category);
         return response()->json(null, 204);
     }
+
+    public function reorder(Request $request): JsonResponse
+    {
+        $items = $request->validate([
+            '*.id' => 'required|integer|exists:catalog_categories,id',
+            '*.sort_order' => 'required|integer|min:0',
+        ]);
+        $this->service->reorder($items);
+        return response()->json(['message' => 'ok']);
+    }
 }

@@ -687,13 +687,18 @@ export const adminCatalogApi = {
       `/admin/catalog/category-mapping${q.toString() ? `?${q}` : ''}`
     );
   },
-  catalogCategoriesList: (params?: { per_page?: number }) => {
+  catalogCategoriesList: (params?: { per_page?: number; page?: number }) => {
     const q = new URLSearchParams();
     if (params?.per_page != null) q.set('per_page', String(params.per_page));
-    return get<{ data: CatalogCategoryItem[]; meta?: { total: number } }>(
-      `/admin/catalog/categories${q.toString() ? `?${q}` : ''}`
-    );
+    if (params?.page != null) q.set('page', String(params.page));
+    return get<{
+      data: CatalogCategoryItem[];
+      meta?: { total: number; per_page: number; current_page: number; last_page: number };
+    }>(`/admin/catalog/categories${q.toString() ? `?${q}` : ''}`);
   },
+  /** Same-level order; body is JSON array [{ id, sort_order }, ...] */
+  catalogCategoriesReorder: (items: Array<{ id: number; sort_order: number }>) =>
+    patch<{ message?: string }>('/admin/catalog/categories/reorder', items),
   createMapping: (body: { donor_category_id: number; catalog_category_id: number; confidence?: number; is_manual?: boolean }) =>
     post<CategoryMappingItem>('/admin/catalog/category-mapping', body),
 };
