@@ -1,5 +1,17 @@
 # 🚀 Руководство по развертыванию
 
+## ⚠️ SYSTEM RULE — PRODUCTION FIRST
+
+Любое изменение (фронт или бэкенд) **сразу** выкатывается на прод. Запрещено: код без деплоя, отчёт без деплоя, только локальная проверка.
+
+**Фронт:** `git push` → на сервере `siteaacess.store`: `git pull` / `reset --hard`, `rm -rf dist`, `npm install`, `npm run build`, `nginx reload`.
+
+**Бэкенд (Laravel):** `git pull` в каталоге API → `php artisan migrate --force`, `route:clear`, `config:clear`, `cache:clear`, `optimize:clear`.
+
+**Отчёт:** hash коммита, лог деплоя, подтверждение что прод работает (URL + Network).
+
+---
+
 ## Требования
 
 - Node.js 18+

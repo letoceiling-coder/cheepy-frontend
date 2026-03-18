@@ -1,17 +1,69 @@
 # Project Rules
 
-## Deploy After Any Changes (обязательно)
+## SYSTEM RULE — PRODUCTION FIRST (CRITICAL)
 
-**Всегда выполнять деплой после любых изменений кода или конфигурации. Без исключений.**
+**Any change (frontend OR backend) MUST be deployed to production immediately. NO EXCEPTIONS.**
 
-- **Рекомендуемый способ (фронт):** `npm run build` затем `npm run deploy:frontend` — сборка локально, содержимое `dist/` заливается на сервер в `/var/www/siteaacess.store/dist`. Так на сервере всегда та сборка, которую ты собрал (нет кэша/старого JS).
-- Путь на сервере: **Nginx root** = `/var/www/siteaacess.store/dist` (см. deploy/nginx-siteaacess.conf). Сборка должна лежать именно там.
-- Альтернативы: `npm run deploy` (полный деплой, сборка на сервере через deploy.sh) или `node scripts/run-stabilize-remote.cjs` (git pull на сервере + npm run build там).
+### FORBIDDEN
 
-## SSH Access — Production Server
+- Writing code without deploy
+- Reporting "done" without deploy
+- Testing locally only
+- Leaving production server outdated
+
+### REQUIRED FLOW (after code changes)
+
+1. `git add .`
+2. `git commit -m "..."`  
+3. `git push origin main`
+
+### FRONTEND DEPLOY (mandatory after frontend changes)
+
+SSH `root@85.117.235.93`, then:
+
+```bash
+cd /var/www/siteaacess.store
+git fetch origin main && git reset --hard origin/main   # if local drift
+rm -rf dist
+npm install
+npm run build
+systemctl reload nginx
+```
+
+Nginx root: `/var/www/siteaacess.store/dist`.
+
+### BACKEND DEPLOY (mandatory after Laravel changes)
+
+```bash
+cd /var/www/online-parser.siteaacess.store   # or /var/www/online-parser per server layout
+git pull origin main
+php artisan migrate --force
+php artisan route:clear
+php artisan config:clear
+php artisan cache:clear
+php artisan optimize:clear
+```
+
+Apply Laravel patches from `docs/infrastructure/laravel/` to the live app when API fixes are doc-only in this repo.
+
+### VERIFICATION (mandatory)
+
+- Open production URL
+- DevTools Network: no 500 / no unexpected 401
+- Manually test the feature
+
+### REPORT MUST INCLUDE
+
+- Commit hash(es)
+- Deploy command output (or summary)
+- Confirmation production works
+
+**If not deployed → task is NOT done.**
+
+---
+
+## SSH — Production
 
 **SSH:** `ssh root@85.117.235.93`
 
-- Server hostname: aoltwgicbj
-- Use this connection to run commands, inspect logs, and manage the parser/queue on production
-- Example: `ssh root@85.117.235.93 "php /path/to/artisan parser:diagnostics"`
+- Use for server builds, nginx reload, Laravel artisan, logs.
