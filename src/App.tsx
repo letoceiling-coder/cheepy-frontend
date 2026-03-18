@@ -83,6 +83,7 @@ import RolesPage from "./admin/pages/RolesPage";
 import SettingsPage from "./admin/pages/SettingsPage";
 import AttributeRulesPage from "./admin/pages/AttributeRulesPage";
 import { CrmLayout } from "./crm/layout/CrmLayout";
+import CrmAuthGuard from "@/crm/layout/CrmAuthGuard";
 import CrmDashboardPage from "./crm/pages/CrmDashboardPage";
 import CrmContentPage from "./crm/pages/CrmContentPage";
 import CrmProductsPage from "./crm/pages/CrmProductsPage";

@@ -8,7 +8,7 @@ const TOKEN_KEY = "admin_token";
  * CRM uses the same Laravel JWT as admin (`admin_token`).
  * Without token, redirect to admin login with ?next= for return after login.
  */
-export function CrmAuthGuard({ children }: { children: ReactNode }) {
+export default function CrmAuthGuard({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
