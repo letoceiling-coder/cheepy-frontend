@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 | Expected full paths:
 |   GET    /api/admin/catalog/categories
 |   POST   /api/admin/catalog/categories
+|   PATCH  /api/admin/catalog/categories/reorder   (must be BEFORE categories/{id} or use whereNumber on id)
 |   PATCH  /api/admin/catalog/categories/{id}
 |   DELETE /api/admin/catalog/categories/{id}
 |   GET    /api/admin/catalog/donor-categories
@@ -25,8 +26,8 @@ Route::prefix('admin/catalog')->group(function () {
     Route::get('categories', [AdminCatalogCategoryController::class, 'index']);
     Route::patch('categories/reorder', [AdminCatalogCategoryController::class, 'reorder']);
     Route::post('categories', [AdminCatalogCategoryController::class, 'store']);
-    Route::patch('categories/{id}', [AdminCatalogCategoryController::class, 'update']);
-    Route::delete('categories/{id}', [AdminCatalogCategoryController::class, 'destroy']);
+    Route::patch('categories/{id}', [AdminCatalogCategoryController::class, 'update'])->whereNumber('id');
+    Route::delete('categories/{id}', [AdminCatalogCategoryController::class, 'destroy'])->whereNumber('id');
 
     Route::get('donor-categories', [AdminDonorCategoryController::class, 'index']);
 

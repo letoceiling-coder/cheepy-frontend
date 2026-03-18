@@ -7,6 +7,9 @@ use App\Models\CatalogCategory;
 use App\Services\Catalog\CatalogCategoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class AdminCatalogCategoryController extends Controller
@@ -74,13 +77,54 @@ class AdminCatalogCategoryController extends Controller
         return response()->json(null, 204);
     }
 
+    /**
+     * Body: JSON array [{ "id": int, "sort_order": int }, ...]
+     * Route must be registered BEFORE categories/{id} OR {id} must use whereNumber('id').
+     */
     public function reorder(Request $request): JsonResponse
     {
-        $items = $request->validate([
-            '*.id' => 'required|integer|exists:catalog_categories,id',
-            '*.sort_order' => 'required|integer|min:0',
-        ]);
-        $this->service->reorder($items);
-        return response()->json(['message' => 'ok']);
+        $items = $request->json()->all();
+
+        if (! is_array($items)) {
+            return response()->json(['message' => 'Expected a JSON array'], 422);
+        }
+
+        $items = array_values($items);
+
+        try {
+            $validated = Validator::make($items, [
+                '*' => 'required|array',
+                '*.id' => 'required|integer|exists:catalog_categories,id',
+                '*.sort_order' => 'required|integer|min:0',
+            ])->validate();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        try {
+            DB::transaction(function () use ($validated) {
+                foreach ($validated as $item) {
+                    CatalogCategory::query()
+                        ->whereKey((int) $item['id'])
+                        ->update(['sort_order' => (int) $item['sort_order']]);
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::error('admin.catalog.categories.reorder', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'message' => 'Reorder failed',
+                'detail' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
+
+        return response()->json(['success' => true]);
     }
 }
