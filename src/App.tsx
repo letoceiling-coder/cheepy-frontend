@@ -211,8 +211,15 @@ function AnimatedRoutes() {
           </Route>
         </Route>
 
-        {/* CRM routes */}
-        <Route path="/crm" element={<CrmLayout />}>
+        {/* CRM routes — same JWT as admin; unauthenticated → /admin/login */}
+        <Route
+          path="/crm"
+          element={
+            <CrmAuthGuard>
+              <CrmLayout />
+            </CrmAuthGuard>
+          }
+        >
           <Route index element={<CrmDashboardPage />} />
           <Route path="dashboard" element={<CrmDashboardPage />} />
           <Route path="content" element={<CrmContentPage />} />

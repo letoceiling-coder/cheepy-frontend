@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { authApi, setOnUnauthorized } from "@/lib/api";
+import { authApi, setOnUnauthorized, parserApi } from "@/lib/api";
 
 export interface AdminUser {
   id: number;
@@ -62,7 +62,18 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     const res = await authApi.login(email, password);
     localStorage.setItem("admin_token", res.token);
     setUser(res.user);
-    navigate("/admin", { replace: true });
+    const fromQuery =
+      typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("next") : null;
+    const fromSession =
+      typeof window !== "undefined" ? sessionStorage.getItem("crm_auth_next") : null;
+    sessionStorage.removeItem("crm_auth_next");
+    const raw = fromQuery || fromSession;
+    const isSafe =
+      raw &&
+      raw.startsWith("/") &&
+      !raw.startsWith("//") &&
+      (raw.startsWith("/crm") || raw.startsWith("/admin"));
+    navigate(isSafe ? raw : "/admin", { replace: true });
 
     // Auto sync categories if last sync > 24h
     try {

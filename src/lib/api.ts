@@ -61,8 +61,9 @@ function getToken(): string | null {
   return localStorage.getItem('admin_token');
 }
 
+/** Bearer JWT for protected API calls (same token as admin panel). */
 function authHeaders(): Record<string, string> {
-  const token = getToken();
+  const token = localStorage.getItem('admin_token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -72,13 +73,16 @@ async function request<T>(
   body?: unknown,
   isPublic = false
 ): Promise<T> {
+  const token = localStorage.getItem('admin_token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   };
 
   if (!isPublic) {
-    Object.assign(headers, authHeaders());
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
   }
 
   const url = `${BASE_URL}${path}`;
@@ -90,10 +94,14 @@ async function request<T>(
     });
 
     if (res.status === 401) {
-      // Only run redirect (e.g. to /admin/login) when we're on admin — never on /person, /account, /cart
-      const onAdmin = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
-      if (onAdmin && onUnauthorized) {
-        onUnauthorized();
+      if (typeof window !== 'undefined') {
+        const p = window.location.pathname;
+        if (p.startsWith('/crm')) {
+          const next = encodeURIComponent(p + window.location.search);
+          window.location.assign(`/admin/login?next=${next}`);
+        } else if (p.startsWith('/admin') && onUnauthorized) {
+          onUnauthorized();
+        }
       }
       const err = await res.json().catch(() => ({ error: 'Unauthorized' }));
       throw new ApiError(401, err.error || 'Unauthorized');
