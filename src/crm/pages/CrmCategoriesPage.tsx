@@ -3,8 +3,17 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PageHeader } from "../components/PageHeader";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { adminCatalogApi, type CatalogCategoryItem } from "@/lib/api";
-import { Plus, ChevronRight, GripVertical, FolderTree, Loader2 } from "lucide-react";
+import { Plus, ChevronRight, GripVertical, FolderTree, Loader2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const QK = ["admin-catalog-categories-crm"];
@@ -54,6 +63,9 @@ export default function CrmCategoriesPage() {
   const dragRef = useRef<{ parentId: number | null; fromIndex: number } | null>(null);
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [patchingIds, setPatchingIds] = useState<Set<number>>(() => new Set());
+  const [editTarget, setEditTarget] = useState<CatalogCategoryItem | null>(null);
+  const [editName, setEditName] = useState("");
 
   const { data: flat = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: QK,
@@ -70,8 +82,30 @@ export default function CrmCategoriesPage() {
       queryClient.invalidateQueries({ queryKey: QK });
       toast.success("Сохранено");
     },
-    onError: (e: Error & { message?: string }) => {
-      toast.error(e.message || "Не удалось сохранить порядок");
+    onError: () => {
+      toast.error("Ошибка");
+    },
+  });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: { name?: string; is_active?: boolean } }) =>
+      adminCatalogApi.catalogCategoryPatch(id, body),
+    onMutate: ({ id }) => {
+      setPatchingIds((p) => new Set(p).add(id));
+    },
+    onSettled: (_d, _e, v) => {
+      setPatchingIds((p) => {
+        const n = new Set(p);
+        n.delete(v.id);
+        return n;
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK });
+      toast.success("Сохранено");
+    },
+    onError: () => {
+      toast.error("Ошибка");
     },
   });
 
@@ -100,7 +134,7 @@ export default function CrmCategoriesPage() {
     [getSiblings, reorderMutation]
   );
 
-  const toggle = (id: number) => {
+  const toggleExpand = (id: number) => {
     setExpanded((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
@@ -108,7 +142,29 @@ export default function CrmCategoriesPage() {
     });
   };
 
-  const busy = reorderMutation.isPending;
+  const openEdit = (node: CatalogCategoryItem) => {
+    setEditTarget(node);
+    setEditName(node.name);
+  };
+
+  const saveEditName = () => {
+    if (!editTarget) return;
+    const trimmed = editName.trim();
+    if (!trimmed) {
+      toast.error("Ошибка");
+      return;
+    }
+    if (trimmed === editTarget.name) {
+      setEditTarget(null);
+      return;
+    }
+    updateCategoryMutation.mutate(
+      { id: editTarget.id, body: { name: trimmed } },
+      { onSuccess: () => setEditTarget(null) }
+    );
+  };
+
+  const reorderBusy = reorderMutation.isPending;
 
   const renderLevel = (parentId: number | null, nodes: TreeNode[], depth: number) =>
     nodes.map((node, index) => {
@@ -116,21 +172,13 @@ export default function CrmCategoriesPage() {
       const isOver = dragOverKey === rowKey;
       const hasChildren = node.children.length > 0;
       const isExpanded = expanded.has(node.id);
+      const rowPatching = patchingIds.has(node.id);
+      const gripDraggable = !reorderBusy && !rowPatching;
 
       return (
         <div key={node.id} className="select-none">
           <div
             role="row"
-            draggable={!busy}
-            onDragStart={(e) => {
-              e.dataTransfer.effectAllowed = "move";
-              e.dataTransfer.setData("text/plain", String(node.id));
-              dragRef.current = { parentId, fromIndex: index };
-            }}
-            onDragEnd={() => {
-              dragRef.current = null;
-              setDragOverKey(null);
-            }}
             onDragOver={(e) => {
               e.preventDefault();
               e.dataTransfer.dropEffect = "move";
@@ -154,21 +202,38 @@ export default function CrmCategoriesPage() {
               "flex items-center gap-2 px-3 py-2 border-b border-border transition-all duration-200",
               "hover:bg-muted/40",
               isOver && "bg-primary/10 border-l-4 border-l-primary pl-2 shadow-sm",
-              busy && "opacity-70 pointer-events-none"
+              reorderBusy && "opacity-80"
             )}
             style={{ paddingLeft: `${12 + depth * 20}px` }}
           >
             <span
-              className="cursor-grab active:cursor-grabbing text-muted-foreground shrink-0 touch-none p-0.5 rounded hover:bg-muted"
+              draggable={gripDraggable}
+              onDragStart={(e) => {
+                e.stopPropagation();
+                if (!gripDraggable) {
+                  e.preventDefault();
+                  return;
+                }
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", String(node.id));
+                dragRef.current = { parentId, fromIndex: index };
+              }}
+              onDragEnd={() => {
+                dragRef.current = null;
+                setDragOverKey(null);
+              }}
+              className={cn(
+                "text-muted-foreground shrink-0 touch-none p-0.5 rounded hover:bg-muted",
+                gripDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-not-allowed opacity-50"
+              )}
               title="Перетащить"
-              onMouseDown={(e) => e.stopPropagation()}
             >
               <GripVertical className="h-4 w-4" />
             </span>
             {hasChildren ? (
               <button
                 type="button"
-                onClick={() => toggle(node.id)}
+                onClick={() => toggleExpand(node.id)}
                 className="p-0.5 rounded hover:bg-muted shrink-0"
                 aria-expanded={isExpanded}
               >
@@ -184,17 +249,43 @@ export default function CrmCategoriesPage() {
             )}
             <FolderTree className="h-4 w-4 text-muted-foreground shrink-0" />
             <span className="text-sm font-medium flex-1 min-w-0 truncate">{node.name}</span>
-            <span className="text-xs text-muted-foreground tabular-nums w-10 text-right">
+            <span className="text-xs text-muted-foreground tabular-nums w-10 text-right shrink-0">
               #{node.sort_order ?? 0}
             </span>
-            <span
-              className={cn(
-                "text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded w-14 text-center",
-                node.is_active === false ? "bg-muted text-muted-foreground" : "bg-emerald-500/15 text-emerald-700"
-              )}
+            <div
+              className="shrink-0 flex items-center justify-center w-9"
+              onPointerDown={(e) => e.stopPropagation()}
+              onDragStart={(e) => e.preventDefault()}
             >
-              {node.is_active === false ? "off" : "on"}
-            </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                disabled={rowPatching}
+                onClick={() => openEdit(node)}
+                aria-label="Редактировать название"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </div>
+            <div
+              className="shrink-0 flex items-center gap-1.5 w-[56px] justify-end"
+              onPointerDown={(e) => e.stopPropagation()}
+              onDragStart={(e) => e.preventDefault()}
+            >
+              {rowPatching ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" aria-hidden />
+              ) : null}
+              <Switch
+                checked={node.is_active !== false}
+                disabled={rowPatching}
+                className="scale-90"
+                onCheckedChange={(checked) => {
+                  updateCategoryMutation.mutate({ id: node.id, body: { is_active: checked } });
+                }}
+              />
+            </div>
           </div>
           {hasChildren && isExpanded && (
             <div className="animate-in fade-in duration-200">
@@ -205,6 +296,8 @@ export default function CrmCategoriesPage() {
       );
     });
 
+  const editSaving = editTarget ? patchingIds.has(editTarget.id) : false;
+
   return (
     <div className="space-y-4 animate-fade-in">
       <PageHeader
@@ -214,7 +307,7 @@ export default function CrmCategoriesPage() {
             ? "Загрузка…"
             : isError
               ? "Ошибка загрузки"
-              : `${totalCount} категорий · API /admin/catalog/categories`
+              : `${totalCount} категорий · PATCH /admin/catalog/categories/{id}`
         }
         actions={
           <Button size="sm" variant="outline" className="gap-1.5" disabled>
@@ -235,12 +328,13 @@ export default function CrmCategoriesPage() {
       )}
 
       <div className="rounded-lg border border-border overflow-hidden bg-card">
-        <div className="flex items-center gap-3 px-3 py-2 bg-muted/30 border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wider">
           <span className="w-8" />
           <span className="w-6" />
-          <span className="flex-1 pl-2">Название</span>
-          <span className="w-10 text-right">Пор.</span>
-          <span className="w-14 text-center">Активн.</span>
+          <span className="flex-1 pl-2 min-w-0">Название</span>
+          <span className="w-10 text-right shrink-0">Пор.</span>
+          <span className="w-9 text-center shrink-0" />
+          <span className="w-[52px] text-right shrink-0">Активн.</span>
         </div>
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
@@ -256,10 +350,56 @@ export default function CrmCategoriesPage() {
         )}
       </div>
 
+      <Dialog
+        open={!!editTarget}
+        onOpenChange={(open) => {
+          if (!open && !editSaving) setEditTarget(null);
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-md"
+          onPointerDownOutside={(e) => {
+            if (editSaving) e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            if (editSaving) e.preventDefault();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Редактировать категорию</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <label className="text-sm font-medium">Название</label>
+            <Input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              disabled={editSaving}
+              placeholder="Название категории"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !editSaving) saveEditName();
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditTarget(null)} disabled={editSaving}>
+              Отмена
+            </Button>
+            <Button type="button" onClick={saveEditName} disabled={editSaving}>
+              {editSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Сохранение…
+                </>
+              ) : (
+                "Сохранить"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <p className="text-xs text-muted-foreground">
-        Перетаскивайте строку за область с иконкой ⋮⋮ в пределах одного уровня (родитель → дети). После отпускания
-        порядок сохраняется через{" "}
-        <code className="text-[10px] bg-muted px-1 rounded">PATCH …/categories/reorder</code>.
+        Порядок: только с ручки ⋮⋮. Переключатель и кнопка ✏️ не запускают перетаскивание.
       </p>
     </div>
   );

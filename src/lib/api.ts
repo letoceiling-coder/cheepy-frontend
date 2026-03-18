@@ -699,6 +699,8 @@ export const adminCatalogApi = {
   /** Same-level order; body is JSON array [{ id, sort_order }, ...] */
   catalogCategoriesReorder: (items: Array<{ id: number; sort_order: number }>) =>
     patch<{ message?: string }>('/admin/catalog/categories/reorder', items),
+  catalogCategoryPatch: (id: number, body: { name?: string; is_active?: boolean }) =>
+    patch<CatalogCategoryItem>(`/admin/catalog/categories/${id}`, body),
   createMapping: (body: { donor_category_id: number; catalog_category_id: number; confidence?: number; is_manual?: boolean }) =>
     post<CategoryMappingItem>('/admin/catalog/category-mapping', body),
 };
