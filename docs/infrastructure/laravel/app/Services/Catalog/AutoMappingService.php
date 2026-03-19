@@ -6,14 +6,31 @@ use App\Enums\AutoMappingDecision;
 use App\Models\AutoMappingLog;
 use App\Models\CategoryMapping;
 use App\Models\DonorCategory;
+use App\Support\AutoMappingCommandContext;
 use Illuminate\Support\Facades\DB;
 
 class AutoMappingService
 {
+    public const ALGORITHM_VERSION = 'v1';
+
     public function __construct(
         private MappingSuggestionService $suggestionService,
         private CategoryMappingService $mappingService,
     ) {}
+
+    /**
+     * Log when a user saves a manual mapping (CRM POST category-mapping with manual / remap).
+     */
+    public function logManualOverride(int $donorCategoryId, int $catalogCategoryId, int $confidence): void
+    {
+        $this->writeLog(
+            $donorCategoryId,
+            $catalogCategoryId,
+            $confidence,
+            AutoMappingDecision::ManualOverride,
+            'user_changed_mapping'
+        );
+    }
 
     public function process(int $donorCategoryId): void
     {
@@ -99,13 +116,53 @@ class AutoMappingService
         AutoMappingDecision $decision,
         ?string $reason,
     ): void {
+        if ($this->isDuplicateOfLastLog($donorCategoryId, $suggestedCatalogId, $confidence, $decision)) {
+            if (app()->bound(AutoMappingCommandContext::class)) {
+                app(AutoMappingCommandContext::class)->skippedDuplicateLogs++;
+            }
+
+            return;
+        }
+
         AutoMappingLog::query()->create([
             'donor_category_id' => $donorCategoryId,
             'suggested_catalog_category_id' => $suggestedCatalogId,
             'confidence' => $confidence,
             'decision' => $decision,
             'reason' => $reason,
+            'algorithm_version' => self::ALGORITHM_VERSION,
             'created_at' => now(),
         ]);
+    }
+
+    private function isDuplicateOfLastLog(
+        int $donorCategoryId,
+        ?int $suggestedCatalogId,
+        int $confidence,
+        AutoMappingDecision $decision,
+    ): bool {
+        $last = AutoMappingLog::query()
+            ->where('donor_category_id', $donorCategoryId)
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $last) {
+            return false;
+        }
+
+        $lastCatalog = $last->suggested_catalog_category_id !== null
+            ? (int) $last->suggested_catalog_category_id
+            : null;
+        $newCatalog = $suggestedCatalogId !== null ? (int) $suggestedCatalogId : null;
+
+        if ($lastCatalog !== $newCatalog) {
+            return false;
+        }
+
+        if ($last->decision !== $decision) {
+            return false;
+        }
+
+        return (int) $last->confidence === $confidence;
     }
 }

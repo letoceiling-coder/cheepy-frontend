@@ -18,6 +18,7 @@ class AutoMappingLog extends Model
         'confidence',
         'decision',
         'reason',
+        'algorithm_version',
         'created_at',
     ];
 
