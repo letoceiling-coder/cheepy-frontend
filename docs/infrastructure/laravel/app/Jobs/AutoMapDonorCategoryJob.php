@@ -27,17 +27,19 @@ class AutoMapDonorCategoryJob implements ShouldQueue
 
     public function __construct(
         public int $donorCategoryId,
+        public bool $force = false,
     ) {}
 
     public function handle(AutoMappingService $autoMappingService): void
     {
-        $autoMappingService->process($this->donorCategoryId);
+        $autoMappingService->process($this->donorCategoryId, $this->force);
     }
 
     public function failed(Throwable $e): void
     {
         Log::error('AutoMapDonorCategoryJob failed', [
             'donor_category_id' => $this->donorCategoryId,
+            'force' => $this->force,
             'message' => $e->getMessage(),
             'exception' => $e::class,
         ]);

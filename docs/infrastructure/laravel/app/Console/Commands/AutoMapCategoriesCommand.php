@@ -6,44 +6,73 @@ use App\Jobs\AutoMapDonorCategoryJob;
 use App\Models\DonorCategory;
 use App\Support\AutoMappingCommandContext;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class AutoMapCategoriesCommand extends Command
 {
     protected $signature = 'catalog:auto-map-categories
                             {--sync : Run inline instead of queue}
-                            {--chunk=100 : Donor categories per chunk}';
+                            {--chunk=100 : Donor categories per chunk}
+                            {--force : Ignore idempotency; always write logs when process reaches writeLog}
+                            {--only-unmapped : Only donor categories without category_mapping}
+                            {--only-low-confidence : Only donors with mapping and confidence < 90}';
 
-    protected $description = 'Dispatch auto-mapping job for each donor category (Phase 1 safe mode)';
+    protected $description = 'Dispatch auto-mapping job for donor categories (evolvable engine)';
 
     public function handle(): int
     {
         $sync = (bool) $this->option('sync');
         $chunk = max(1, (int) $this->option('chunk'));
+        $force = (bool) $this->option('force');
+        $onlyUnmapped = (bool) $this->option('only-unmapped');
+        $onlyLowConfidence = (bool) $this->option('only-low-confidence');
+
+        if ($onlyUnmapped && $onlyLowConfidence) {
+            $this->warn('Both --only-unmapped and --only-low-confidence: result is usually empty (AND). Prefer one filter.');
+        }
+
         $count = 0;
         $since = now();
 
         if ($sync) {
-            $this->laravel->instance(AutoMappingCommandContext::class, new AutoMappingCommandContext);
+            $this->laravel->instance(AutoMappingCommandContext::class, new AutoMappingCommandContext($force));
         }
 
-        DonorCategory::query()->orderBy('id')->select('id')->chunkById($chunk, function ($rows) use ($sync, &$count) {
+        $query = DonorCategory::query()->orderBy('id')->select('id');
+        $this->applyFilters($query, $onlyUnmapped, $onlyLowConfidence);
+
+        $query->chunkById($chunk, function ($rows) use ($sync, $force, &$count) {
             foreach ($rows as $row) {
                 if ($sync) {
-                    AutoMapDonorCategoryJob::dispatchSync($row->id);
+                    AutoMapDonorCategoryJob::dispatchSync($row->id, $force);
                 } else {
-                    AutoMapDonorCategoryJob::dispatch($row->id);
+                    AutoMapDonorCategoryJob::dispatch($row->id, $force);
                 }
                 $count++;
             }
         });
 
-        $this->info("Processed (dispatched) {$count} donor categories in chunks of {$chunk}" . ($sync ? ' (sync).' : '.'));
+        $filterNote = '';
+        if ($onlyUnmapped) {
+            $filterNote .= ' [only-unmapped]';
+        }
+        if ($onlyLowConfidence) {
+            $filterNote .= ' [only-low-confidence]';
+        }
+        if ($force) {
+            $filterNote .= ' [force]';
+        }
+
+        $this->info("Processed (dispatched) {$count} donor categories in chunks of {$chunk}{$filterNote}" . ($sync ? ' (sync).' : '.'));
 
         if ($sync) {
             /** @var AutoMappingCommandContext $ctx */
             $ctx = $this->laravel->make(AutoMappingCommandContext::class);
             $this->line('Skipped duplicate logs (idempotent): ' . $ctx->skippedDuplicateLogs);
+            $this->line('Reprocessed (process() calls): ' . $ctx->reprocessedCount);
+            $this->line('Logs written this run: ' . $ctx->logsWrittenCount);
+            $this->line('Forced mode donors processed: ' . ($force ? $count : 0));
 
             $rows = DB::table('auto_mapping_logs')
                 ->where('created_at', '>=', $since)
@@ -71,5 +100,17 @@ class AutoMapCategoriesCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    private function applyFilters(Builder $query, bool $onlyUnmapped, bool $onlyLowConfidence): void
+    {
+        if ($onlyUnmapped) {
+            $query->whereDoesntHave('mapping');
+        }
+        if ($onlyLowConfidence) {
+            $query->whereHas('mapping', function (Builder $q): void {
+                $q->where('confidence', '<', 90);
+            });
+        }
     }
 }

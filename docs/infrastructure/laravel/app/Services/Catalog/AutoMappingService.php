@@ -13,6 +13,9 @@ class AutoMappingService
 {
     public const ALGORITHM_VERSION = 'v1';
 
+    /** Confidence delta at or above this vs last log → not a duplicate. */
+    public const CONFIDENCE_SIGNIFICANT_DELTA = 10;
+
     public function __construct(
         private MappingSuggestionService $suggestionService,
         private CategoryMappingService $mappingService,
@@ -28,12 +31,17 @@ class AutoMappingService
             $catalogCategoryId,
             $confidence,
             AutoMappingDecision::ManualOverride,
-            'user_changed_mapping'
+            'user_changed_mapping',
+            false
         );
     }
 
-    public function process(int $donorCategoryId): void
+    public function process(int $donorCategoryId, bool $ignoreIdempotency = false): void
     {
+        if (app()->bound(AutoMappingCommandContext::class)) {
+            app(AutoMappingCommandContext::class)->reprocessedCount++;
+        }
+
         $donor = DonorCategory::query()->find($donorCategoryId);
         if (! $donor) {
             $this->writeLog(
@@ -41,7 +49,8 @@ class AutoMappingService
                 null,
                 0,
                 AutoMappingDecision::Rejected,
-                'donor_category_not_found'
+                'donor_category_not_found',
+                $ignoreIdempotency
             );
 
             return;
@@ -54,7 +63,8 @@ class AutoMappingService
                 $existing->catalog_category_id,
                 (int) ($existing->confidence ?? 0),
                 AutoMappingDecision::Rejected,
-                'manual_mapping_preserved'
+                'manual_mapping_preserved',
+                $ignoreIdempotency
             );
 
             return;
@@ -67,7 +77,8 @@ class AutoMappingService
                 null,
                 0,
                 AutoMappingDecision::Rejected,
-                'no_catalog_match'
+                'no_catalog_match',
+                $ignoreIdempotency
             );
 
             return;
@@ -83,7 +94,7 @@ class AutoMappingService
             DB::transaction(function () use ($donorCategoryId, $catalogId, $confidence, $existing): void {
                 $this->mappingService->applyAutomaticMapping($donorCategoryId, $catalogId, $confidence, $existing);
             });
-            $this->writeLog($donorCategoryId, $catalogId, $confidence, AutoMappingDecision::AutoApplied, null);
+            $this->writeLog($donorCategoryId, $catalogId, $confidence, AutoMappingDecision::AutoApplied, null, $ignoreIdempotency);
 
             return;
         }
@@ -94,7 +105,7 @@ class AutoMappingService
             $reason = 'confidence_below_minimum';
         }
 
-        $this->writeLog($donorCategoryId, $catalogId, $confidence, $decision, $reason);
+        $this->writeLog($donorCategoryId, $catalogId, $confidence, $decision, $reason, $ignoreIdempotency);
     }
 
     private function decide(int $confidence): AutoMappingDecision
@@ -115,8 +126,9 @@ class AutoMappingService
         int $confidence,
         AutoMappingDecision $decision,
         ?string $reason,
+        bool $ignoreIdempotency,
     ): void {
-        if ($this->isDuplicateOfLastLog($donorCategoryId, $suggestedCatalogId, $confidence, $decision)) {
+        if (! $ignoreIdempotency && $this->isDuplicateOfLastLog($donorCategoryId, $suggestedCatalogId, $confidence, $decision)) {
             if (app()->bound(AutoMappingCommandContext::class)) {
                 app(AutoMappingCommandContext::class)->skippedDuplicateLogs++;
             }
@@ -133,6 +145,10 @@ class AutoMappingService
             'algorithm_version' => self::ALGORITHM_VERSION,
             'created_at' => now(),
         ]);
+
+        if (app()->bound(AutoMappingCommandContext::class)) {
+            app(AutoMappingCommandContext::class)->logsWrittenCount++;
+        }
     }
 
     private function isDuplicateOfLastLog(
@@ -150,6 +166,11 @@ class AutoMappingService
             return false;
         }
 
+        $lastAlgo = (string) ($last->algorithm_version ?? 'v1');
+        if ($lastAlgo !== self::ALGORITHM_VERSION) {
+            return false;
+        }
+
         $lastCatalog = $last->suggested_catalog_category_id !== null
             ? (int) $last->suggested_catalog_category_id
             : null;
@@ -163,6 +184,10 @@ class AutoMappingService
             return false;
         }
 
-        return (int) $last->confidence === $confidence;
+        if (abs((int) $last->confidence - $confidence) >= self::CONFIDENCE_SIGNIFICANT_DELTA) {
+            return false;
+        }
+
+        return true;
     }
 }
