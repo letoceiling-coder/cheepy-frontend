@@ -1,0 +1,51 @@
+<?php
+
+namespace App\Providers;
+
+use App\Events\CatalogCategoryCreated;
+use App\Events\CatalogCategoryDeleted;
+use App\Events\CatalogCategoryUpdated;
+use App\Events\CatalogMappingCreated;
+use App\Events\ParserFinished;
+use App\Listeners\LogCatalogCategoryCreated;
+use App\Listeners\LogCatalogCategoryDeleted;
+use App\Listeners\LogCatalogCategoryUpdated;
+use App\Listeners\LogCatalogMappingCreated;
+use App\Listeners\ReleaseParserLockOnFinished;
+use App\Listeners\ScheduleNextParserDaemon;
+use App\Models\DonorCategory;
+use App\Observers\DonorCategoryObserver;
+use App\Services\SadovodParser\HttpClient;
+use App\Services\SadovodParser\Parsers\MenuParser;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\ServiceProvider;
+
+/**
+ * Production merge: keep existing listeners + DonorCategory::observe for auto-mapping jobs.
+ */
+class AppServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        $this->app->singleton(HttpClient::class, fn () => new HttpClient(config('sadovod', [])));
+        $this->app->singleton(MenuParser::class, function ($app) {
+            return new MenuParser(
+                $app->make(HttpClient::class),
+                config('sadovod', [])
+            );
+        });
+    }
+
+    public function boot(): void
+    {
+        Event::listen(ParserFinished::class, ReleaseParserLockOnFinished::class);
+        Event::listen(ParserFinished::class, ScheduleNextParserDaemon::class);
+
+        Event::listen(CatalogCategoryCreated::class, LogCatalogCategoryCreated::class);
+        Event::listen(CatalogCategoryUpdated::class, LogCatalogCategoryUpdated::class);
+        Event::listen(CatalogCategoryDeleted::class, LogCatalogCategoryDeleted::class);
+        Event::listen(CatalogMappingCreated::class, LogCatalogMappingCreated::class);
+
+        DonorCategory::observe(DonorCategoryObserver::class);
+    }
+}
