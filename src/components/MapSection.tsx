@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-const YANDEX_API_KEY = "a79c56f4-efea-471e-bee5-fe9226cd53fd";
+const YANDEX_API_KEY = import.meta.env.VITE_YANDEX_API_KEY as string | undefined;
 const MOSCOW_CENTER: [number, number] = [55.7558, 37.6173];
 const IFRAME_FALLBACK = "https://yandex.ru/maps/embed?pt=37.6173,55.7558&z=13&l=map";
 
@@ -35,6 +35,10 @@ const MapSection = () => {
 
   useEffect(() => {
     if (!isVisible || useFallback) return;
+    if (!YANDEX_API_KEY) {
+      setUseFallback(true);
+      return;
+    }
 
     const scriptId = "yandex-maps-api";
     if (document.getElementById(scriptId)) {

@@ -45,8 +45,6 @@ if (import.meta.env.DEV) {
   console.log('[API] BASE_URL:', BASE_URL);
 }
 
-export { BASE_URL as getApiBaseUrl };
-
 // Callback for 401 — logout and redirect (set by AdminAuthProvider)
 let onUnauthorized: (() => void) | null = null;
 export function setOnUnauthorized(cb: () => void) {
