@@ -660,6 +660,7 @@ export interface CatalogCategoryItem {
   parent_id?: number | null;
   sort_order?: number;
   is_active?: boolean;
+  products_count?: number;
 }
 
 export interface CategoryMappingItem {
@@ -706,6 +707,8 @@ export const adminCatalogApi = {
     sort_order?: number;
     is_active?: boolean;
   }) => post<CatalogCategoryItem>('/admin/catalog/categories', data),
+  catalogCategoryDelete: (id: number) =>
+    del<{ message?: string }>(`/admin/catalog/categories/${id}`),
   createMapping: (body: { donor_category_id: number; catalog_category_id: number; confidence?: number; is_manual?: boolean }) =>
     post<{ data: CategoryMappingItem }>('/admin/catalog/category-mapping', body).then((r) => r.data),
 };

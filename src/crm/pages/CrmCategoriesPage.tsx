@@ -19,12 +19,42 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { adminCatalogApi, type CatalogCategoryItem } from "@/lib/api";
-import { Plus, ChevronRight, GripVertical, FolderTree, Loader2, Pencil } from "lucide-react";
+import { adminCatalogApi, type CatalogCategoryItem, type CategoryMappingItem } from "@/lib/api";
+import { Plus, ChevronRight, GripVertical, FolderTree, Loader2, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const QK = ["admin-catalog-categories-crm"];
+const MAPPING_QK = ["admin-catalog-category-mapping"];
+
+async function fetchAllMappings(): Promise<CategoryMappingItem[]> {
+  const first = await adminCatalogApi.categoryMappingList({ per_page: 100, page: 1 });
+  const total = first.meta?.total ?? first.data.length;
+  const perPage = first.meta?.per_page ?? 100;
+  if (total <= perPage) return first.data;
+  const pages = Math.ceil(total / perPage);
+  const rest = await Promise.all(
+    Array.from({ length: pages - 1 }, (_, i) =>
+      adminCatalogApi.categoryMappingList({ per_page: perPage, page: i + 2 })
+    )
+  );
+  return [...first.data, ...rest.flatMap((r) => r.data)];
+}
 
 /** Generate URL-safe slug from name (Cyrillic → Latin transliteration). */
 function slugify(name: string): string {
@@ -116,6 +146,8 @@ export default function CrmCategoriesPage() {
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [patchingIds, setPatchingIds] = useState<Set<number>>(() => new Set());
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(() => new Set());
+  const [deleteTarget, setDeleteTarget] = useState<TreeNode | null>(null);
   const [editTarget, setEditTarget] = useState<CatalogCategoryItem | null>(null);
   const [editName, setEditName] = useState("");
   const [editParentId, setEditParentId] = useState<string>("");
@@ -128,6 +160,26 @@ export default function CrmCategoriesPage() {
     queryKey: QK,
     queryFn: fetchAllCatalogCategories,
   });
+
+  const { data: mappings = [] } = useQuery({
+    queryKey: MAPPING_QK,
+    queryFn: fetchAllMappings,
+    enabled: !isLoading && !isError,
+  });
+
+  const catalogIdToDonors = useMemo(() => {
+    const map = new Map<number, { name: string }[]>();
+    for (const m of mappings) {
+      if (m.donor_category?.name && m.catalog_category_id != null) {
+        const list = map.get(m.catalog_category_id) ?? [];
+        if (!list.some((d) => d.name === m.donor_category!.name)) {
+          list.push({ name: m.donor_category.name });
+          map.set(m.catalog_category_id, list);
+        }
+      }
+    }
+    return map;
+  }, [mappings]);
 
   const tree = useMemo(() => buildTree(flat), [flat]);
   const totalCount = useMemo(() => countTree(tree), [tree]);
@@ -190,6 +242,29 @@ export default function CrmCategoriesPage() {
     },
     onError: (err: Error & { message?: string }) => {
       toast.error(err.message || "Ошибка создания");
+    },
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (id: number) => adminCatalogApi.catalogCategoryDelete(id),
+    onMutate: (id: number) => {
+      setDeletingIds((s) => new Set(s).add(id));
+    },
+    onSettled: (_d, _e, id: number) => {
+      setDeletingIds((s) => {
+        const next = new Set(s);
+        next.delete(id);
+        return next;
+      });
+      setDeleteTarget(null);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK });
+      queryClient.invalidateQueries({ queryKey: MAPPING_QK });
+      toast.success("Категория удалена");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Ошибка удаления");
     },
   });
 
@@ -378,11 +453,72 @@ export default function CrmCategoriesPage() {
             <span className="w-28 shrink-0 hidden lg:block text-xs text-muted-foreground truncate">
               {node.parent_id != null ? idToCategory.get(node.parent_id)?.name ?? "—" : "Корневая"}
             </span>
+            <span className="w-40 shrink-0 hidden xl:block text-xs min-w-0">
+              {(() => {
+                const donors = catalogIdToDonors.get(node.id);
+                if (!donors?.length) {
+                  return <span className="text-muted-foreground">Нет привязки</span>;
+                }
+                const names = donors.map((d) => d.name);
+                const short = names.join(", ");
+                const truncated = short.length > 28 ? short.slice(0, 25) + "…" : short;
+                return (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-help truncate block text-muted-foreground" title={short}>
+                        <span className="text-muted-foreground/80">Доноры: </span>
+                        {truncated}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="max-w-xs">
+                      <p className="font-medium mb-1">Доноры:</p>
+                      <ul className="list-disc list-inside text-xs space-y-0.5">
+                        {donors.map((d) => (
+                          <li key={d.name}>{d.name}</li>
+                        ))}
+                      </ul>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })()}
+            </span>
+            <span className="w-24 shrink-0 hidden lg:block text-xs text-right">
+              {(() => {
+                const cnt = node.products_count;
+                const n = typeof cnt === "number" ? cnt : -1;
+                const label =
+                  n < 0 ? "—" : n === 0 ? "Нет товаров" : n === 1 ? "1 товар" : n >= 2 && n <= 4 ? `${n} товара` : `${n} товаров`;
+                const colorClass =
+                  n < 0
+                    ? "text-muted-foreground"
+                    : n === 0
+                      ? "text-muted-foreground"
+                      : n > 50
+                        ? "text-primary font-semibold"
+                        : "text-green-600 dark:text-green-500";
+                const tooltipText = n >= 0 ? `В этой категории находится ${n} ${n === 1 ? "товар" : n >= 2 && n <= 4 ? "товара" : "товаров"}` : null;
+                const inner = n >= 10 ? <Badge variant="secondary" className="text-[10px] font-medium">{label}</Badge> : label;
+                const content = (
+                  <span className={cn("tabular-nums", colorClass)}>{inner}</span>
+                );
+                if (tooltipText) {
+                  return (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help block">{content}</span>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">{tooltipText}</TooltipContent>
+                    </Tooltip>
+                  );
+                }
+                return content;
+              })()}
+            </span>
             <span className="text-xs text-muted-foreground tabular-nums w-10 text-right shrink-0">
               #{node.sort_order ?? 0}
             </span>
             <div
-              className="shrink-0 flex items-center justify-center w-9"
+              className="shrink-0 flex items-center justify-center gap-0.5 w-[72px]"
               onPointerDown={(e) => e.stopPropagation()}
               onDragStart={(e) => e.preventDefault()}
             >
@@ -396,6 +532,21 @@ export default function CrmCategoriesPage() {
                 aria-label="Редактировать название"
               >
                 <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                disabled={rowPatching || hasChildren || deletingIds.has(node.id)}
+                onClick={() => setDeleteTarget(node)}
+                aria-label="Удалить категорию"
+              >
+                {deletingIds.has(node.id) ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
               </Button>
             </div>
             <div
@@ -463,8 +614,10 @@ export default function CrmCategoriesPage() {
           <span className="w-10 shrink-0">Ур.</span>
           <span className="flex-1 pl-2 min-w-0">Название / Путь</span>
           <span className="w-28 shrink-0 hidden lg:block">Родитель</span>
+          <span className="w-40 shrink-0 hidden xl:block">Доноры</span>
+          <span className="w-24 shrink-0 hidden lg:block text-right">Товары</span>
           <span className="w-10 text-right shrink-0">Пор.</span>
-          <span className="w-9 text-center shrink-0" />
+          <span className="w-[72px] text-center shrink-0" />
           <span className="w-[52px] text-right shrink-0">Активн.</span>
         </div>
         {isLoading ? (
@@ -566,6 +719,63 @@ export default function CrmCategoriesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open && !deleteCategoryMutation.isPending) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить категорию?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                {deleteTarget && (
+                  <>
+                    <p>
+                      Категория <strong>{deleteTarget.name}</strong> будет удалена.
+                    </p>
+                    {deleteTarget.children.length > 0 && (
+                      <p className="text-destructive font-medium">
+                        Невозможно удалить: у категории есть дочерние элементы ({deleteTarget.children.length}). Сначала удалите или переместите их.
+                      </p>
+                    )}
+                    {catalogIdToDonors.get(deleteTarget.id)?.length ? (
+                      <p className="text-amber-600 dark:text-amber-500">
+                        Привязки к донорам будут потеряны:{" "}
+                        {catalogIdToDonors.get(deleteTarget.id)!.map((d) => d.name).join(", ")}
+                      </p>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteCategoryMutation.isPending}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteTarget && deleteTarget.children.length === 0) {
+                  deleteCategoryMutation.mutate(deleteTarget.id);
+                }
+              }}
+              disabled={!deleteTarget || deleteTarget.children.length > 0 || deleteCategoryMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteCategoryMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Удаление…
+                </>
+              ) : (
+                "Удалить"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog
         open={createOpen}
