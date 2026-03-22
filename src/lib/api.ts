@@ -697,8 +697,15 @@ export const adminCatalogApi = {
   /** Same-level order; body is JSON array [{ id, sort_order }, ...] */
   catalogCategoriesReorder: (items: Array<{ id: number; sort_order: number }>) =>
     patch<{ message?: string }>('/admin/catalog/categories/reorder', items),
-  catalogCategoryPatch: (id: number, body: { name?: string; is_active?: boolean }) =>
+  catalogCategoryPatch: (id: number, body: { name?: string; is_active?: boolean; parent_id?: number | null }) =>
     patch<CatalogCategoryItem>(`/admin/catalog/categories/${id}`, body),
+  catalogCategoryStore: (data: {
+    name: string;
+    slug: string;
+    parent_id?: number | null;
+    sort_order?: number;
+    is_active?: boolean;
+  }) => post<CatalogCategoryItem>('/admin/catalog/categories', data),
   createMapping: (body: { donor_category_id: number; catalog_category_id: number; confidence?: number; is_manual?: boolean }) =>
     post<{ data: CategoryMappingItem }>('/admin/catalog/category-mapping', body).then((r) => r.data),
 };
@@ -1084,7 +1091,8 @@ export interface PaymentProviderDetail extends PaymentProviderItem {
 
 export interface WebhookLogItem {
   id: number;
-  event_id: string | null;
+  event_id?: string | null;
+  provider?: string;
   status: string;
   error: string | null;
   created_at: string;
@@ -1096,8 +1104,37 @@ export const crmPaymentProvidersApi = {
   update: (name: string, data: Record<string, string | number | boolean | null>) =>
     patch<PaymentProviderItem>(`/crm/payment-providers/${name}`, data),
   test: (name: string) => post<{ success: boolean; message: string }>(`/crm/payment-providers/${name}/test`, {}),
+  createTestPayment: (name: string, apiKeyId?: number) =>
+    post<{ message: string; payment_id: number; amount: number; api_key_id: number; new_balance: number }>(
+      `/crm/payment-providers/${name}/test-payment`,
+      apiKeyId ? { api_key_id: apiKeyId } : {}
+    ),
   logs: (name: string, limit = 20) =>
     get<{ data: WebhookLogItem[] }>(`/crm/payment-providers/${name}/logs?limit=${limit}`),
+  allLogs: (limit = 50) =>
+    get<{ data: WebhookLogItem[] }>(`/crm/webhook-logs?limit=${limit}`),
+  paymentAlerts: () =>
+    get<{
+      has_alerts: boolean;
+      webhook_failures_24h: number;
+      atol_failures_24h: number;
+      recent: Array<{ id: number; provider: string; error: string | null; created_at: string }>;
+    }>('/crm/payment-alerts'),
+};
+
+// Payment status — public, for return pages
+export interface PaymentStatus {
+  id: number;
+  status: string;
+  amount: number;
+  provider: string;
+}
+
+export const paymentStatusApi = {
+  get: (id: number, returnToken?: string) => {
+    const path = returnToken ? `/payments/${id}?return_token=${encodeURIComponent(returnToken)}` : `/payments/${id}`;
+    return get<PaymentStatus>(path, true);
+  },
 };
 
 // Health check — /up is at Laravel root, not under /api/v1
