@@ -27,9 +27,17 @@ ssh root@85.117.235.93 "bash /var/www/deploy-cheepy.sh"
 
 ### DEPLOY SCRIPT — READ-ONLY (ABSOLUTE RULE)
 
-- ❌ NEVER MODIFY `deploy/deploy-cheepy.sh`
+- ❌ NEVER MODIFY `deploy/deploy-cheepy.sh` (except git status check)
 - ❌ NEVER ADD LOGIC TO DEPLOY (no extra git pull, patch, custom scripts)
 - ✔ ONLY RUN deploy
+
+### SERVER CONSISTENCY LOCK (NO UNTRACKED FILES EVER)
+
+- Server must ALWAYS match Git
+- ❌ NO untracked files on server
+- ❌ NO manual files, NO server-only code
+- ✔ `git status` on server → clean (nothing to commit, working tree clean)
+- If server not clean: `git fetch origin && git reset --hard origin/main && git clean -fd`
 
 Or on server directly: `bash /var/www/deploy-cheepy.sh`
 

@@ -13,6 +13,11 @@ echo "===== CHEEPY DEPLOY START ====="
 BACKEND_PATH="/var/www/online-parser.siteaacess.store"
 FRONTEND_PATH="/var/www/siteaacess.store"
 
+# ---------------- GIT STATE CHECK ----------------
+echo "Checking git state (server must match Git)..."
+cd $BACKEND_PATH && git status
+cd $FRONTEND_PATH && git status
+
 # ---------------- BACKEND ----------------
 echo "----- BACKEND -----"
 cd $BACKEND_PATH
