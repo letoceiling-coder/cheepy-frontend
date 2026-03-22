@@ -25,6 +25,12 @@
 ssh root@85.117.235.93 "bash /var/www/deploy-cheepy.sh"
 ```
 
+### DEPLOY SCRIPT — READ-ONLY (ABSOLUTE RULE)
+
+- ❌ NEVER MODIFY `deploy/deploy-cheepy.sh`
+- ❌ NEVER ADD LOGIC TO DEPLOY (no extra git pull, patch, custom scripts)
+- ✔ ONLY RUN deploy
+
 Or on server directly: `bash /var/www/deploy-cheepy.sh`
 
 Nginx root: `/var/www/siteaacess.store/dist`.

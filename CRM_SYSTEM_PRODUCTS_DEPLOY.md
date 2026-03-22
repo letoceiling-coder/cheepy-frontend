@@ -48,42 +48,41 @@ If table is empty, API will return `{ "data": [], "meta": {...} }` — no error.
 ## Step 3 — Deploy
 
 ```bash
-# Push (if not done)
+git add .
+git commit -m "feat: system products real integration"
 git push
 
-# Deploy (run from repo to get latest script + patch)
-ssh root@85.117.235.93 "cd /var/www/siteaacess.store && git pull && bash deploy/deploy-cheepy.sh"
-```
-
-Or if using copied script:
-```bash
-cp /var/www/siteaacess.store/deploy/deploy-cheepy.sh /var/www/deploy-cheepy.sh
 ssh root@85.117.235.93 "bash /var/www/deploy-cheepy.sh"
 ```
 
-**Важно:** Перед деплоем добавьте в Laravel `routes/api.php`:
+**Важно:** Перед деплоем добавьте в Laravel `routes/api.php` (один раз, вручную на сервере):
 ```php
 require base_path('routes/admin_system_products.php');
 ```
 (внутри группы с prefix api/v1 и auth middleware)
 
-## Step 4 — Verification
+## Step 4 — Verification (STRICT, SERVER ONLY)
 
-1. **Get JWT** (login at https://siteaacess.store/admin/login or CRM)
+### 1. LOGIN → JWT
+```bash
+curl -s -X POST "https://online-parser.siteaacess.store/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"ADMIN_EMAIL","password":"ADMIN_PASSWORD"}' | jq -r '.token'
+```
 
-2. **curl GET system-products:**
+### 2. API CHECK
 ```bash
 TOKEN="YOUR_JWT"
-curl -s "https://online-parser.siteaacess.store/api/v1/admin/system-products" \
-  -H "Authorization: Bearer $TOKEN" | jq
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "https://online-parser.siteaacess.store/api/v1/admin/system-products?per_page=2" | jq
 ```
+**Expected:** JSON with `data` array, each item: id, name, category, status, created_at.
 
-3. **curl GET pending:**
+### 3. DB CHECK
 ```bash
-curl -s "https://online-parser.siteaacess.store/api/v1/admin/system-products?status=pending" \
-  -H "Authorization: Bearer $TOKEN" | jq
+ssh root@85.117.235.93 "mysql sadavod_parser -e 'SELECT COUNT(*) FROM system_products;'"
 ```
 
-4. **Screenshots:** /crm/moderation and /crm/products with real data
-
-5. **DB proof:** `SELECT count(*) FROM system_products;` on server
+### 4. UI PROOF
+- https://siteaacess.store/crm/moderation — REAL data (no mock)
+- https://siteaacess.store/crm/products — REAL data (no mock)
