@@ -12,22 +12,16 @@ bash /var/www/deploy-cheepy.sh
 
 ---
 
-## Установка (один раз)
+## Установка на сервере (один раз)
+
+**Один источник — симлинк** (скрипт всегда в репо, без копирования):
 
 ```bash
-cp deploy/deploy-cheepy.sh /var/www/deploy-cheepy.sh
+ln -sf /var/www/siteaacess.store/deploy/deploy-cheepy.sh /var/www/deploy-cheepy.sh
 chmod +x /var/www/deploy-cheepy.sh
 ```
 
----
-
-## Обновление скрипта
-
-После `git pull` во frontend-репо:
-
-```bash
-cp /var/www/siteaacess.store/deploy/deploy-cheepy.sh /var/www/deploy-cheepy.sh
-```
+После `git pull` во frontend-репо скрипт уже актуален — симлинк указывает на файл в репо.
 
 ---
 

@@ -17,32 +17,17 @@
 2. `git commit -m "..."`  
 3. `git push origin main`
 
-### FRONTEND DEPLOY (mandatory after frontend changes)
+### DEPLOY (mandatory after ANY changes)
 
-SSH `root@85.117.235.93`, then:
+**Single command only** (backend + frontend):
 
 ```bash
-cd /var/www/siteaacess.store
-git fetch origin main && git reset --hard origin/main   # if local drift
-rm -rf dist
-npm install
-npm run build
-systemctl reload nginx
+ssh root@85.117.235.93 "bash /var/www/deploy-cheepy.sh"
 ```
+
+Or on server directly: `bash /var/www/deploy-cheepy.sh`
 
 Nginx root: `/var/www/siteaacess.store/dist`.
-
-### BACKEND DEPLOY (mandatory after Laravel changes)
-
-```bash
-cd /var/www/online-parser.siteaacess.store   # or /var/www/online-parser per server layout
-git pull origin main
-php artisan migrate --force
-php artisan route:clear
-php artisan config:clear
-php artisan cache:clear
-php artisan optimize:clear
-```
 
 Apply Laravel patches from `docs/infrastructure/laravel/` to the live app when API fixes are doc-only in this repo.
 

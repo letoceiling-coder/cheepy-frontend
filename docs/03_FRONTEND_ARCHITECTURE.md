@@ -79,11 +79,9 @@ Server-side deployed frontend env (`/var/www/siteaacess.store/.env.production`):
 
 - `npm run dev` - local dev server
 - `npm run build` - production build
-- **`npm run deploy:frontend`** - upload local `dist/` to server `/var/www/siteaacess.store/dist` (run after `npm run build`; recommended for frontend deploy)
-- `npm run deploy` - full remote deploy (copies deploy.sh, runs it on server: git pull + build there)
-- `npm run deploy:scp` - legacy SCP deployment path
+- **Deploy:** `bash /var/www/deploy-cheepy.sh` (run on server; or `ssh root@85.117.235.93 "bash /var/www/deploy-cheepy.sh"`)
 
 ## Production Notes
 
-- The frontend repository on server contains `dist` and backup directories (`dist.backup.*`) used by deploy/rollback scripts.
+- The frontend repository on server contains `dist` (build output).
 - The production repo currently has untracked artifacts (`assets/`, `_redirects`, backups) that do not block runtime, but should be controlled for operational cleanliness.

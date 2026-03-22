@@ -48,19 +48,11 @@ fi
 
 # STEP 2 — SPA fallback already checked above; repo config has it
 
-# STEP 3 — fix deploy script
+# STEP 3 — deploy script (single source: deploy/deploy-cheepy.sh)
 echo "--- STEP 3: Deploy script ---"
-DEPLOY_SH="/var/www/deploy.sh"
-if [ -f "$DEPLOY_SH" ]; then
-  if ! grep -Fq 'PART="${1:-all}"' "$DEPLOY_SH"; then
-    sed -i.bak '/^set -e$/a PART="${1:-all}"' "$DEPLOY_SH"
-    echo "Added PART=\${1:-all} to deploy.sh"
-  else
-    echo "PART already set in deploy.sh"
-  fi
-else
-  echo "WARN: $DEPLOY_SH not found; copy from repo scripts/deploy.sh"
-fi
+ln -sf "$FRONTEND/deploy/deploy-cheepy.sh" /var/www/deploy-cheepy.sh
+chmod +x /var/www/deploy-cheepy.sh
+echo "Symlink: /var/www/deploy-cheepy.sh -> $FRONTEND/deploy/deploy-cheepy.sh"
 
 # STEP 4 — sync repositories
 echo "--- STEP 4: Git sync ---"

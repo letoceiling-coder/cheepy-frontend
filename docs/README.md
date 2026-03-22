@@ -28,14 +28,19 @@ npm run build
 
 ### Деплой
 
-После изменений всегда выполнять деплой. Рекомендуемый способ для фронта:
+Единственная разрешённая команда (на сервере):
 
 ```bash
-npm run build
-npm run deploy:frontend
+bash /var/www/deploy-cheepy.sh
 ```
 
-Полный деплой (фронт + бекенд на сервере): `npm run deploy`. Подробнее: [DEPLOYMENT.md](./DEPLOYMENT.md).
+С локальной машины:
+
+```bash
+ssh root@85.117.235.93 "bash /var/www/deploy-cheepy.sh"
+```
+
+Подробнее: [deploy/README.md](../deploy/README.md).
 
 ## 🛠 Технологический стек
 
