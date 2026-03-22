@@ -13,15 +13,6 @@ echo "===== CHEEPY DEPLOY START ====="
 BACKEND_PATH="/var/www/online-parser.siteaacess.store"
 FRONTEND_PATH="/var/www/siteaacess.store"
 
-# ---------------- FRONTEND PULL (for patch sources) ----------------
-echo "----- FRONTEND GIT PULL -----"
-cd $FRONTEND_PATH
-git pull origin main
-
-# ---------------- PATCH SYSTEM-PRODUCTS TO BACKEND ----------------
-echo "----- PATCH SYSTEM-PRODUCTS -----"
-BACKEND_PATH=$BACKEND_PATH bash $FRONTEND_PATH/scripts/patch-system-products-backend.sh || true
-
 # ---------------- BACKEND ----------------
 echo "----- BACKEND -----"
 cd $BACKEND_PATH

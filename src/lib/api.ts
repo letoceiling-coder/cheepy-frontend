@@ -863,6 +863,10 @@ export interface SystemProductItem {
   created_at?: string;
   updated_at?: string;
   category?: { id: number; name: string; slug: string } | null;
+  donor_sources?: Array<{
+    donor_product_id: number;
+    donor?: { id: number; external_id?: string; title?: string; source_url?: string } | null;
+  }>;
   product_sources?: Array<{
     id: number;
     product_id: number;

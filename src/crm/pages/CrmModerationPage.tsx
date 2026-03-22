@@ -13,6 +13,13 @@ import { toast } from "sonner";
 const QK = ["admin-system-products-moderation"];
 
 function donorSourceLabel(item: SystemProductItem): string {
+  const donorSrcs = item.donor_sources ?? [];
+  if (donorSrcs.length > 0) {
+    const d = donorSrcs[0]?.donor;
+    if (d?.title) return d.title.slice(0, 50) + (d.title.length > 50 ? "…" : "");
+    if (d?.external_id) return d.external_id;
+    return `#${donorSrcs[0]?.donor_product_id ?? "?"}`;
+  }
   const srcs = item.product_sources ?? item.productSources ?? [];
   if (srcs.length === 0) return "—";
   const first = srcs[0];
