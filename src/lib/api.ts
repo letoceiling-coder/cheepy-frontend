@@ -1028,6 +1028,35 @@ export const attributeRulesApi = {
 };
 
 // ──────────────────────────────────────────────
+// CRM API (API Keys, etc.)
+// ──────────────────────────────────────────────
+
+export interface CrmApiKeyItem {
+  id: number;
+  name: string;
+  api_key?: string;
+  balance: number;
+  usage_today?: number;
+  requests_per_minute?: number;
+  is_active: boolean;
+}
+
+export type CrmApiKeyDetail = CrmApiKeyItem;
+
+export const crmApi = {
+  apiKeys: {
+    list: (params?: { page?: number; per_page?: number }) => {
+      const q = new URLSearchParams();
+      if (params?.page) q.set('page', String(params.page));
+      if (params?.per_page) q.set('per_page', String(params.per_page));
+      return get<PaginatedResponse<CrmApiKeyItem>>(`/crm/api-keys${q.toString() ? `?${q}` : ''}`);
+    },
+    get: (id: number) => get<CrmApiKeyItem>(`/crm/api-keys/${id}`),
+    update: (id: number, data: Partial<CrmApiKeyItem>) => patch<CrmApiKeyItem>(`/crm/api-keys/${id}`, data),
+  },
+};
+
+// ──────────────────────────────────────────────
 // CRM PAYMENT PROVIDERS
 // ──────────────────────────────────────────────
 
