@@ -45,15 +45,27 @@ SELECT count(*) FROM system_products;
 
 If table is empty, API will return `{ "data": [], "meta": {...} }` — no error.
 
-## Step 3 — Deploy frontend
+## Step 3 — Deploy
 
 ```bash
-git add .
-git commit -m "feat: crm products real API integration"
+# Push (if not done)
 git push
 
+# Deploy (run from repo to get latest script + patch)
+ssh root@85.117.235.93 "cd /var/www/siteaacess.store && git pull && bash deploy/deploy-cheepy.sh"
+```
+
+Or if using copied script:
+```bash
+cp /var/www/siteaacess.store/deploy/deploy-cheepy.sh /var/www/deploy-cheepy.sh
 ssh root@85.117.235.93 "bash /var/www/deploy-cheepy.sh"
 ```
+
+**Важно:** Перед деплоем добавьте в Laravel `routes/api.php`:
+```php
+require base_path('routes/admin_system_products.php');
+```
+(внутри группы с prefix api/v1 и auth middleware)
 
 ## Step 4 — Verification
 
