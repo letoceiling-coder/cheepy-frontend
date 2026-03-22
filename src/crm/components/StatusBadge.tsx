@@ -2,6 +2,9 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const variants: Record<string, string> = {
+  connected: "bg-green-100 text-green-700 border-green-200",
+  disconnected: "bg-muted text-muted-foreground border-border",
+  error: "bg-destructive/10 text-destructive border-destructive/20",
   active: "bg-green-100 text-green-700 border-green-200",
   delivered: "bg-green-100 text-green-700 border-green-200",
   published: "bg-green-100 text-green-700 border-green-200",
@@ -24,6 +27,9 @@ const variants: Record<string, string> = {
 };
 
 const labels: Record<string, string> = {
+  connected: "Подключено",
+  disconnected: "Не подключено",
+  error: "Ошибка",
   active: "Активен",
   delivered: "Доставлен",
   published: "Опубликован",

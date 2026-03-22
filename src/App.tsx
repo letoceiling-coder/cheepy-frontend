@@ -106,6 +106,9 @@ import CrmMarketingPage from "./crm/pages/CrmMarketingPage";
 import CrmTemplatesPage from "./crm/pages/CrmTemplatesPage";
 import CrmNotificationsPage from "./crm/pages/CrmNotificationsPage";
 import CrmIntegrationsPage from "./crm/pages/CrmIntegrationsPage";
+import CrmProviderDetailPage from "./crm/pages/CrmProviderDetailPage";
+import CrmApiKeysPage from "./crm/pages/CrmApiKeysPage";
+import CrmApiKeyDetailPage from "./crm/pages/CrmApiKeyDetailPage";
 import CrmOrderDetailPage from "./crm/pages/CrmOrderDetailPage";
 import CrmProductDetailPage from "./crm/pages/CrmProductDetailPage";
 import CrmModerationDetailPage from "./crm/pages/CrmModerationDetailPage";
@@ -250,6 +253,9 @@ function AnimatedRoutes() {
           <Route path="analytics" element={<CrmAnalyticsPage />} />
           <Route path="tenants" element={<CrmTenantsPage />} />
           <Route path="integrations" element={<CrmIntegrationsPage />} />
+          <Route path="integrations/:provider" element={<CrmProviderDetailPage />} />
+          <Route path="api-keys" element={<CrmApiKeysPage />} />
+          <Route path="api-keys/:id" element={<CrmApiKeyDetailPage />} />
           <Route path="settings" element={<CrmSettingsPage />} />
         </Route>
 

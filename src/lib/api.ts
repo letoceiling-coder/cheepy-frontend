@@ -1027,6 +1027,50 @@ export const attributeRulesApi = {
   rebuildFacets: (categoryId?: number) => post<{ data: AttributeFacet[] }>('/attribute-facets/rebuild', categoryId ? { category_id: categoryId } : {}),
 };
 
+// ──────────────────────────────────────────────
+// CRM PAYMENT PROVIDERS
+// ──────────────────────────────────────────────
+
+export interface PaymentProviderItem {
+  name: string;
+  title: string;
+  is_active: boolean;
+  status: 'connected' | 'disconnected';
+  config: Record<string, unknown>;
+}
+
+export interface ConfigSchemaField {
+  key: string;
+  label: string;
+  type: 'text' | 'password' | 'select';
+  required?: boolean;
+  readonly?: boolean;
+  options?: { value: string; label: string }[];
+}
+
+export interface PaymentProviderDetail extends PaymentProviderItem {
+  notification_url?: string;
+  config_schema: ConfigSchemaField[];
+}
+
+export interface WebhookLogItem {
+  id: number;
+  event_id: string | null;
+  status: string;
+  error: string | null;
+  created_at: string;
+}
+
+export const crmPaymentProvidersApi = {
+  list: () => get<PaymentProviderItem[]>('/crm/payment-providers'),
+  get: (name: string) => get<PaymentProviderDetail>(`/crm/payment-providers/${name}`),
+  update: (name: string, data: Record<string, string | number | boolean | null>) =>
+    patch<PaymentProviderItem>(`/crm/payment-providers/${name}`, data),
+  test: (name: string) => post<{ success: boolean; message: string }>(`/crm/payment-providers/${name}/test`, {}),
+  logs: (name: string, limit = 20) =>
+    get<{ data: WebhookLogItem[] }>(`/crm/payment-providers/${name}/logs?limit=${limit}`),
+};
+
 // Health check — /up is at Laravel root, not under /api/v1
 export const healthApi = {
   check: () => {

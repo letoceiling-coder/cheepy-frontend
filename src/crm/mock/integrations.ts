@@ -11,9 +11,6 @@ export interface Integration {
 }
 
 export const integrations: Integration[] = [
-  { id: 'INT1', name: 'Stripe', category: 'payments', icon: '💳', status: 'connected', apiKey: 'sk_***_4f2a', webhookUrl: 'https://api.cheepy.ru/webhooks/stripe', lastSync: '2025-02-28', description: 'Приём платежей картами по всему миру' },
-  { id: 'INT2', name: 'PayPal', category: 'payments', icon: '🅿️', status: 'disconnected', apiKey: '', webhookUrl: '', lastSync: '-', description: 'Платежи через PayPal' },
-  { id: 'INT3', name: 'LiqPay', category: 'payments', icon: '💚', status: 'disconnected', apiKey: '', webhookUrl: '', lastSync: '-', description: 'Украинская платёжная система' },
   { id: 'INT4', name: 'СДЭК', category: 'delivery', icon: '📦', status: 'connected', apiKey: 'cdek_***_8f3a', webhookUrl: 'https://api.cheepy.ru/webhooks/cdek', lastSync: '2025-02-28', description: 'Доставка по России и СНГ' },
   { id: 'INT5', name: 'Новая Почта', category: 'delivery', icon: '📨', status: 'disconnected', apiKey: '', webhookUrl: '', lastSync: '-', description: 'Украинская служба доставки' },
   { id: 'INT6', name: 'DHL', category: 'delivery', icon: '🚀', status: 'disconnected', apiKey: '', webhookUrl: '', lastSync: '-', description: 'Международная доставка' },

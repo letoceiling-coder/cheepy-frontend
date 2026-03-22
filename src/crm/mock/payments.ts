@@ -3,7 +3,7 @@ import { rnd, pick, date, firstNames, lastNames } from './helpers';
 export interface PaymentMethod {
   id: string;
   name: string;
-  type: 'card' | 'cod' | 'paypal' | 'stripe' | 'liqpay';
+  type: 'card' | 'cod' | 'stripe' | 'tinkoff' | 'sber' | 'atol';
   active: boolean;
   commission: number;
 }
@@ -31,9 +31,9 @@ export interface PaymentStats {
 export const paymentMethods: PaymentMethod[] = [
   { id: 'PM1', name: 'Банковская карта', type: 'card', active: true, commission: 2.5 },
   { id: 'PM2', name: 'Наложенный платеж', type: 'cod', active: true, commission: 0 },
-  { id: 'PM3', name: 'PayPal', type: 'paypal', active: false, commission: 3.5 },
-  { id: 'PM4', name: 'Stripe', type: 'stripe', active: true, commission: 2.9 },
-  { id: 'PM5', name: 'LiqPay', type: 'liqpay', active: false, commission: 2.75 },
+  { id: 'PM3', name: 'Т-Банк', type: 'tinkoff', active: true, commission: 2.9 },
+  { id: 'PM4', name: 'Сбер', type: 'sber', active: true, commission: 2.75 },
+  { id: 'PM5', name: 'АТОЛ (чеки)', type: 'card', active: true, commission: 0 },
 ];
 
 const txStatuses: Transaction['status'][] = ['success','success','success','success','failed','refunded','pending'];
