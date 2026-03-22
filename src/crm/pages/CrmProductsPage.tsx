@@ -62,7 +62,7 @@ export default function CrmProductsPage() {
   if (isLoading) {
     return (
       <div className="space-y-4 animate-fade-in">
-        <PageHeader title="Товары" description="Загрузка..." />
+        <PageHeader title="Товары (DEPLOY TEST 123)" description="Загрузка..." />
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -73,7 +73,7 @@ export default function CrmProductsPage() {
   if (isError) {
     return (
       <div className="space-y-4 animate-fade-in">
-        <PageHeader title="Товары" description="Ошибка загрузки" />
+        <PageHeader title="Товары (DEPLOY TEST 123)" description="Ошибка загрузки" />
         <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
           {error instanceof Error ? error.message : "Не удалось загрузить данные"}
         </div>
@@ -84,7 +84,7 @@ export default function CrmProductsPage() {
   return (
     <div className="space-y-4 animate-fade-in">
       <PageHeader
-        title="Товары"
+        title="Товары (DEPLOY TEST 123)"
         description={`${data?.meta?.total ?? 0} товаров в каталоге`}
         actions={
           <Link to="/crm/products/new">
