@@ -108,6 +108,7 @@ import CrmMarketingPage from "./crm/pages/CrmMarketingPage";
 import CrmTemplatesPage from "./crm/pages/CrmTemplatesPage";
 import CrmNotificationsPage from "./crm/pages/CrmNotificationsPage";
 import CrmIntegrationsPage from "./crm/pages/CrmIntegrationsPage";
+import CrmWebhookLogsPage from "./crm/pages/CrmWebhookLogsPage";
 import CrmProviderDetailPage from "./crm/pages/CrmProviderDetailPage";
 import CrmApiKeysPage from "./crm/pages/CrmApiKeysPage";
 import CrmApiKeyDetailPage from "./crm/pages/CrmApiKeyDetailPage";
