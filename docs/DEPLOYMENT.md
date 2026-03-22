@@ -62,7 +62,7 @@ npm run deploy:frontend
 ### Альтернативы деплоя
 
 - **Полный деплой (фронт + бекенд):** `npm run deploy` — копирует `deploy.sh` на сервер и запускает его (сборка выполняется на сервере: git pull → npm run build).
-- **Стабилизация (только фронт на сервере):** `node scripts/run-stabilize-remote.cjs` — git pull в репо на сервере, npm run build там, проверка nginx.
+- **Деплой:** `bash /var/www/deploy-cheepy.sh` — единственная команда.
 
 ### Конфигурация деплоя
 

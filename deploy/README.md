@@ -14,14 +14,14 @@ bash /var/www/deploy-cheepy.sh
 
 ## Установка на сервере (один раз)
 
-**Один источник — симлинк** (скрипт всегда в репо, без копирования):
+Скопировать скрипт в `/var/www/`:
 
 ```bash
-ln -sf /var/www/siteaacess.store/deploy/deploy-cheepy.sh /var/www/deploy-cheepy.sh
+cp /var/www/siteaacess.store/deploy/deploy-cheepy.sh /var/www/deploy-cheepy.sh
 chmod +x /var/www/deploy-cheepy.sh
 ```
 
-После `git pull` во frontend-репо скрипт уже актуален — симлинк указывает на файл в репо.
+При изменении `deploy/deploy-cheepy.sh` в репо — перекопировать.
 
 ---
 

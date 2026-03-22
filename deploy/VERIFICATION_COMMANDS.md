@@ -7,10 +7,7 @@
    git push origin main
    ```
 
-2. **Symlink script** (first time, один источник):
-   ```bash
-   ssh root@85.117.235.93 "ln -sf /var/www/siteaacess.store/deploy/deploy-cheepy.sh /var/www/deploy-cheepy.sh && chmod +x /var/www/deploy-cheepy.sh"
-   ```
+2. **Copy script** (first time): `cp /var/www/siteaacess.store/deploy/deploy-cheepy.sh /var/www/deploy-cheepy.sh && chmod +x /var/www/deploy-cheepy.sh`
 
 ---
 
@@ -87,5 +84,5 @@ curl -i https://online-parser.siteaacess.store/api/v1/crm/payment-providers \
 ## All-in-one (run from server)
 
 ```bash
-ssh root@85.117.235.93 "cd /var/www/siteaacess.store && git pull origin main && bash /var/www/deploy-cheepy.sh"
+ssh root@85.117.235.93 "bash /var/www/deploy-cheepy.sh"
 ```
