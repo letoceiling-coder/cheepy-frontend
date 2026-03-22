@@ -11,7 +11,7 @@
 Docs updated: NO symlinks. Use `cp` for one-time setup.
 
 ## DEPLOY
-**OK**
+**OK** (verified via ssh)
 
 ```bash
 ssh root@85.117.235.93 "bash /var/www/deploy-cheepy.sh"

@@ -41,6 +41,7 @@ export default function CrmProviderDetailPage() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [testPaymentLoading, setTestPaymentLoading] = useState(false);
   const [logs, setLogs] = useState<WebhookLogItem[]>([]);
 
   useEffect(() => {
@@ -123,6 +124,22 @@ export default function CrmProviderDetailPage() {
     }
   };
 
+  const handleCreateTestPayment = async () => {
+    if (!detail) return;
+    setTestPaymentLoading(true);
+    setTestResult(null);
+    try {
+      const res = await crmPaymentProvidersApi.createTestPayment(detail.name);
+      setTestResult({ success: true, message: `${res.message} #${res.payment_id} (+${res.amount}₽), баланс: ${res.new_balance}₽` });
+      const l = await crmPaymentProvidersApi.logs(detail.name);
+      setLogs(l.data ?? []);
+    } catch (e) {
+      setTestResult({ success: false, message: String((e as Error).message) });
+    } finally {
+      setTestPaymentLoading(false);
+    }
+  };
+
   if (loading || !detail) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -176,15 +193,16 @@ export default function CrmProviderDetailPage() {
       {/* Section 3 — Config form */}
       <section className="rounded-lg border border-border bg-card p-4">
         <h2 className="text-sm font-medium mb-4">Настройки</h2>
-        <div className="space-y-4 max-w-xl">
+        <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-4 max-w-xl">
           {schema.map((field) => (
             <div key={field.key}>
-              <Label className="text-xs">
+              <Label className="text-xs" htmlFor={field.key}>
                 {field.label}
                 {field.required && <span className="text-destructive ml-1">*</span>}
               </Label>
               {field.type === "select" ? (
                 <select
+                  id={field.key}
                   className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   value={form[field.key] ?? ""}
                   onChange={(e) => setForm((f) => ({ ...f, [field.key]: e.target.value }))}
@@ -198,6 +216,7 @@ export default function CrmProviderDetailPage() {
                 </select>
               ) : (
                 <Input
+                  id={field.key}
                   className="mt-1 font-mono text-sm"
                   type={field.type === "password" ? "password" : "text"}
                   value={form[field.key] ?? ""}
@@ -212,20 +231,26 @@ export default function CrmProviderDetailPage() {
               )}
             </div>
           ))}
-        </div>
-        <Button className="mt-4" onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-          Сохранить
-        </Button>
+          <Button type="submit" className="mt-4" disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Сохранить
+          </Button>
+        </form>
       </section>
 
       {/* Section 4 — Test */}
       <section className="rounded-lg border border-border bg-card p-4">
         <h2 className="text-sm font-medium mb-3">Проверка подключения</h2>
-        <Button variant="outline" onClick={handleTest} disabled={testing}>
-          {testing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
-          Проверить подключение
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={handleTest} disabled={testing}>
+            {testing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
+            Проверить подключение
+          </Button>
+          <Button variant="secondary" onClick={handleCreateTestPayment} disabled={testPaymentLoading}>
+            {testPaymentLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Создать тестовый платёж
+          </Button>
+        </div>
         {testResult && (
           <div className={`mt-3 flex items-center gap-2 text-sm ${testResult.success ? "text-green-600" : "text-destructive"}`}>
             {testResult.success ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}

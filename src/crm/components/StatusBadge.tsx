@@ -24,6 +24,8 @@ const variants: Record<string, string> = {
   refunded: "bg-orange-100 text-orange-700 border-orange-200",
   archived: "bg-muted text-muted-foreground border-border",
   ended: "bg-muted text-muted-foreground border-border",
+  approved: "bg-green-100 text-green-700 border-green-200",
+  needs_review: "bg-amber-100 text-amber-700 border-amber-200",
 };
 
 const labels: Record<string, string> = {
@@ -49,6 +51,8 @@ const labels: Record<string, string> = {
   refunded: "Возврат",
   archived: "Архив",
   ended: "Завершён",
+  approved: "Одобрен",
+  needs_review: "На проверке",
 };
 
 interface StatusBadgeProps {

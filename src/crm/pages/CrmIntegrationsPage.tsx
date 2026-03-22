@@ -5,6 +5,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { integrations, Integration } from "../mock/integrations";
 import { Wifi, WifiOff, Settings } from "lucide-react";
 import { crmPaymentProvidersApi, type PaymentProviderItem } from "@/lib/api";
+import { PaymentAlertsBanner } from "../components/PaymentAlertsBanner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -39,10 +40,12 @@ export default function CrmIntegrationsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Tinkoff, Sber, ATOL — основные. Stripe в API, UI при необходимости.
   const paymentList = paymentProviders.filter((p) => ["tinkoff", "sber", "atol"].includes(p.name));
 
   return (
     <div className="space-y-4 animate-fade-in">
+      <PaymentAlertsBanner />
       <PageHeader title="Интеграции" description="Подключения к внешним сервисам" />
 
       <Tabs defaultValue="payments">

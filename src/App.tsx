@@ -48,6 +48,8 @@ import PersonSecurity from "./pages/person/PersonSecurity";
 import PersonSettings from "./pages/person/PersonSettings";
 import HowToOrderPage from "./pages/info/HowToOrderPage";
 import PaymentInfoPage from "./pages/info/PaymentInfoPage";
+import PaymentSuccessPage from "./pages/PaymentSuccessPage";
+import PaymentFailPage from "./pages/PaymentFailPage";
 import DeliveryPage from "./pages/info/DeliveryPage";
 import ReturnsPage from "./pages/info/ReturnsPage";
 import FaqPage from "./pages/info/FaqPage";
@@ -172,6 +174,8 @@ function AnimatedRoutes() {
 
         {/* Info pages */}
         <Route path="/how-to-order" element={<PageTransition><HowToOrderPage /></PageTransition>} />
+        <Route path="/payment/success" element={<PageTransition><PaymentSuccessPage /></PageTransition>} />
+        <Route path="/payment/fail" element={<PageTransition><PaymentFailPage /></PageTransition>} />
         <Route path="/payment" element={<PageTransition><PaymentInfoPage /></PageTransition>} />
         <Route path="/delivery" element={<PageTransition><DeliveryPage /></PageTransition>} />
         <Route path="/returns" element={<PageTransition><ReturnsPage /></PageTransition>} />
@@ -254,6 +258,7 @@ function AnimatedRoutes() {
           <Route path="tenants" element={<CrmTenantsPage />} />
           <Route path="integrations" element={<CrmIntegrationsPage />} />
           <Route path="integrations/:provider" element={<CrmProviderDetailPage />} />
+          <Route path="webhook-logs" element={<CrmWebhookLogsPage />} />
           <Route path="api-keys" element={<CrmApiKeysPage />} />
           <Route path="api-keys/:id" element={<CrmApiKeyDetailPage />} />
           <Route path="settings" element={<CrmSettingsPage />} />

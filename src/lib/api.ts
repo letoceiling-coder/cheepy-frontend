@@ -845,6 +845,45 @@ export const adminRolesApi = {
 };
 
 // ──────────────────────────────────────────────
+// SYSTEM PRODUCTS (Admin — CRM)
+// ──────────────────────────────────────────────
+
+export type SystemProductStatus = 'draft' | 'pending' | 'approved' | 'published' | 'needs_review';
+
+export interface SystemProductItem {
+  id: number;
+  name: string;
+  description?: string | null;
+  price?: string | null;
+  price_raw?: number | null;
+  status: SystemProductStatus;
+  seller_id?: number | null;
+  category_id?: number | null;
+  brand_id?: number | null;
+  created_at?: string;
+  updated_at?: string;
+  category?: { id: number; name: string; slug: string } | null;
+  product_sources?: Array<{
+    id: number;
+    product_id: number;
+    product?: { id: number; external_id?: string; title?: string; source_url?: string } | null;
+  }>;
+}
+
+export const adminSystemProductsApi = {
+  list: (params?: { status?: string; search?: string; page?: number; per_page?: number }) => {
+    const q = new URLSearchParams();
+    if (params) Object.entries(params).forEach(([k, v]) => { if (v !== undefined) q.set(k, String(v)); });
+    return get<{ data: SystemProductItem[]; meta: { total: number; per_page: number; current_page: number; last_page: number } }>(
+      `/admin/system-products${q.toString() ? `?${q}` : ''}`
+    );
+  },
+  get: (id: number) => get<SystemProductItem>(`/admin/system-products/${id}`),
+  patch: (id: number, body: { status?: SystemProductStatus }) =>
+    patch<SystemProductItem>(`/admin/system-products/${id}`, body),
+};
+
+// ──────────────────────────────────────────────
 // LOGS (Admin)
 // ──────────────────────────────────────────────
 

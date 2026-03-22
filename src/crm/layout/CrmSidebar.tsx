@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Package, FolderTree, ShoppingCart, Users, Store,
   BarChart3, Megaphone, MessageSquare, Settings, ArrowLeft, Layers,
   Shield, Truck, CreditCard, Wallet, MapPin, Ticket, Mail, FileText,
-  Bell, PackageCheck, Plug, Building2, Link2,
+  Bell, PackageCheck, Plug, Building2, Link2, KeyRound, Activity,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
@@ -88,6 +88,8 @@ const sections: NavSection[] = [
       { title: "Аналитика", url: "/crm/analytics", icon: BarChart3, permission: "analytics.view" },
       { title: "Маркетплейсы", url: "/crm/tenants", icon: Building2, permission: "tenants.manage" },
       { title: "Интеграции", url: "/crm/integrations", icon: Plug, permission: "integrations.manage" },
+      { title: "Webhook Logs", url: "/crm/webhook-logs", icon: Activity, permission: "integrations.manage" },
+      { title: "API Keys", url: "/crm/api-keys", icon: KeyRound, permission: "integrations.manage" },
       { title: "Настройки", url: "/crm/settings", icon: Settings, permission: "settings.manage" },
     ],
   },
