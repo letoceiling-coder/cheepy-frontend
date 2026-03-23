@@ -103,7 +103,7 @@ export default function MappingPage() {
     queryFn: () => adminCatalogApi.mappingSuggestions({ limit: 500 }),
   });
 
-  /** Full list (always loaded): donor ids for �???� / �??? ????????� � avoids stale Set when tab was �? ?????????�. */
+  /** Full list (always loaded): donor ids for «все» / «без маппинга» — avoids stale Set when tab was «с маппингом». */
   const { data: mappingsFull = [], isLoading: loadingMappingsFull } = useQuery({
     queryKey: ["admin-catalog-category-mapping", "full"],
     queryFn: () => fetchAllCategoryMappings(),
@@ -249,7 +249,7 @@ export default function MappingPage() {
   const handleBulkApply = () => {
     const list = applyableHigh;
     if (list.length === 0) {
-      toast.info("No rows (score ? 95, unmapped)");
+      toast.info("Нет строк (score ≥ 95, без маппинга)");
       return;
     }
     setBulkApplying(true);
@@ -291,16 +291,16 @@ export default function MappingPage() {
 
   const subtitle =
     viewFilter === "mapped"
-      ? `Source: category-mapping � ${displayRows.length} row(s)`
+      ? `Источник: category-mapping — ${displayRows.length} строк`
       : viewFilter === "unmapped"
-        ? `Source: suggestions (unmapped only) � ${displayRows.length} � Mapped total: ${mappedDonorIds.size}`
-        : `Source: suggestions � ${displayRows.length} � Mapped: ${mappedDonorIds.size}`;
+        ? `Источник: suggestions (только без маппинга) — ${displayRows.length} · Всего привязано: ${mappedDonorIds.size}`
+        : `Источник: suggestions — ${displayRows.length} · Привязано: ${mappedDonorIds.size}`;
 
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">??????? ?????????</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Маппинг категорий</h1>
           <p className="text-muted-foreground text-sm mt-0.5">{subtitle}</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
@@ -311,7 +311,7 @@ export default function MappingPage() {
               onClick={() => setViewFilter("all")}
               className={viewFilter === "all" ? "bg-muted" : ""}
             >
-              ???
+              Все
             </Button>
             <Button
               variant="outline"
@@ -319,7 +319,7 @@ export default function MappingPage() {
               onClick={() => setViewFilter("unmapped")}
               className={viewFilter === "unmapped" ? "bg-muted" : ""}
             >
-              ??? ????????
+              Без маппинга
             </Button>
             <Button
               variant="outline"
@@ -327,7 +327,7 @@ export default function MappingPage() {
               onClick={() => setViewFilter("mapped")}
               className={viewFilter === "mapped" ? "bg-muted" : ""}
             >
-              ? ?????????
+              С маппингом
             </Button>
           </div>
           <Select
@@ -345,7 +345,7 @@ export default function MappingPage() {
           </Select>
           <Button variant="outline" size="sm" className="gap-1" onClick={handleRefresh}>
             <RefreshCw className={cn("h-3.5 w-3.5", fetchingSuggestions && "animate-spin")} />
-            ????????
+            Обновить
           </Button>
           {viewFilter !== "mapped" && applyableHigh.length > 0 && (
             <Button size="sm" className="gap-1.5" onClick={handleBulkApply} disabled={bulkApplying}>
@@ -354,7 +354,7 @@ export default function MappingPage() {
               ) : (
                 <Zap className="h-3.5 w-3.5" />
               )}
-              ????????? ??? (?95)
+              Применить все (≥95)
             </Button>
           )}
         </div>
@@ -363,7 +363,7 @@ export default function MappingPage() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
-            {viewFilter === "mapped" ? "???????? ????????" : "??????????? ? ???????"}
+            {viewFilter === "mapped" ? "Таблица сопоставлений" : "Предложения и действия"}
             {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
           </CardTitle>
         </CardHeader>
@@ -372,27 +372,27 @@ export default function MappingPage() {
             <Table>
               <TableHeader>
                 <TableRow className="sticky top-0 z-10 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80">
-                  <TableHead className="w-[200px]">?????</TableHead>
+                  <TableHead className="w-[200px]">Донор</TableHead>
                   <TableHead className="w-[200px]">
-                    {viewFilter === "mapped" ? "??????? (???????)" : "??????? (???????????)"}
+                    {viewFilter === "mapped" ? "Каталог (текущая)" : "Каталог (предложение)"}
                   </TableHead>
                   <TableHead className="w-[80px]">Score</TableHead>
-                  <TableHead className="w-[200px]">????? ????????</TableHead>
-                  <TableHead className="w-[130px]">??????</TableHead>
-                  <TableHead className="w-[150px] text-right">????????</TableHead>
+                  <TableHead className="w-[200px]">Выбор каталога</TableHead>
+                  <TableHead className="w-[130px]">Статус</TableHead>
+                  <TableHead className="w-[150px] text-right">Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                      ????????�
+                      Загрузка…
                     </TableCell>
                   </TableRow>
                 ) : displayRows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                      ??? ????? ?? ???????
+                      Нет данных для отображения
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -424,7 +424,7 @@ export default function MappingPage() {
                               disabled={rowBusy}
                             >
                               <SelectTrigger className="h-8 text-xs min-w-[160px]">
-                                <SelectValue placeholder="?????????" />
+                                <SelectValue placeholder="Выберите категорию" />
                               </SelectTrigger>
                               <SelectContent>
                                 {catalogCategories.map((c) => (
@@ -437,7 +437,7 @@ export default function MappingPage() {
                           </TableCell>
                           <TableCell>
                             <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white border-0 gap-1">
-                              ?? mapped
+                              Сопоставлено
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
@@ -482,7 +482,7 @@ export default function MappingPage() {
                     if (isMapped) {
                       statusBadge = (
                         <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white border-0">
-                          ?? mapped
+                          Сопоставлено
                         </Badge>
                       );
                     } else if (s.score >= 80) {
@@ -491,13 +491,13 @@ export default function MappingPage() {
                           variant="secondary"
                           className="bg-amber-500/20 text-amber-900 dark:text-amber-100 border-amber-500/30"
                         >
-                          ?? suggested
+                          Предложено
                         </Badge>
                       );
                     } else {
                       statusBadge = (
                         <Badge variant="destructive" className="border-0">
-                          ?? not mapped
+                          Не сопоставлено
                         </Badge>
                       );
                     }
@@ -518,7 +518,7 @@ export default function MappingPage() {
                             disabled={rowBusy}
                           >
                             <SelectTrigger className="h-8 text-xs min-w-[160px]">
-                              <SelectValue placeholder="?????????" />
+                              <SelectValue placeholder="Выберите категорию" />
                             </SelectTrigger>
                             <SelectContent>
                               {catalogCategories.map((c) => (
@@ -537,7 +537,7 @@ export default function MappingPage() {
                               size="icon"
                               variant="ghost"
                               className="h-8 w-8 shrink-0"
-                              title="???????? ???????????"
+                              title="Обновить данные"
                               onClick={handleRefresh}
                               disabled={rowBusy}
                             >
