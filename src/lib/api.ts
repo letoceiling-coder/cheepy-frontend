@@ -539,42 +539,43 @@ export interface ParserStateResponse {
   updated_at: string;
 }
 
+/** Parser admin API — Laravel registers routes under api/v1/admin/parser/* */
 export const parserApi = {
-  status: () => get<ParserStatus>('/parser/status'),
-  state: () => get<ParserStateResponse>('/parser/state'),
-  settings: () => get<ParserSettings>('/parser/settings'),
+  status: () => get<ParserStatus>('/admin/parser/status'),
+  state: () => get<ParserStateResponse>('/admin/parser/state'),
+  settings: () => get<ParserSettings>('/admin/parser/settings'),
   updateSettings: (payload: Partial<ParserSettings>) =>
-    post<{ message: string; data: ParserSettings }>('/parser/settings', payload),
-  stats: () => get<ParserStats>('/parser/stats'),
-  diagnostics: () => get<ParserDiagnostics>('/parser/diagnostics'),
-  health: () => get<ParserHealth>('/parser/health'),
+    post<{ message: string; data: ParserSettings }>('/admin/parser/settings', payload),
+  stats: () => get<ParserStats>('/admin/parser/stats'),
+  diagnostics: () => get<ParserDiagnostics>('/admin/parser/diagnostics'),
+  health: () => get<ParserHealth>('/admin/parser/health'),
   progressOverview: (jobId?: number) =>
-    get<ParserProgressOverview>(`/parser/progress-overview${jobId ? `?job_id=${jobId}` : ''}`),
-  start: (opts?: StartParserOptions) => post<{ message: string; job_id: number; job: ParserJob }>('/parser/start', opts),
-  startDaemon: () => post<{ message: string; daemon_enabled: boolean }>('/parser/start-daemon'),
-  stop: () => post<{ message: string }>('/parser/stop'),
-  stopDaemon: () => post<{ message: string; daemon_enabled: boolean }>('/parser/stop-daemon'),
-  pause: () => post<{ message: string; status: string }>('/parser/pause'),
-  restart: () => post<{ message: string }>('/parser/restart'),
+    get<ParserProgressOverview>(`/admin/parser/progress-overview${jobId ? `?job_id=${jobId}` : ''}`),
+  start: (opts?: StartParserOptions) => post<{ message: string; job_id: number; job: ParserJob }>('/admin/parser/start', opts),
+  startDaemon: () => post<{ message: string; daemon_enabled: boolean }>('/admin/parser/start-daemon'),
+  stop: () => post<{ message: string }>('/admin/parser/stop'),
+  stopDaemon: () => post<{ message: string; daemon_enabled: boolean }>('/admin/parser/stop-daemon'),
+  pause: () => post<{ message: string; status: string }>('/admin/parser/pause'),
+  restart: () => post<{ message: string }>('/admin/parser/restart'),
   queueClear: (queue: 'parser' | 'photos' | 'default' = 'parser') =>
-    post<{ message: string }>('/parser/queue-clear', { queue }),
-  queueFlush: () => post<{ message: string; queues: string[] }>('/parser/queue-flush'),
-  queueRestart: () => post<{ message: string }>('/parser/queue-restart'),
-  clearFailedJobs: () => post<{ message: string }>('/parser/clear-failed'),
-  failedJobs: () => get<{ data: Array<{ id: number; uuid: string; queue: string; display_name: string; exception: string | null; failed_at: string }> }>('/parser/failed-jobs'),
-  retryJob: (id: number) => post<{ message: string }>(`/parser/retry-job/${id}`),
+    post<{ message: string }>('/admin/parser/queue-clear', { queue }),
+  queueFlush: () => post<{ message: string; queues: string[] }>('/admin/parser/queue-flush'),
+  queueRestart: () => post<{ message: string }>('/admin/parser/queue-restart'),
+  clearFailedJobs: () => post<{ message: string }>('/admin/parser/clear-failed'),
+  failedJobs: () => get<{ data: Array<{ id: number; uuid: string; queue: string; display_name: string; exception: string | null; failed_at: string }> }>('/admin/parser/failed-jobs'),
+  retryJob: (id: number) => post<{ message: string }>(`/admin/parser/retry-job/${id}`),
   killStuck: (idleMinutes?: number) =>
-    post<{ message: string }>('/parser/kill-stuck', idleMinutes ? { idle_minutes: idleMinutes } : undefined),
-  releaseLock: () => post<{ message: string }>('/parser/release-lock'),
-  reset: () => post<{ message: string }>('/parser/reset'),
-  jobs: (page = 1, perPage = 20) => get<PaginatedResponse<ParserJob>>(`/parser/jobs?page=${page}&per_page=${perPage}`),
-  jobDetail: (id: number) => get<ParserJob & { logs: LogEntry[] }>(`/parser/jobs/${id}`),
+    post<{ message: string }>('/admin/parser/kill-stuck', idleMinutes ? { idle_minutes: idleMinutes } : undefined),
+  releaseLock: () => post<{ message: string }>('/admin/parser/release-lock'),
+  reset: () => post<{ message: string }>('/admin/parser/reset'),
+  jobs: (page = 1, perPage = 20) => get<PaginatedResponse<ParserJob>>(`/admin/parser/jobs?page=${page}&per_page=${perPage}`),
+  jobDetail: (id: number) => get<ParserJob & { logs: LogEntry[] }>(`/admin/parser/jobs/${id}`),
   downloadPhotos: (opts?: { limit?: number; product_id?: number }) =>
-    post<{ downloaded: number; failed: number; skipped: number; products: number }>('/parser/photos/download', opts),
+    post<{ downloaded: number; failed: number; skipped: number; products: number }>('/admin/parser/photos/download', opts),
 
   /** Sync categories from donor. Parses donor menu, creates/updates categories, builds tree. */
   categoriesSync: () =>
-    post<{ message: string; created: number; updated: number; last_synced_at?: string }>('/parser/categories/sync'),
+    post<{ message: string; created: number; updated: number; last_synced_at?: string }>('/admin/parser/categories/sync'),
 
   /** URL for SSE progress stream (EventSource doesn't support Auth header) */
   progressUrl: (jobId?: number): string => {
@@ -582,7 +583,7 @@ export const parserApi = {
     if (jobId) params.set('job_id', String(jobId));
     const t = getToken();
     if (t) params.set('token', t);
-    return `${BASE_URL}/parser/progress${params.toString() ? '?' + params : ''}`;
+    return `${BASE_URL}/admin/parser/progress${params.toString() ? '?' + params : ''}`;
   },
   /** SSE stream — возвращает EventSource */
   progressStream: (jobId?: number): EventSource => {
