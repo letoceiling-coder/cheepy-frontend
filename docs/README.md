@@ -10,6 +10,7 @@
 - [Компоненты UI](./COMPONENTS.md)
 - [Маршруты приложения](./ROUTES.md)
 - [Changelog](./CHANGELOG.md)
+- [Админ-вход: 401 и восстановление пароля](./TROUBLESHOOTING_ADMIN_LOGIN.md)
 
 ## 🚀 Быстрый старт
 

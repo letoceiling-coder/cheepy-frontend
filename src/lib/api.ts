@@ -92,7 +92,9 @@ async function request<T>(
     });
 
     if (res.status === 401) {
-      if (typeof window !== 'undefined') {
+      // Не вызывать logout при неверном пароле на POST /auth/login или /auth/refresh
+      const isAuthFailure = isPublic && (path === '/auth/login' || path === '/auth/refresh');
+      if (typeof window !== 'undefined' && !isAuthFailure) {
         const p = window.location.pathname;
         if (p.startsWith('/crm')) {
           const next = encodeURIComponent(p + window.location.search);
