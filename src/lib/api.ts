@@ -615,13 +615,13 @@ export const productsApi = {
   list: (filters: ProductFilters = {}) => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([k, v]) => { if (v !== undefined && v !== '') params.set(k, String(v)); });
-    return get<PaginatedResponse<Product>>(`/products?${params}`);
+    return get<PaginatedResponse<Product>>(`/admin/parser/products?${params}`);
   },
-  get: (id: string | number) => get<ProductFull>(`/products/${id}`),
-  update: (id: number, data: Partial<ProductFull>) => patch<ProductFull>(`/products/${id}`, data),
-  delete: (id: number) => del(`/products/${id}`),
+  get: (id: string | number) => get<ProductFull>(`/admin/parser/products/${id}`),
+  update: (id: number, data: Partial<ProductFull>) => patch<ProductFull>(`/admin/parser/products/${id}`, data),
+  delete: (id: number) => del(`/admin/parser/products/${id}`),
   bulk: (ids: number[], action: 'delete' | 'hide' | 'publish') =>
-    post<{ message: string }>('/products/bulk', { ids, action }),
+    post<{ message: string }>('/admin/parser/products/bulk', { ids, action }),
 };
 
 // ──────────────────────────────────────────────
@@ -736,15 +736,15 @@ export const sellersApi = {
   list: (params?: { search?: string; status?: string; pavilion?: string; has_products?: boolean; page?: number; per_page?: number }) => {
     const q = new URLSearchParams();
     if (params) Object.entries(params).forEach(([k, v]) => { if (v !== undefined) q.set(k, String(v)); });
-    return get<PaginatedResponse<Seller>>(`/sellers?${q}`);
+    return get<PaginatedResponse<Seller>>(`/admin/parser/sellers?${q}`);
   },
-  get: (idOrSlug: string | number) => get<SellerFull>(`/sellers/${idOrSlug}`),
+  get: (idOrSlug: string | number) => get<SellerFull>(`/admin/parser/sellers/${idOrSlug}`),
   products: (idOrSlug: string | number, params?: AdminSellerProductsParams) => {
     const q = new URLSearchParams();
     if (params) Object.entries(params).forEach(([k, v]) => { if (v !== undefined) q.set(k, String(v)); });
-    return get<PaginatedResponse<Product> & { seller: Seller }>(`/sellers/${idOrSlug}/products?${q}`);
+    return get<PaginatedResponse<Product> & { seller: Seller }>(`/admin/parser/sellers/${idOrSlug}/products?${q}`);
   },
-  update: (id: number, data: Partial<Seller>) => patch<Seller>(`/sellers/${id}`, data),
+  update: (id: number, data: Partial<Seller>) => patch<Seller>(`/admin/parser/sellers/${id}`, data),
 };
 
 // ──────────────────────────────────────────────
