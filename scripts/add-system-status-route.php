@@ -44,7 +44,7 @@ $insert = <<<'PHP'
 
         $productsTotal = \App\Models\Product::count();
         $productsToday = \App\Models\Product::whereDate('parsed_at', today())->count();
-        $errorsToday = \App\Models\Product::where('status', 'error')->whereDate('updated_at', today())->count();
+        $errorsToday = \App\Models\Product::where('status', 'error')->whereDate('status_changed_at', today())->count();
 
         $cpuLoad = '—';
         if (function_exists('sys_getloadavg')) {

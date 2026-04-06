@@ -313,7 +313,11 @@ export interface ParserStatus {
 export interface DashboardData {
   products: {
     total: number; active: number; hidden: number; new_today: number;
-    errors: number; with_photos: number; pending_photos: number;
+    /** Errors today: products with status=error updated today + parser_logs errors today (same as diagnostics) */
+    errors: number;
+    /** Total products still in status=error (any date) */
+    errors_all_time_products?: number;
+    with_photos: number; pending_photos: number;
   };
   categories: { total: number; enabled: number; linked_to_parser: number };
   sellers: { total: number; active: number };
@@ -442,12 +446,19 @@ export interface StartParserOptions {
   category_slug?: string;
 }
 
+export interface ErrorsTodayBreakdown {
+  products_status_error: number;
+  parser_logs_error: number;
+}
+
 export interface ParserStats {
   products_total: number;
   products_today: number;
   parser_running: boolean;
   queue_size: number;
   errors_today: number;
+  /** Sum of products with status=error (today) + parser_logs level=error (today); see diagnostics/system error_metrics */
+  errors_today_breakdown?: ErrorsTodayBreakdown;
   last_parser_run: string | null;
 }
 
@@ -463,6 +474,7 @@ export interface ParserDiagnostics {
   products_total: number;
   products_today: number;
   errors_today: number;
+  errors_today_breakdown?: ErrorsTodayBreakdown;
   memory_usage?: number | string | null;
   last_errors?: Array<{
     id: number;

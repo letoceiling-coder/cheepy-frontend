@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Package, PlusCircle, AlertTriangle, Clock, Brain, Bug, Layers, Activity, Cpu, Database, RotateCcw, Trash2, RefreshCw } from "lucide-react";
 import { StatCard } from "../components/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +43,30 @@ export default function DashboardPage() {
     queryFn: () => parserApi.diagnostics(),
     refetchInterval: 10000,
   });
+
+  /** Dev-only: trace which API feeds the “Ошибки сегодня” card (not parser_logs-only — includes products with status=error). */
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const p = d?.products;
+    if (!p) return;
+    const merged =
+      diagnostics?.errors_today ??
+      systemStatus?.errors_today ??
+      stats?.errors_today ??
+      p.errors;
+    console.log("[admin dashboard] ERROR SOURCE", {
+      displayed_errors_today: merged,
+      diagnostics_errors_today: diagnostics?.errors_today,
+      diagnostics_breakdown: diagnostics?.errors_today_breakdown,
+      system_errors_today: systemStatus?.errors_today,
+      system_error_metrics: systemStatus?.error_metrics,
+      stats_errors_today: stats?.errors_today,
+      stats_breakdown: stats?.errors_today_breakdown,
+      dashboard_products_errors_field: p.errors,
+      errors_all_time_products: p.errors_all_time_products,
+      last_errors_preview: diagnostics?.last_errors?.slice(0, 3),
+    });
+  }, [d, diagnostics, systemStatus, stats]);
 
   const refetchAll = () => {
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
@@ -128,7 +152,12 @@ export default function DashboardPage() {
   const lastRun = s?.last_parser_run ?? parser.last_run_at;
   const productsTotal = s?.products_total ?? p.total;
   const productsToday = s?.products_today ?? p.new_today;
-  const errorsToday = s?.errors_today ?? p.errors;
+  /** Always take the latest snapshot from polling — never merge or fall back to stale dashboard.products.errors when live endpoints omit the field. */
+  const errorsToday =
+    diagnostics?.errors_today ??
+    systemStatus?.errors_today ??
+    stats?.errors_today ??
+    p.errors;
   const sys = systemStatus ?? null;
 
   return (
