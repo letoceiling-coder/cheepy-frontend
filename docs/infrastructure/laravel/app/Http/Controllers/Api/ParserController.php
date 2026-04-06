@@ -58,6 +58,8 @@ class ParserController extends Controller
      */
     public function updateSettings(Request $request): JsonResponse
     {
+        Log::info('SETTINGS RECEIVED', $request->all());
+
         $validated = $request->validate([
             'download_photos' => ['nullable', 'boolean'],
             'store_photo_links' => ['nullable', 'boolean'],
@@ -70,10 +72,18 @@ class ParserController extends Controller
             'proxy_enabled' => ['nullable', 'boolean'],
             'proxy_url' => ['nullable', 'string', 'max:255'],
             'queue_threshold' => ['nullable', 'integer', 'min:10', 'max:1000000'],
+            'default_max_pages' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'default_products_per_category' => ['nullable', 'integer', 'min:0', 'max:1000000'],
+            'default_linked_only' => ['nullable', 'boolean'],
+            'default_category_ids' => ['nullable', 'array'],
+            'default_category_ids.*' => ['integer', 'min:1'],
+            'default_no_details' => ['nullable', 'boolean'],
         ]);
 
         $settings = ParserSetting::current();
         $settings->update($validated);
+
+        Log::info('SETTINGS SAVED', $settings->fresh()->toArray());
 
         return response()->json([
             'message' => 'Настройки парсера обновлены',

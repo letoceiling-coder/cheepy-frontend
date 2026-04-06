@@ -532,6 +532,12 @@ export interface ParserSettings {
   proxy_enabled: boolean;
   proxy_url?: string | null;
   queue_threshold: number;
+  /** Persisted defaults for daemon / full runs (POST /admin/parser/settings) */
+  default_max_pages?: number;
+  default_products_per_category?: number;
+  default_linked_only?: boolean;
+  default_category_ids?: number[];
+  default_no_details?: boolean;
 }
 
 export interface ParserProgressOverview {

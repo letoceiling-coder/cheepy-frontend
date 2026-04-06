@@ -14,15 +14,10 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 export default function ParserPage() {
+  /** Only single-run fields not stored in parser_settings (daemon uses DB defaults). */
   const [config, setConfig] = useState({
-    withPhotos: false,
     saveToDB: true,
-    previewOnly: false,
     category: "",
-    selectedCategoryIds: [] as number[],
-    linkedOnly: false,
-    productsPerCategory: 0,
-    maxPages: 0,
   });
   const [jobId, setJobId] = useState<number | null>(null);
   const [currentJob, setCurrentJob] = useState<ParserJob | null>(null);
@@ -89,6 +84,11 @@ export default function ParserPage() {
     proxy_enabled: true,
     proxy_url: "http://89.169.39.244:3128",
     queue_threshold: 500,
+    default_linked_only: false,
+    default_max_pages: 0,
+    default_products_per_category: 0,
+    default_category_ids: [] as number[],
+    default_no_details: false,
   });
 
   useEffect(() => {
@@ -105,6 +105,11 @@ export default function ParserPage() {
       proxy_enabled: parserSettings.proxy_enabled,
       proxy_url: parserSettings.proxy_url ?? "http://89.169.39.244:3128",
       queue_threshold: parserSettings.queue_threshold,
+      default_linked_only: parserSettings.default_linked_only ?? false,
+      default_max_pages: parserSettings.default_max_pages ?? 0,
+      default_products_per_category: parserSettings.default_products_per_category ?? 0,
+      default_category_ids: Array.isArray(parserSettings.default_category_ids) ? parserSettings.default_category_ids : [],
+      default_no_details: parserSettings.default_no_details ?? false,
     });
   }, [parserSettings]);
 
@@ -171,16 +176,16 @@ export default function ParserPage() {
     try {
       const opts: Parameters<typeof parserApi.start>[0] = {
         type: config.category ? "category" : "full",
-        save_photos: config.withPhotos,
+        save_photos: settingsForm.download_photos,
         save_to_db: config.saveToDB,
-        no_details: config.previewOnly,
-        linked_only: config.linkedOnly,
-        products_per_category: config.productsPerCategory || undefined,
-        max_pages: config.maxPages || undefined,
+        no_details: settingsForm.default_no_details,
+        linked_only: settingsForm.default_linked_only,
+        products_per_category: settingsForm.default_products_per_category || undefined,
+        max_pages: settingsForm.default_max_pages || undefined,
       };
       if (config.category) opts.category_slug = config.category;
-      if (opts.type === "full" && config.selectedCategoryIds.length > 0) {
-        opts.categories = config.selectedCategoryIds;
+      if (opts.type === "full" && settingsForm.default_category_ids.length > 0) {
+        opts.categories = settingsForm.default_category_ids;
       }
       const res = await parserApi.start(opts);
       setJobId(res.job_id);
@@ -298,7 +303,7 @@ export default function ParserPage() {
       await parserApi.clearFailedJobs();
       refetchFailedJobs();
       refetchStatus();
-      toast.success("Failed jobs очищены");
+      toast.success("Неудачные задания очищены");
     } catch (err: unknown) {
       const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
       toast.error(msg);
@@ -311,7 +316,7 @@ export default function ParserPage() {
       await parserApi.retryJob(id);
       refetchFailedJobs();
       refetchStatus();
-      toast.success("Job возвращён в очередь");
+      toast.success("Задание возвращено в очередь");
     } catch (err: unknown) {
       const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
       toast.error(msg);
@@ -320,6 +325,7 @@ export default function ParserPage() {
 
   const handleSaveParserSettings = async () => {
     try {
+      console.log("СОХРАНЕНИЕ НАСТРОЕК — PAYLOAD", settingsForm);
       await parserApi.updateSettings(settingsForm);
       refetchParserSettings();
       toast.success("Настройки парсера сохранены");
@@ -333,13 +339,30 @@ export default function ParserPage() {
   const totalProducts = activeJob?.progress?.products?.total ?? 0;
   const processedCount = activeJob?.progress?.products?.done ?? activeJob?.progress?.saved ?? 0;
   const lastFailed = statusData?.last_completed?.status === "failed";
+
+  const parserStateStatusRu = (s: string | undefined) => {
+    const m: Record<string, string> = {
+      running: "работает",
+      stopped: "остановлен",
+      paused: "пауза",
+      paused_network: "пауза (сеть)",
+    };
+    return s ? (m[s] ?? s) : "—";
+  };
+
+  const workerStatusRu = (v: string | undefined) => {
+    if (v === "running") return "работают";
+    if (v === "stopped") return "остановлены";
+    return v ?? "—";
+  };
+
   const statusBadge =
     parserState?.status === "paused_network" ? (
-      <Badge variant="destructive">Network blocked</Badge>
+      <Badge variant="destructive">Сеть недоступна</Badge>
     ) : parserState?.status === "paused" ? (
-      <Badge variant="secondary">Paused</Badge>
+      <Badge variant="secondary">На паузе</Badge>
     ) : parserState?.status === "stopped" ? (
-      <Badge variant="secondary">Stopped</Badge>
+      <Badge variant="secondary">Остановлен</Badge>
     ) : isRunning ? (
       <Badge className="bg-emerald-600 hover:bg-emerald-600">
         <span className="h-2 w-2 rounded-full bg-white/80 animate-pulse mr-1.5" />
@@ -361,27 +384,32 @@ export default function ParserPage() {
       {/* Parser Control */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Parser Control</CardTitle>
+          <CardTitle className="text-lg">Панель управления</CardTitle>
           {parserState && (
             <p className="text-sm text-muted-foreground">
-              Статус: {parserState.status} | Последний старт: {parserState.last_start ? new Date(parserState.last_start).toLocaleString("ru") : "—"} | Последняя остановка: {parserState.last_stop ? new Date(parserState.last_stop).toLocaleString("ru") : "—"}
+              Состояние: {parserStateStatusRu(parserState.status)} | Последний старт:{" "}
+              {parserState.last_start ? new Date(parserState.last_start).toLocaleString("ru") : "—"} | Последняя остановка:{" "}
+              {parserState.last_stop ? new Date(parserState.last_stop).toLocaleString("ru") : "—"}
             </p>
           )}
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Button onClick={handleStartDaemon} disabled={daemonEnabled || isRunning} title="Start Parser (continuous)">
-              <Play className="h-4 w-4 mr-1" />Start Parser
+            <Button onClick={handleStartDaemon} disabled={daemonEnabled || isRunning} title="Непрерывный режим (демон)">
+              <Play className="h-4 w-4 mr-1" />
+              Запустить парсер
             </Button>
-            <Button variant="destructive" disabled={!daemonEnabled && !isRunning} onClick={handleStop} title="Stop Parser">
-              <Square className="h-4 w-4 mr-1" />Stop Parser
+            <Button variant="destructive" disabled={!daemonEnabled && !isRunning} onClick={handleStop} title="Остановить парсинг">
+              <Square className="h-4 w-4 mr-1" />
+              Остановить
             </Button>
-            <Button variant="outline" onClick={handlePause} disabled={!daemonEnabled && !isRunning} title="Pause Parser">
-              <Pause className="h-4 w-4 mr-1" />Pause Parser
+            <Button variant="outline" onClick={handlePause} disabled={!daemonEnabled && !isRunning} title="Приостановить демон">
+              <Pause className="h-4 w-4 mr-1" />
+              Пауза
             </Button>
           </div>
           <div className="mt-3 pt-3 border-t">
-            <p className="text-xs text-muted-foreground mb-2">Один прогон (не daemon):</p>
+            <p className="text-xs text-muted-foreground mb-2">Один прогон (без демона):</p>
             <Button variant="outline" size="sm" onClick={handleStart} disabled={isRunning}><Play className="h-4 w-4 mr-1" />Один прогон</Button>
           </div>
           {isRunning && (
@@ -402,7 +430,7 @@ export default function ParserPage() {
       {/* Parser Diagnostics */}
       {diagnostics && (
         <Card>
-          <CardHeader><CardTitle className="text-lg">Parser Diagnostics</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-lg">Диагностика парсера</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
               <div>
@@ -414,7 +442,7 @@ export default function ParserPage() {
                 <p className="font-medium">{diagnostics.photos_queue_size ?? "—"}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Failed jobs</p>
+                <p className="text-muted-foreground">Неудачные задания</p>
                 <p className={`font-medium ${(diagnostics.failed_jobs_count ?? 0) > 0 ? "text-destructive" : ""}`}>
                   {diagnostics.failed_jobs_count ?? "—"}
                 </p>
@@ -426,46 +454,56 @@ export default function ParserPage() {
                 </Badge>
               </div>
               <div>
-                <p className="text-muted-foreground">Proxy</p>
+                <p className="text-muted-foreground">Прокси</p>
                 <Badge variant={diagnostics.proxy_status === "ok" ? "secondary" : "destructive"}>
-                  {diagnostics.proxy_status === "ok" ? "OK" : "FAIL"}
+                  {diagnostics.proxy_status === "ok" ? "ОК" : "Ошибка"}
                 </Badge>
               </div>
               <div>
-                <p className="text-muted-foreground">Sadovodbaza</p>
+                <p className="text-muted-foreground">Донор (sadovodbaza)</p>
                 <Badge variant={diagnostics.sadovodbaza_status === "ok" ? "secondary" : "destructive"}>
-                  {diagnostics.sadovodbaza_status === "ok" ? "OK" : "FAIL"}
+                  {diagnostics.sadovodbaza_status === "ok" ? "ОК" : "Ошибка"}
                 </Badge>
               </div>
             </div>
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div className="rounded border p-3">
-                <p className="text-muted-foreground">Worker status</p>
-                <p className="font-medium">{diagnostics.worker_status ?? (diagnostics.workers_running > 0 ? "running" : "stopped")}</p>
-                <p className="text-muted-foreground mt-1">
-                  Proxy: {(parserHealth?.proxy_status ?? diagnostics.proxy_status ?? "failed") === "ok" ? "OK" : "FAIL"}
+                <p className="text-muted-foreground">Статус воркеров</p>
+                <p className="font-medium">
+                  {workerStatusRu(
+                    diagnostics.worker_status ?? (diagnostics.workers_running > 0 ? "running" : "stopped"),
+                  )}
                 </p>
                 <p className="text-muted-foreground mt-1">
-                  Donor: {(parserHealth?.sadovodbaza_status ?? diagnostics.sadovodbaza_status ?? "failed") === "ok" ? "OK" : "FAIL"}
+                  Прокси:{" "}
+                  {(parserHealth?.proxy_status ?? diagnostics.proxy_status ?? "failed") === "ok" ? "ОК" : "Ошибка"}
                 </p>
-                <p className="text-muted-foreground mt-1">Memory usage: {String(diagnostics.memory_usage ?? "—")}</p>
-                <p className="text-muted-foreground mt-1">Errors / hour: {diagnostics.error_frequency?.last_hour ?? 0}</p>
+                <p className="text-muted-foreground mt-1">
+                  Донор:{" "}
+                  {(parserHealth?.sadovodbaza_status ?? diagnostics.sadovodbaza_status ?? "failed") === "ok" ? "ОК" : "Ошибка"}
+                </p>
+                <p className="text-muted-foreground mt-1">Память: {String(diagnostics.memory_usage ?? "—")}</p>
+                <p className="text-muted-foreground mt-1">Ошибок за час: {diagnostics.error_frequency?.last_hour ?? 0}</p>
               </div>
               <div className="rounded border p-3">
-                <p className="text-muted-foreground">Progress overview</p>
+                <p className="text-muted-foreground">Обзор прогресса</p>
                 <p className="font-medium">
                   {(progressOverview?.processed_items ?? diagnostics.progress?.processed_items ?? 0)}/
                   {(progressOverview?.total_items ?? diagnostics.progress?.total_items ?? 0)}
                 </p>
-                <p className="text-muted-foreground mt-1">Failed: {progressOverview?.failed_items ?? diagnostics.progress?.failed_items ?? 0}</p>
-                <p className="text-muted-foreground mt-1">Speed: {progressOverview?.speed_per_min ?? diagnostics.progress?.speed_per_min ?? 0} items/min</p>
+                <p className="text-muted-foreground mt-1">
+                  Ошибок: {progressOverview?.failed_items ?? diagnostics.progress?.failed_items ?? 0}
+                </p>
+                <p className="text-muted-foreground mt-1">
+                  Скорость: {progressOverview?.speed_per_min ?? diagnostics.progress?.speed_per_min ?? 0} шт/мин
+                </p>
                 <p className="text-muted-foreground mt-1 truncate" title={progressOverview?.current_url ?? diagnostics.progress?.current_url ?? ""}>
                   URL: {progressOverview?.current_url ?? diagnostics.progress?.current_url ?? "—"}
                 </p>
               </div>
             </div>
             <div className="mt-4">
-              <p className="text-sm font-medium mb-2">Last errors</p>
+              <p className="text-sm font-medium mb-2">Последние ошибки</p>
               <div className="space-y-1 max-h-28 overflow-auto rounded border p-2">
                 {(diagnostics.last_errors ?? []).length === 0 && (
                   <p className="text-xs text-muted-foreground">Нет ошибок</p>
@@ -483,19 +521,22 @@ export default function ParserPage() {
 
       {/* System Tools */}
       <Card>
-        <CardHeader><CardTitle className="text-lg">System Tools</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">Системные инструменты</CardTitle></CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" onClick={handleQueueFlush} disabled={!!sysAction || isRunning} title="Reset Queue">
-              <RotateCcw className="h-4 w-4 mr-1" />Reset Queue
+            <Button variant="outline" onClick={handleQueueFlush} disabled={!!sysAction || isRunning} title="Сбросить очереди">
+              <RotateCcw className="h-4 w-4 mr-1" />
+              Сбросить очередь
             </Button>
-            <Button variant="outline" onClick={handleClearFailedJobs} disabled={!!sysAction} title="Clear Failed Jobs">
-              <Trash2 className="h-4 w-4 mr-1" />Clear Failed Jobs
+            <Button variant="outline" onClick={handleClearFailedJobs} disabled={!!sysAction} title="Очистить неудачные задания">
+              <Trash2 className="h-4 w-4 mr-1" />
+              Очистить неудачные
             </Button>
-            <Button variant="outline" onClick={handleQueueRestart} disabled={!!sysAction} title="Restart Workers">
-              <RefreshCw className="h-4 w-4 mr-1" />Restart Workers
+            <Button variant="outline" onClick={handleQueueRestart} disabled={!!sysAction} title="Перезапустить воркеры очередей">
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Перезапустить воркеры
             </Button>
-            <Button variant="outline" onClick={handleReleaseLock} disabled={!!sysAction || isRunning} title="Release lock">
+            <Button variant="outline" onClick={handleReleaseLock} disabled={!!sysAction || isRunning} title="Снять блокировку парсера">
               Освободить блокировку
             </Button>
           </div>
@@ -509,25 +550,29 @@ export default function ParserPage() {
 
       {/* Parser Settings */}
       <Card>
-        <CardHeader><CardTitle className="text-lg">Parser Settings</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">Настройки парсера</CardTitle></CardHeader>
         <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">Настройки применяются только к новым запускам парсера.</p>
+          <p className="text-xs text-muted-foreground">
+            Фильтры ниже (категории, лимиты, только связанные категории, предпросмотр) сохраняются здесь и подхватываются демоном при следующих прогонах после сохранения.
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center justify-between">
-              <Label>Download photos</Label>
+              <Label>Скачивать фото</Label>
               <Switch
                 checked={settingsForm.download_photos}
                 onCheckedChange={(v) => setSettingsForm({ ...settingsForm, download_photos: v })}
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label>Store photo links</Label>
+              <Label>Сохранять ссылки на фото</Label>
               <Switch
                 checked={settingsForm.store_photo_links}
                 onCheckedChange={(v) => setSettingsForm({ ...settingsForm, store_photo_links: v })}
               />
             </div>
             <div>
-              <Label>Max workers</Label>
+              <Label>Макс. воркеров</Label>
               <Input
                 type="number"
                 min={1}
@@ -537,7 +582,7 @@ export default function ParserPage() {
               />
             </div>
             <div>
-              <Label>Timeout (sec)</Label>
+              <Label>Таймаут (сек)</Label>
               <Input
                 type="number"
                 min={5}
@@ -547,7 +592,7 @@ export default function ParserPage() {
               />
             </div>
             <div>
-              <Label>Parser workers</Label>
+              <Label>Воркеры парсинга</Label>
               <Input
                 type="number"
                 min={1}
@@ -557,7 +602,7 @@ export default function ParserPage() {
               />
             </div>
             <div>
-              <Label>Photo workers</Label>
+              <Label>Воркеры фото</Label>
               <Input
                 type="number"
                 min={1}
@@ -567,7 +612,7 @@ export default function ParserPage() {
               />
             </div>
             <div>
-              <Label>Request delay min (ms)</Label>
+              <Label>Мин. задержка (мс)</Label>
               <Input
                 type="number"
                 min={100}
@@ -577,7 +622,7 @@ export default function ParserPage() {
               />
             </div>
             <div>
-              <Label>Request delay max (ms)</Label>
+              <Label>Макс. задержка (мс)</Label>
               <Input
                 type="number"
                 min={100}
@@ -587,21 +632,21 @@ export default function ParserPage() {
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label>Proxy enabled</Label>
+              <Label>Использовать прокси</Label>
               <Switch
                 checked={settingsForm.proxy_enabled}
                 onCheckedChange={(v) => setSettingsForm({ ...settingsForm, proxy_enabled: v })}
               />
             </div>
             <div>
-              <Label>Proxy URL</Label>
+              <Label>URL прокси</Label>
               <Input
                 value={settingsForm.proxy_url}
                 onChange={(e) => setSettingsForm({ ...settingsForm, proxy_url: e.target.value })}
               />
             </div>
             <div>
-              <Label>Queue threshold</Label>
+              <Label>Порог очереди</Label>
               <Input
                 type="number"
                 min={10}
@@ -610,32 +655,101 @@ export default function ParserPage() {
                 onChange={(e) => setSettingsForm({ ...settingsForm, queue_threshold: Math.max(10, Number(e.target.value) || 500) })}
               />
             </div>
+            <div className="flex items-center justify-between md:col-span-2">
+              <Label>Только связанные категории (демон и один прогон)</Label>
+              <Switch
+                checked={settingsForm.default_linked_only}
+                onCheckedChange={(v) => setSettingsForm({ ...settingsForm, default_linked_only: v })}
+              />
+            </div>
+            <div className="flex items-center justify-between md:col-span-2">
+              <Label>Только предпросмотр (без деталей товара)</Label>
+              <Switch
+                checked={settingsForm.default_no_details}
+                onCheckedChange={(v) => setSettingsForm({ ...settingsForm, default_no_details: v })}
+              />
+            </div>
+            <div>
+              <Label>Макс. страниц на категорию (0 = по полю категории)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={settingsForm.default_max_pages || ""}
+                onChange={(e) =>
+                  setSettingsForm({ ...settingsForm, default_max_pages: Math.max(0, Number(e.target.value) || 0) })
+                }
+              />
+            </div>
+            <div>
+              <Label>Лимит товаров на категорию (0 = по полю категории)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={settingsForm.default_products_per_category || ""}
+                onChange={(e) =>
+                  setSettingsForm({
+                    ...settingsForm,
+                    default_products_per_category: Math.max(0, Number(e.target.value) || 0),
+                  })
+                }
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Категории для полного режима (пусто = все включённые)</Label>
+              <p className="text-xs text-muted-foreground mb-2">Сохраняется в БД; демон использует тот же список.</p>
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-auto rounded border p-2">
+                {categories.map((c) => {
+                  const checked = settingsForm.default_category_ids.includes(c.id);
+                  return (
+                    <label key={c.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const next = checked
+                            ? settingsForm.default_category_ids.filter((id) => id !== c.id)
+                            : [...settingsForm.default_category_ids, c.id];
+                          setSettingsForm({ ...settingsForm, default_category_ids: next });
+                        }}
+                      />
+                      <span className="truncate max-w-[140px]">{c.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-          <Button variant="outline" onClick={handleSaveParserSettings}>Save parser settings</Button>
+          <Button variant="outline" onClick={handleSaveParserSettings}>
+            Сохранить настройки
+          </Button>
         </CardContent>
       </Card>
 
       {/* Parser Errors (Failed Jobs) */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Parser Errors</CardTitle>
-          <p className="text-sm text-muted-foreground">Последние 20 failed jobs</p>
+          <CardTitle className="text-lg">Ошибки парсера</CardTitle>
+          <p className="text-sm text-muted-foreground">Последние 20 неудачных заданий</p>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="p-2 text-left">Time</th>
-                  <th className="p-2 text-left">Queue</th>
-                  <th className="p-2 text-left">Job</th>
-                  <th className="p-2 text-left">Error</th>
-                  <th className="p-2 text-right">Retry</th>
+                  <th className="p-2 text-left">Время</th>
+                  <th className="p-2 text-left">Очередь</th>
+                  <th className="p-2 text-left">Задание</th>
+                  <th className="p-2 text-left">Ошибка</th>
+                  <th className="p-2 text-right">Повтор</th>
                 </tr>
               </thead>
               <tbody>
                 {(failedJobsData?.data ?? []).length === 0 && (
-                  <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">Нет failed jobs</td></tr>
+                  <tr>
+                    <td colSpan={5} className="p-4 text-center text-muted-foreground">
+                      Нет неудачных заданий
+                    </td>
+                  </tr>
                 )}
                 {(failedJobsData?.data ?? []).map((job) => (
                   <tr key={job.id} className="border-b hover:bg-muted/30">
@@ -645,7 +759,8 @@ export default function ParserPage() {
                     <td className="p-2 text-destructive text-xs max-w-[250px] truncate" title={job.exception ?? ""}>{job.exception ?? "—"}</td>
                     <td className="p-2 text-right">
                       <Button variant="ghost" size="sm" onClick={() => handleRetryJob(job.id)}>
-                        <RotateCw className="h-4 w-4 mr-1" />Retry
+                        <RotateCw className="h-4 w-4 mr-1" />
+                        Повторить
                       </Button>
                     </td>
                   </tr>
@@ -656,74 +771,37 @@ export default function ParserPage() {
         </CardContent>
       </Card>
 
-      {/* Settings */}
+      {/* Single-run only: category slug mode + save_to_db (not used by daemon) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <CardHeader><CardTitle className="text-lg">Переключатели</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-lg">Один прогон — дополнительно</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Не дублирует настройки выше: фото и фильтры берутся из блока «Настройки парсера» после нажатия «Сохранить настройки».
+            </p>
+          </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label>Парсить с фото</Label>
-              <Switch checked={config.withPhotos} onCheckedChange={(v) => setConfig({ ...config, withPhotos: v })} />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Сохранять в БД</Label>
+              <Label>Сохранять в БД (только API один прогон)</Label>
               <Switch checked={config.saveToDB} onCheckedChange={(v) => setConfig({ ...config, saveToDB: v })} />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Только предпросмотр</Label>
-              <Switch checked={config.previewOnly} onCheckedChange={(v) => setConfig({ ...config, previewOnly: v })} />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Только связанные категории</Label>
-              <Switch checked={config.linkedOnly} onCheckedChange={(v) => setConfig({ ...config, linkedOnly: v })} />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-lg">Фильтрация</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-lg">Режим «одна категория»</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>Одна категория (режим «категория»)</Label>
+              <Label>Код категории (slug): пусто — полный режим с фильтрами из настроек парсера</Label>
               <Select value={config.category || "all"} onValueChange={(v) => setConfig({ ...config, category: v === "all" ? "" : v })}>
                 <SelectTrigger><SelectValue placeholder="Все категории" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Все</SelectItem>
+                  <SelectItem value="all">Все (полный режим)</SelectItem>
                   {categories.map((c) => (
                     <SelectItem key={c.id} value={c.slug}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div>
-              <Label>Выбор категорий (полный режим)</Label>
-              <p className="text-xs text-muted-foreground mb-2">Если выбраны — парсятся только они. Пусто = все включённые.</p>
-              <div className="flex flex-wrap gap-2 max-h-32 overflow-auto rounded border p-2">
-                {categories.map((c) => {
-                  const checked = config.selectedCategoryIds.includes(c.id);
-                  return (
-                    <label key={c.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => {
-                          const next = checked ? config.selectedCategoryIds.filter((id) => id !== c.id) : [...config.selectedCategoryIds, c.id];
-                          setConfig({ ...config, selectedCategoryIds: next });
-                        }}
-                      />
-                      <span className="truncate max-w-[140px]">{c.name}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-            <div>
-              <Label>Лимит товаров на категорию</Label>
-              <Input type="number" min={0} value={config.productsPerCategory || ""} onChange={(e) => setConfig({ ...config, productsPerCategory: +e.target.value || 0 })} placeholder="0 = без лимита" />
-            </div>
-            <div>
-              <Label>Макс. страниц на категорию</Label>
-              <Input type="number" min={0} value={config.maxPages || ""} onChange={(e) => setConfig({ ...config, maxPages: +e.target.value || 0 })} placeholder="0 = без лимита" />
             </div>
           </CardContent>
         </Card>
