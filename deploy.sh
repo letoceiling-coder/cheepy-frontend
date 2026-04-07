@@ -41,7 +41,10 @@ git clean -fd
 git checkout main
 git pull origin main
 
-composer install --no-dev --optimize-autoloader
+echo "🔍 BACKEND VERSION"
+git rev-parse HEAD
+
+composer install --no-dev --optimize-autoloader --no-interaction
 
 php artisan migrate --force
 
@@ -60,6 +63,9 @@ git clean -fd
 git checkout main
 git pull origin main
 
+echo "🔍 FRONTEND VERSION"
+git rev-parse HEAD
+
 npm ci
 npm run build
 
@@ -68,13 +74,23 @@ npm run build
 ########################################
 
 systemctl reload nginx
+systemctl is-active nginx
 
 supervisorctl restart all
+
+echo "🔍 CHECK WORKERS"
 supervisorctl status
+
+if supervisorctl status | grep -E "STOPPED|FATAL|EXITED"; then
+  echo "❌ WORKERS FAILED"
+  exit 1
+fi
 
 ########################################
 # HEALTH CHECK
 ########################################
+
+echo "🩺 HEALTH CHECK"
 
 curl -f https://online-parser.siteaacess.store/api/health
 curl -f https://siteaacess.store
