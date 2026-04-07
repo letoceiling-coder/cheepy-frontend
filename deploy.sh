@@ -69,6 +69,14 @@ git rev-parse HEAD
 npm ci
 npm run build
 
+if [ ! -d "dist" ]; then
+  echo "❌ BUILD FAILED: dist not found"
+  exit 1
+fi
+
+echo "📦 DIST CONTENT"
+ls -la dist | head -n 5
+
 ########################################
 # SERVICES
 ########################################
@@ -92,7 +100,15 @@ fi
 
 echo "🩺 HEALTH CHECK"
 
-curl -f https://online-parser.siteaacess.store/api/health
+RESPONSE=$(curl -s https://online-parser.siteaacess.store/api/health)
+
+echo "$RESPONSE"
+
+if ! echo "$RESPONSE" | grep -q "status"; then
+  echo "❌ INVALID HEALTH RESPONSE"
+  exit 1
+fi
+
 curl -f https://siteaacess.store
 
 echo "✅ DEPLOY DONE"
