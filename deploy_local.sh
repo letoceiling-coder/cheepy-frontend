@@ -5,7 +5,8 @@ echo "CHECK FRONTEND CHANGES"
 cd ~/cheepy-frontend
 
 if [[ -n $(git status --porcelain) ]]; then
-  git add .
+  git add -A
+  git restore --staged -- '*.log' '*.tmp' '*.cache' 2>/dev/null || true
   git commit -m "deploy frontend"
   git push origin main
 else
@@ -16,7 +17,8 @@ echo "CHECK BACKEND CHANGES"
 cd ~/cheepy-backend
 
 if [[ -n $(git status --porcelain) ]]; then
-  git add .
+  git add -A
+  git restore --staged -- '*.log' '*.tmp' '*.cache' 2>/dev/null || true
   git commit -m "deploy backend"
   git push origin main
 else
@@ -25,8 +27,12 @@ fi
 
 echo "CALL DEPLOY API"
 
-KEY=$(grep '^DEPLOY_KEY=' ~/cheepy-backend/.env | sed 's/^DEPLOY_KEY=//')
+set -a
+# shellcheck source=/dev/null
+source ~/cheepy-backend/.env
+set +a
+
 curl -X POST https://online-parser.siteaacess.store/api/internal/deploy \
-  -H "X-DEPLOY-KEY: ${KEY}"
+  -H "X-DEPLOY-KEY: $DEPLOY_KEY"
 
 echo "DONE"
