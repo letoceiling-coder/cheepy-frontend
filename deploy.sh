@@ -104,8 +104,13 @@ RESPONSE=$(curl -s https://online-parser.siteaacess.store/api/health)
 
 echo "$RESPONSE"
 
-if ! echo "$RESPONSE" | grep -q "status"; then
-  echo "❌ INVALID HEALTH RESPONSE"
+if ! echo "$RESPONSE" | grep -q '"status"'; then
+  echo "❌ INVALID HEALTH RESPONSE STRUCTURE"
+  exit 1
+fi
+
+if ! echo "$RESPONSE" | grep -q '"status":"ok"'; then
+  echo "❌ API NOT HEALTHY"
   exit 1
 fi
 
