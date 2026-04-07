@@ -5,7 +5,7 @@ set -e
 echo "🚀 START DEPLOY"
 
 ########################################
-# STEP 1 — PUSH LOCAL CHANGES
+# STEP 1 — PUSH LOCAL
 ########################################
 
 echo "📦 PUSH FRONTEND"
@@ -21,7 +21,7 @@ git commit -m "deploy backend" || echo "no changes backend"
 git push origin main
 
 ########################################
-# STEP 2 — DEPLOY ON SERVER
+# STEP 2 — SERVER
 ########################################
 
 ssh root@85.117.235.93 << 'EOF'
@@ -36,7 +36,9 @@ echo "🧠 SERVER DEPLOY START"
 
 cd /var/www/online-parser.siteaacess.store
 
-git stash || true
+git reset --hard
+git clean -fd
+git checkout main
 git pull origin main
 
 composer install --no-dev --optimize-autoloader
@@ -53,10 +55,12 @@ php artisan route:clear
 
 cd /var/www/siteaacess.store
 
-git stash || true
+git reset --hard
+git clean -fd
+git checkout main
 git pull origin main
 
-npm install
+npm ci
 npm run build
 
 ########################################
@@ -64,14 +68,16 @@ npm run build
 ########################################
 
 systemctl reload nginx
+
 supervisorctl restart all
+supervisorctl status
 
 ########################################
 # HEALTH CHECK
 ########################################
 
-curl -sS https://online-parser.siteaacess.store/api/health || true
-curl -sS https://siteaacess.store || true
+curl -f https://online-parser.siteaacess.store/api/health
+curl -f https://siteaacess.store
 
 echo "✅ DEPLOY DONE"
 
