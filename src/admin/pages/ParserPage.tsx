@@ -7,11 +7,40 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Play, Square, Pause, Loader2, RotateCcw, Trash2, RefreshCw, RotateCw } from "lucide-react";
+import { Play, Square, Pause, Loader2, RotateCcw, Trash2, RefreshCw, RotateCw, Plus } from "lucide-react";
 import { parserApi, categoriesApi, logsApi } from "@/lib/api";
-import type { ParserJob, Category } from "@/lib/api";
+import type { ParserJob, Category, ParserSettings } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+
+/** GET may return array or legacy JSON string from DB — always normalize to number[]. */
+function parseDefaultCategoryIds(value: unknown): number[] {
+  if (Array.isArray(value)) {
+    return value.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n >= 1);
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    try {
+      const p = JSON.parse(value) as unknown;
+      if (Array.isArray(p)) {
+        return p.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n >= 1);
+      }
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+/** Load proxy list: prefer proxy_urls from API, else wrap legacy proxy_url */
+function parseProxyUrlsFromApi(s: ParserSettings): string[] {
+  const urls = s.proxy_urls;
+  if (Array.isArray(urls) && urls.length > 0) {
+    const out = urls.map((x) => String(x).trim()).filter((x) => x !== "");
+    return out.length > 0 ? out : [""];
+  }
+  const one = (s.proxy_url ?? "").trim();
+  return one ? [one] : [""];
+}
 
 export default function ParserPage() {
   /** Only single-run fields not stored in parser_settings (daemon uses DB defaults). */
@@ -69,11 +98,10 @@ export default function ParserPage() {
   const { data: parserSettings, refetch: refetchParserSettings } = useQuery({
     queryKey: ["parser-settings"],
     queryFn: () => parserApi.settings(),
-    refetchInterval: 30000,
   });
 
   const [settingsForm, setSettingsForm] = useState({
-    download_photos: true,
+    download_photos: false,
     store_photo_links: true,
     max_workers: 3,
     request_delay_min: 1500,
@@ -82,8 +110,8 @@ export default function ParserPage() {
     workers_parser: 2,
     workers_photos: 1,
     proxy_enabled: true,
-    proxy_url: "http://89.169.39.244:3128",
-    queue_threshold: 500,
+    proxy_urls: ["http://89.169.39.244:3128"] as string[],
+    queue_threshold: 150,
     default_linked_only: false,
     default_max_pages: 0,
     default_products_per_category: 0,
@@ -91,8 +119,10 @@ export default function ParserPage() {
     default_no_details: false,
   });
 
+  /** Hydrate form once from GET /admin/parser/settings — no refetch-driven overwrites */
+  const parserSettingsHydratedRef = useRef(false);
   useEffect(() => {
-    if (!parserSettings) return;
+    if (!parserSettings || parserSettingsHydratedRef.current) return;
     setSettingsForm({
       download_photos: parserSettings.download_photos,
       store_photo_links: parserSettings.store_photo_links,
@@ -103,14 +133,15 @@ export default function ParserPage() {
       workers_parser: parserSettings.workers_parser,
       workers_photos: parserSettings.workers_photos,
       proxy_enabled: parserSettings.proxy_enabled,
-      proxy_url: parserSettings.proxy_url ?? "http://89.169.39.244:3128",
+      proxy_urls: parseProxyUrlsFromApi(parserSettings),
       queue_threshold: parserSettings.queue_threshold,
       default_linked_only: parserSettings.default_linked_only ?? false,
       default_max_pages: parserSettings.default_max_pages ?? 0,
       default_products_per_category: parserSettings.default_products_per_category ?? 0,
-      default_category_ids: Array.isArray(parserSettings.default_category_ids) ? parserSettings.default_category_ids : [],
+      default_category_ids: parseDefaultCategoryIds(parserSettings.default_category_ids),
       default_no_details: parserSettings.default_no_details ?? false,
     });
+    parserSettingsHydratedRef.current = true;
   }, [parserSettings]);
 
   const flattenCategories = (items: Category[]): Category[] => {
@@ -323,15 +354,75 @@ export default function ParserPage() {
     }
   };
 
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  const addProxyRow = () => {
+    setSettingsForm((prev) => ({ ...prev, proxy_urls: [...prev.proxy_urls, ""] }));
+  };
+
+  const removeProxyRow = (index: number) => {
+    setSettingsForm((prev) => {
+      const next = prev.proxy_urls.filter((_, i) => i !== index);
+      return { ...prev, proxy_urls: next.length > 0 ? next : [""] };
+    });
+  };
+
+  const updateProxyRow = (index: number, value: string) => {
+    setSettingsForm((prev) => {
+      const next = [...prev.proxy_urls];
+      next[index] = value;
+      return { ...prev, proxy_urls: next };
+    });
+  };
+
   const handleSaveParserSettings = async () => {
+    setSavingSettings(true);
     try {
-      console.log("СОХРАНЕНИЕ НАСТРОЕК — PAYLOAD", settingsForm);
-      await parserApi.updateSettings(settingsForm);
-      refetchParserSettings();
+      const { proxy_urls, ...restForm } = settingsForm;
+      const cleanedProxyUrls = proxy_urls.map((u) => u.trim()).filter((u) => u !== "");
+      const savePayload = {
+        ...restForm,
+        proxy_urls: cleanedProxyUrls,
+        proxy_url: cleanedProxyUrls.length > 0 ? cleanedProxyUrls[0] : "",
+        max_pages: settingsForm.default_max_pages,
+        categories: settingsForm.default_category_ids,
+        linked_only: settingsForm.default_linked_only,
+        products_per_category: settingsForm.default_products_per_category,
+        download_photos: settingsForm.download_photos,
+        no_details: settingsForm.default_no_details,
+      };
+      console.log("SAVE SETTINGS PAYLOAD", savePayload);
+      const res = await parserApi.updateSettings(savePayload);
+      if (res?.data) {
+        const d = res.data;
+        setSettingsForm({
+          download_photos: d.download_photos,
+          store_photo_links: d.store_photo_links,
+          max_workers: d.max_workers,
+          request_delay_min: d.request_delay_min,
+          request_delay_max: d.request_delay_max,
+          timeout_seconds: d.timeout_seconds,
+          workers_parser: d.workers_parser,
+          workers_photos: d.workers_photos,
+          proxy_enabled: d.proxy_enabled,
+          proxy_urls: parseProxyUrlsFromApi(d),
+          queue_threshold: d.queue_threshold,
+          default_linked_only: d.default_linked_only ?? false,
+          default_max_pages: d.default_max_pages ?? 0,
+          default_products_per_category: d.default_products_per_category ?? 0,
+          default_category_ids: parseDefaultCategoryIds(d.default_category_ids),
+          default_no_details: d.default_no_details ?? false,
+        });
+      } else {
+        parserSettingsHydratedRef.current = false;
+        await refetchParserSettings();
+      }
       toast.success("Настройки парсера сохранены");
     } catch (err: unknown) {
       const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
       toast.error(msg);
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -638,12 +729,35 @@ export default function ParserPage() {
                 onCheckedChange={(v) => setSettingsForm({ ...settingsForm, proxy_enabled: v })}
               />
             </div>
-            <div>
-              <Label>URL прокси</Label>
-              <Input
-                value={settingsForm.proxy_url}
-                onChange={(e) => setSettingsForm({ ...settingsForm, proxy_url: e.target.value })}
-              />
+            <div className="md:col-span-2 space-y-2">
+              <Label>Прокси (URL)</Label>
+              <p className="text-xs text-muted-foreground">
+                Несколько адресов для ротации на бэкенде; пустые строки при сохранении отбрасываются.
+              </p>
+              {settingsForm.proxy_urls.map((url, index) => (
+                <div key={index} className="flex gap-2 items-center">
+                  <Input
+                    className="flex-1"
+                    value={url}
+                    onChange={(e) => updateProxyRow(index, e.target.value)}
+                    placeholder="http://host:port"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    title="Удалить"
+                    onClick={() => removeProxyRow(index)}
+                    disabled={settingsForm.proxy_urls.length <= 1}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" onClick={addProxyRow}>
+                <Plus className="h-4 w-4 mr-1" />
+                Добавить прокси
+              </Button>
             </div>
             <div>
               <Label>Порог очереди</Label>
@@ -652,7 +766,7 @@ export default function ParserPage() {
                 min={10}
                 max={1000000}
                 value={settingsForm.queue_threshold}
-                onChange={(e) => setSettingsForm({ ...settingsForm, queue_threshold: Math.max(10, Number(e.target.value) || 500) })}
+                onChange={(e) => setSettingsForm({ ...settingsForm, queue_threshold: Math.max(10, Number(e.target.value) || 150) })}
               />
             </div>
             <div className="flex items-center justify-between md:col-span-2">
@@ -719,8 +833,13 @@ export default function ParserPage() {
               </div>
             </div>
           </div>
-          <Button variant="outline" onClick={handleSaveParserSettings}>
-            Сохранить настройки
+          <Button
+            type="button"
+            variant="outline"
+            disabled={savingSettings}
+            onClick={() => void handleSaveParserSettings()}
+          >
+            {savingSettings ? "Сохранение…" : "Сохранить настройки"}
           </Button>
         </CardContent>
       </Card>

@@ -39,10 +39,10 @@ function resolveApiBaseUrl(): string {
 
 const BASE_URL = resolveApiBaseUrl();
 
-// Log API URL in development
+/** Single source for GET/POST — all `request()` calls use BASE_URL + path */
+console.log('API URL', BASE_URL);
 if (import.meta.env.DEV) {
   console.log('[API] VITE_API_URL:', import.meta.env.VITE_API_URL || '(default)');
-  console.log('[API] BASE_URL:', BASE_URL);
 }
 
 // Callback for 401 — logout and redirect (set by AdminAuthProvider)
@@ -530,7 +530,10 @@ export interface ParserSettings {
   workers_parser: number;
   workers_photos: number;
   proxy_enabled: boolean;
+  /** Legacy single URL; kept in sync with proxy_urls[0] on backend */
   proxy_url?: string | null;
+  /** Multiple proxy endpoints for rotation (preferred over proxy_url alone) */
+  proxy_urls?: string[] | null;
   queue_threshold: number;
   /** Persisted defaults for daemon / full runs (POST /admin/parser/settings) */
   default_max_pages?: number;
