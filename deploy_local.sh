@@ -25,7 +25,8 @@ fi
 
 echo "CALL DEPLOY API"
 
+KEY=$(grep '^DEPLOY_KEY=' ~/cheepy-backend/.env | sed 's/^DEPLOY_KEY=//')
 curl -X POST https://online-parser.siteaacess.store/api/internal/deploy \
-  -H "X-DEPLOY-KEY: $(grep DEPLOY_KEY ~/cheepy-backend/.env | cut -d '=' -f2)"
+  -H "X-DEPLOY-KEY: ${KEY}"
 
 echo "DONE"
