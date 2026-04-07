@@ -33,14 +33,14 @@ Directory: `/etc/supervisor/conf.d`
 
 ### `parser-worker.conf`
 
-- Command: `artisan queue:work redis --queue=parser`
+- Command: `artisan queue:work redis --queue=parser` (handles **`RunParserJob`** + **`ParseCategoryJob`** — both use the `parser` queue)
 - `numprocs=2`
 - `tries=3`
 - long stop-wait (`stopwaitsecs=3600`)
 
 ### `parser-worker-photos.conf`
 
-- Command: `artisan queue:work redis --queue=photos,default`
+- Command: `artisan queue:work redis --queue=photos,default` (if you still route jobs to `default`, include it; parser-only runs can use `--queue=parser` alone)
 - `numprocs=1`
 - `tries=5`
 

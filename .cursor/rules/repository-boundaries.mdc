@@ -1,0 +1,27 @@
+---
+description: Strict repo split — backend vs frontend; no duplicates; verify server usage before edits
+alwaysApply: true
+---
+
+# Repository boundaries (ULTRA STRICT)
+
+## Where code lives
+
+- **Backend (Laravel, PHP, API, queues, migrations):** repository **`cheepy-backend`** only.
+- **Frontend (Vite, React, TS, admin UI):** repository **`cheepy-frontend`** (this repo) only.
+
+## Forbidden in cheepy-frontend
+
+- Storing or reintroducing **backend** code (Laravel `app/`, `database/migrations`, API `routes/`, copied PHP services, “reference” snapshots under `docs/`).
+- **Duplicating** Laravel or maintaining parallel “copy” trees.
+- Treating `docs/` or any non-deployed path as a place to **edit** backend logic.
+
+## Before changing any file
+
+1. Ask: **Does the production/deployed server actually run or ship this file?** (real backend path, CI, Nginx static root, etc.)
+2. If the change belongs to **API, jobs, DB, PHP** → work in **`cheepy-backend`**, not here.
+3. If the file is **historical docs, audit reports, or unused scripts** → **do not modify** unless the user explicitly asks (avoid drive-by edits).
+
+## If unsure
+
+- **Do not touch.** Confirm which repo and deploy path apply first.
