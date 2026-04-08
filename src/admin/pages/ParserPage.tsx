@@ -211,8 +211,9 @@ export default function ParserPage() {
         save_to_db: config.saveToDB,
         no_details: settingsForm.default_no_details,
         linked_only: settingsForm.default_linked_only,
-        products_per_category: settingsForm.default_products_per_category || undefined,
-        max_pages: settingsForm.default_max_pages || undefined,
+        // Явно передаём 0: иначе `|| undefined` отбрасывал max_pages=0 и бралось устаревшее из БД при старте без сохранения.
+        products_per_category: settingsForm.default_products_per_category,
+        max_pages: settingsForm.default_max_pages,
       };
       if (config.category) opts.category_slug = config.category;
       if (opts.type === "full" && settingsForm.default_category_ids.length > 0) {
