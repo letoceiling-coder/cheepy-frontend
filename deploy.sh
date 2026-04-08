@@ -1,34 +1,58 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 echo "🚀 START DEPLOY"
+
+########################################
+# Репозитории на машине, где запускается скрипт
+########################################
+# deploy.sh лежит в корне фронтенд-репо (cheepy). Бэкенд по умолчанию — соседний каталог sadavod-laravel
+# (типично C:\OSPanel\domains\cheepy и C:\OSPanel\domains\sadavod-laravel в Git Bash: /c/OSPanel/domains/...).
+# При другом расположении: export CHEEPY_BACKEND_ROOT=/path/to/cheepy-backend
+#
+DEPLOY_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CHEEPY_FRONTEND_ROOT="${CHEEPY_FRONTEND_ROOT:-$DEPLOY_SCRIPT_DIR}"
+CHEEPY_BACKEND_ROOT="${CHEEPY_BACKEND_ROOT:-$(cd "$DEPLOY_SCRIPT_DIR/../sadavod-laravel" 2>/dev/null && pwd || true)}"
+
+if [[ -z "${CHEEPY_FRONTEND_ROOT:-}" ]] || [[ ! -d "$CHEEPY_FRONTEND_ROOT/.git" ]]; then
+  echo "❌ Фронтенд-репозиторий не найден: ${CHEEPY_FRONTEND_ROOT:-<пусто>} (ожидается .git)"
+  exit 1
+fi
+if [[ -z "${CHEEPY_BACKEND_ROOT:-}" ]] || [[ ! -d "$CHEEPY_BACKEND_ROOT/.git" ]]; then
+  echo "❌ Бэкенд-репозиторий не найден: ${CHEEPY_BACKEND_ROOT:-<пусто>}"
+  echo "   Ожидается соседний каталог ../sadavod-laravel от deploy.sh или задайте: export CHEEPY_BACKEND_ROOT=/path/to/repo"
+  exit 1
+fi
+
+echo "📂 FRONTEND: $CHEEPY_FRONTEND_ROOT"
+echo "📂 BACKEND:  $CHEEPY_BACKEND_ROOT"
 
 ########################################
 # STEP 1 — PUSH LOCAL
 ########################################
 
 echo "📦 PUSH FRONTEND"
-cd ~/cheepy-frontend
+cd "$CHEEPY_FRONTEND_ROOT"
 git add .
 git commit -m "deploy frontend" || echo "no changes frontend"
 git push origin main
 
 echo "📦 PUSH BACKEND"
-cd ~/cheepy-backend
+cd "$CHEEPY_BACKEND_ROOT"
 git add .
 git commit -m "deploy backend" || echo "no changes backend"
 git push origin main
 
 ########################################
-# STEP 2 — SERVER
+# STEP 2 — SERVER (SSH от root: единый сценарий с prod)
 ########################################
 
 ssh root@85.117.235.93 << 'EOF'
 
-set -e
+set -euo pipefail
 
-echo "🧠 SERVER DEPLOY START"
+echo "🧠 SERVER DEPLOY START (user: $(whoami))"
 
 ########################################
 # BACKEND
@@ -36,21 +60,33 @@ echo "🧠 SERVER DEPLOY START"
 
 cd /var/www/online-parser.siteaacess.store
 
-git reset --hard
-git clean -fd
+git fetch origin
 git checkout main
-git pull origin main
+git reset --hard origin/main
+
+# Удаляем только безопасный мусор; не трогаем .env и типичные runtime-каталоги Laravel
+git clean -fd \
+  -e .env \
+  -e '.env.*' \
+  -e storage \
+  -e bootstrap/cache
 
 echo "🔍 BACKEND VERSION"
 git rev-parse HEAD
 
+export COMPOSER_ALLOW_SUPERUSER=1
 composer install --no-dev --optimize-autoloader --no-interaction
 
 php artisan migrate --force
 
-php artisan config:clear
-php artisan cache:clear
-php artisan route:clear
+php artisan optimize:clear
+
+php artisan config:cache
+
+php artisan queue:restart
+
+# PHP-FPM / воркеры обычно работают от www-data — выравниваем владельцев после деплоя от root
+chown -R www-data:www-data storage bootstrap/cache || true
 
 ########################################
 # FRONTEND
@@ -58,10 +94,14 @@ php artisan route:clear
 
 cd /var/www/siteaacess.store
 
-git reset --hard
-git clean -fd
+git fetch origin
 git checkout main
-git pull origin main
+git reset --hard origin/main
+
+# Не удаляем .env и не трогаем собранный dist до npm run build — исключаем .env; dist пересоберём
+git clean -fd \
+  -e .env \
+  -e '.env.*'
 
 echo "🔍 FRONTEND VERSION"
 git rev-parse HEAD
@@ -95,12 +135,12 @@ if supervisorctl status | grep -E "STOPPED|FATAL|EXITED"; then
 fi
 
 ########################################
-# HEALTH CHECK
+# HEALTH CHECK (JSON с пробелами или без: "status": "ok" / "status":"ok")
 ########################################
 
 echo "🩺 HEALTH CHECK"
 
-RESPONSE=$(curl -s https://online-parser.siteaacess.store/api/health)
+RESPONSE=$(curl -sS https://online-parser.siteaacess.store/api/health)
 
 echo "$RESPONSE"
 
@@ -109,12 +149,12 @@ if ! echo "$RESPONSE" | grep -q '"status"'; then
   exit 1
 fi
 
-if ! echo "$RESPONSE" | grep -q '"status":"ok"'; then
+if ! echo "$RESPONSE" | grep -qE '"status"[[:space:]]*:[[:space:]]*"ok"'; then
   echo "❌ API NOT HEALTHY"
   exit 1
 fi
 
-curl -f https://siteaacess.store
+curl -fS https://siteaacess.store
 
 echo "✅ DEPLOY DONE"
 
