@@ -54,6 +54,11 @@ set -euo pipefail
 
 echo "🧠 SERVER DEPLOY START (user: $(whoami))"
 
+# Git 2.35+: при владельце репозитория не root — иначе git в /var/www/siteaacess.store падает с «dubious ownership»
+if ! git config --global --get-all safe.directory 2>/dev/null | grep -Fxq '/var/www/siteaacess.store'; then
+  git config --global --add safe.directory /var/www/siteaacess.store
+fi
+
 ########################################
 # BACKEND
 ########################################
