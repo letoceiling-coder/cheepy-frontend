@@ -343,6 +343,27 @@ export default function ParserPage() {
       setSysAction(null);
     }
   };
+  const handleHardStopAndCleanup = async () => {
+    const ok = window.confirm(
+      "Выполнить ЖЕСТКИЙ СТОП?\n\nЭто остановит текущий парсинг, очистит очереди parser/photos/default, перезапустит воркеры и очистит failed jobs."
+    );
+    if (!ok) return;
+
+    setSysAction("hardReset");
+    try {
+      await parserApi.reset();
+      await parserApi.clearFailedJobs();
+      refetchStatus();
+      refetchState();
+      refetchFailedJobs();
+      toast.success("Жесткий стоп выполнен: очереди и failed jobs очищены, воркеры перезапущены");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Ошибка";
+      toast.error(msg);
+    } finally {
+      setSysAction(null);
+    }
+  };
   const handleRetryJob = async (id: number) => {
     try {
       await parserApi.retryJob(id);
@@ -616,6 +637,10 @@ export default function ParserPage() {
         <CardHeader><CardTitle className="text-lg">Системные инструменты</CardTitle></CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
+            <Button variant="destructive" onClick={handleHardStopAndCleanup} disabled={!!sysAction} title="Остановить парсер, очистить очереди/failed и перезапустить воркеры">
+              <Square className="h-4 w-4 mr-1" />
+              Жесткий стоп + очистка
+            </Button>
             <Button variant="outline" onClick={handleQueueFlush} disabled={!!sysAction || isRunning} title="Сбросить очереди">
               <RotateCcw className="h-4 w-4 mr-1" />
               Сбросить очередь
