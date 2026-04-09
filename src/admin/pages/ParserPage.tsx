@@ -501,6 +501,30 @@ export default function ParserPage() {
     return s ? (m[s] ?? s) : "—";
   };
 
+  const proxyBlocked =
+    Boolean(diagnostics?.proxy_blocked) ||
+    Boolean(parserHealth?.proxy_blocked) ||
+    Boolean(parserState?.proxy_blocked) ||
+    Boolean(statusData?.proxy_blocked);
+  const proxyBlockedUntil =
+    diagnostics?.proxy_blocked_until ??
+    parserHealth?.proxy_blocked_until ??
+    parserState?.proxy_blocked_until ??
+    statusData?.proxy_blocked_until ??
+    null;
+  const proxyBlockReason =
+    diagnostics?.proxy_block_reason ??
+    parserHealth?.proxy_block_reason ??
+    parserState?.proxy_block_reason ??
+    statusData?.proxy_block_reason ??
+    null;
+  const proxyAction =
+    diagnostics?.proxy_last_action ??
+    parserHealth?.proxy_last_action ??
+    parserState?.proxy_last_action ??
+    statusData?.proxy_last_action ??
+    null;
+
   const workerStatusRu = (v: string | undefined) => {
     if (v === "running") return "работают";
     if (v === "stopped") return "остановлены";
@@ -531,6 +555,25 @@ export default function ParserPage() {
         <h2 className="text-2xl font-bold">Управление парсером</h2>
         {statusBadge}
       </div>
+
+      {proxyBlocked && (
+        <Card className="border-destructive/40">
+          <CardHeader>
+            <CardTitle className="text-base text-destructive">Прокси временно заблокирован донором</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm space-y-1">
+            <p className="text-muted-foreground">
+              Система остановила лишние запросы через прокси, чтобы не усугублять блокировку.
+            </p>
+            <p>
+              До: <span className="font-medium">{proxyBlockedUntil ? new Date(proxyBlockedUntil).toLocaleString("ru") : "неизвестно"}</span>
+            </p>
+            <p className="text-muted-foreground">
+              Причина: {proxyBlockReason ?? "не указана"}{proxyAction ? `, действие: ${proxyAction}` : ""}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Parser Control */}
       <Card>
@@ -606,8 +649,8 @@ export default function ParserPage() {
               </div>
               <div>
                 <p className="text-muted-foreground">Прокси</p>
-                <Badge variant={diagnostics.proxy_status === "ok" ? "secondary" : "destructive"}>
-                  {diagnostics.proxy_status === "ok" ? "ОК" : "Ошибка"}
+                <Badge variant={proxyBlocked ? "destructive" : diagnostics.proxy_status === "ok" ? "secondary" : "destructive"}>
+                  {proxyBlocked ? "Блок" : diagnostics.proxy_status === "ok" ? "ОК" : "Ошибка"}
                 </Badge>
               </div>
               <div>
@@ -627,7 +670,11 @@ export default function ParserPage() {
                 </p>
                 <p className="text-muted-foreground mt-1">
                   Прокси:{" "}
-                  {(parserHealth?.proxy_status ?? diagnostics.proxy_status ?? "failed") === "ok" ? "ОК" : "Ошибка"}
+                  {proxyBlocked
+                    ? "Заблокирован донором (кулдаун)"
+                    : (parserHealth?.proxy_status ?? diagnostics.proxy_status ?? "failed") === "ok"
+                      ? "ОК"
+                      : "Ошибка"}
                 </p>
                 <p className="text-muted-foreground mt-1">
                   Донор:{" "}
@@ -635,6 +682,11 @@ export default function ParserPage() {
                 </p>
                 <p className="text-muted-foreground mt-1">Память: {String(diagnostics.memory_usage ?? "—")}</p>
                 <p className="text-muted-foreground mt-1">Ошибок за час: {diagnostics.error_frequency?.last_hour ?? 0}</p>
+                {proxyBlocked && (
+                  <p className="text-destructive mt-1">
+                    Кулдаун до {proxyBlockedUntil ? new Date(proxyBlockedUntil).toLocaleTimeString("ru") : "—"}, streak: {diagnostics.proxy_block_streak ?? 0}
+                  </p>
+                )}
               </div>
               <div className="rounded border p-3">
                 <p className="text-muted-foreground">Обзор прогресса</p>

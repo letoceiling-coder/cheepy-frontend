@@ -308,6 +308,10 @@ export interface ParserStatus {
   last_completed: ParserJob | null;
   queue_parser_size?: number;
   queue_photos_size?: number;
+  proxy_blocked?: boolean;
+  proxy_blocked_until?: string | null;
+  proxy_block_reason?: string | null;
+  proxy_last_action?: string | null;
 }
 
 export interface DashboardData {
@@ -488,6 +492,12 @@ export interface ParserDiagnostics {
     last_hour?: number;
   };
   proxy_status?: 'ok' | 'failed';
+  proxy_blocked?: boolean;
+  proxy_blocked_until?: string | null;
+  proxy_block_reason?: string | null;
+  proxy_block_streak?: number;
+  proxy_last_action?: string | null;
+  proxy_last_url?: string | null;
   sadovodbaza_status?: 'ok' | 'failed';
   progress?: {
     job_id?: number;
@@ -515,6 +525,10 @@ export interface ParserHealth {
   };
   workers: number;
   proxy_status: 'ok' | 'failed';
+  proxy_blocked?: boolean;
+  proxy_blocked_until?: string | null;
+  proxy_block_reason?: string | null;
+  proxy_last_action?: string | null;
   sadovodbaza_status: 'ok' | 'failed';
   timestamp: string;
 }
@@ -557,6 +571,10 @@ export interface ParserStateResponse {
   locked: boolean;
   last_start: string | null;
   last_stop: string | null;
+  proxy_blocked?: boolean;
+  proxy_blocked_until?: string | null;
+  proxy_block_reason?: string | null;
+  proxy_last_action?: string | null;
   updated_at: string;
 }
 

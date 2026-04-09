@@ -244,6 +244,15 @@ export default function DashboardPage() {
       <Card>
         <CardHeader><CardTitle className="text-lg">Управление системой</CardTitle></CardHeader>
         <CardContent>
+          {diagnostics?.proxy_blocked && (
+            <div className="mb-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+              <p className="font-medium text-destructive">Прокси заблокирован донором</p>
+              <p className="text-muted-foreground">
+                Кулдаун активен до {diagnostics.proxy_blocked_until ? new Date(diagnostics.proxy_blocked_until).toLocaleString("ru") : "неизвестно"}.
+                Лишние запросы через прокси временно остановлены.
+              </p>
+            </div>
+          )}
           <div className="flex flex-wrap gap-3">
             <Button variant="outline" onClick={handleQueueFlush} disabled={!!sysAction || isRunning} title="Очистить все очереди">
               <RotateCcw className="h-4 w-4 mr-1" />Сброс очередей
