@@ -13,6 +13,11 @@ import type { ParserJob, Category, ParserSettings } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+type LastRunCategoryReport = {
+  slug: string;
+  saved: number;
+};
+
 /** GET may return array or legacy JSON string from DB — always normalize to number[]. */
 function parseDefaultCategoryIds(value: unknown): number[] {
   if (Array.isArray(value)) {
@@ -159,6 +164,7 @@ export default function ParserPage() {
   const isRunning = statusData?.is_running ?? false;
   const daemonEnabled = statusData?.daemon_enabled ?? false;
   const activeJob = statusData?.current_job ?? currentJob;
+  const [lastRunCategories, setLastRunCategories] = useState<LastRunCategoryReport[]>([]);
 
   const fetchLogs = useCallback((jid: number | null) => {
     if (!jid) return;
@@ -173,6 +179,38 @@ export default function ParserPage() {
       fetchLogs(activeJob.id);
     }
   }, [activeJob?.id, fetchLogs]);
+
+  useEffect(() => {
+    const last = statusData?.last_completed;
+    if (!last?.id) {
+      setLastRunCategories([]);
+      return;
+    }
+
+    parserApi.jobDetail(last.id)
+      .then((job) => {
+        const rows: LastRunCategoryReport[] = [];
+        const re = /^Категория\s+([^:]+):\s+сохранено\s+(\d+)\s+товаров/i;
+        for (const l of job.logs ?? []) {
+          if (typeof l?.message !== "string") continue;
+          const m = l.message.match(re);
+          if (!m) continue;
+          rows.push({
+            slug: m[1].trim(),
+            saved: Number(m[2]) || 0,
+          });
+        }
+        // keep first occurrence per category (latest logs are already first)
+        const seen = new Set<string>();
+        const unique = rows.filter((r) => {
+          if (seen.has(r.slug)) return false;
+          seen.add(r.slug);
+          return true;
+        });
+        setLastRunCategories(unique);
+      })
+      .catch(() => setLastRunCategories([]));
+  }, [statusData?.last_completed?.id]);
 
   useEffect(() => {
     if (!isRunning || !jobId) return;
@@ -624,6 +662,50 @@ export default function ParserPage() {
                 {(diagnostics.last_errors ?? []).map((e) => (
                   <p key={e.id} className="text-xs text-muted-foreground truncate" title={e.message}>
                     [{new Date(e.logged_at).toLocaleTimeString("ru")}] {e.message}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!!statusData?.last_completed && (
+        <Card>
+          <CardHeader><CardTitle className="text-lg">Отчет последнего прогона</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Статус</p>
+                <p className="font-medium">{statusData.last_completed.status}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Категории</p>
+                <p className="font-medium">
+                  {statusData.last_completed.progress?.categories?.done ?? 0}/{statusData.last_completed.progress?.categories?.total ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Сохранено товаров</p>
+                <p className="font-medium">{statusData.last_completed.progress?.saved ?? 0}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Фото (скачано/ошибки)</p>
+                <p className="font-medium">
+                  {statusData.last_completed.progress?.photos?.downloaded ?? 0}/{statusData.last_completed.progress?.photos?.failed ?? 0}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <p className="text-sm font-medium mb-2">По категориям</p>
+              <div className="space-y-1 max-h-36 overflow-auto rounded border p-2">
+                {lastRunCategories.length === 0 && (
+                  <p className="text-xs text-muted-foreground">Детализация по категориям появится после завершения прогона.</p>
+                )}
+                {lastRunCategories.map((r) => (
+                  <p key={r.slug} className="text-xs text-muted-foreground">
+                    {r.slug}: сохранено {r.saved}
                   </p>
                 ))}
               </div>
