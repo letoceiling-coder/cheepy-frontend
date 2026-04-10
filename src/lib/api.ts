@@ -1029,6 +1029,11 @@ export interface SystemProductItem {
   /** Витринная категория из category_mapping по донорской категории (если в БД category_id ещё null). */
   mapping_suggested_category_id?: number | null;
   brand_id?: number | null;
+  /**
+   * Ручной порядок в списках/блоках витрины (меньше — выше при сортировке по позиции).
+   * Публичный каталог: sort_by=position в категории.
+   */
+  list_position?: number;
   /** URL превью для списков (CRM-фото или донор). */
   thumbnail_url?: string | null;
   created_at?: string;
@@ -1082,7 +1087,7 @@ export const adminSystemProductsApi = {
     per_page?: number;
     category_id?: number;
     seller_id?: number;
-    sort_by?: 'created_at' | 'updated_at' | 'name' | 'status' | 'price_raw';
+    sort_by?: 'created_at' | 'updated_at' | 'name' | 'status' | 'price_raw' | 'list_position';
     sort_dir?: 'asc' | 'desc';
   }) => {
     const q = new URLSearchParams();
@@ -1098,7 +1103,7 @@ export const adminSystemProductsApi = {
   /** Редактор каталога: поля карточки без смены статуса через этот метод. */
   update: (
     id: number,
-    body: Partial<Pick<SystemProductItem, "name" | "description" | "price" | "price_raw" | "seller_id" | "category_id" | "brand_id">>
+    body: Partial<Pick<SystemProductItem, "name" | "description" | "price" | "price_raw" | "seller_id" | "category_id" | "brand_id" | "list_position">>
   ) => patch<SystemProductItem>(`/admin/system-products/${id}`, body),
   /** Только CRM: атрибуты карточки (парсер не меняется). */
   syncCrmAttributes: (id: number, body: { attributes: Array<{ attr_name: string; attr_value?: string | null }> }) =>

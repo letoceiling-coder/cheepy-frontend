@@ -114,6 +114,8 @@ export default function CrmModerationDetailPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
+  /** Ручной порядок на витрине (меньше — выше при сортировке по позиции). */
+  const [listPosition, setListPosition] = useState<string>("0");
   const [categoryId, setCategoryId] = useState<string>("");
   const [attrs, setAttrs] = useState<AttrRow[]>([]);
   const [photos, setPhotos] = useState<PhotoRow[]>([]);
@@ -125,6 +127,7 @@ export default function CrmModerationDetailPage() {
     setName(item.name ?? "");
     setDescription(item.description ?? "");
     setPrice(item.price ?? "");
+    setListPosition(String(item.list_position ?? 0));
     const cat =
       item.category_id != null
         ? item.category_id
@@ -164,11 +167,13 @@ export default function CrmModerationDetailPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const pos = listPosition.trim() === "" ? 0 : Number.parseInt(listPosition, 10);
       await adminSystemProductsApi.update(id, {
         name: name.trim(),
         description: description || null,
         price: price || null,
         category_id: categoryId ? Number(categoryId) : null,
+        list_position: Number.isFinite(pos) && pos >= 0 ? pos : 0,
       });
       await adminSystemProductsApi.syncCrmAttributes(id, {
         attributes: attrs
@@ -442,6 +447,22 @@ export default function CrmModerationDetailPage() {
               <div>
                 <Label htmlFor="sp-price">Цена (отображение)</Label>
                 <Input id="sp-price" value={price} onChange={(e) => setPrice(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="sp-list-pos">Позиция в списке (витрина)</Label>
+                <Input
+                  id="sp-list-pos"
+                  type="number"
+                  min={0}
+                  step={1}
+                  inputMode="numeric"
+                  value={listPosition}
+                  onChange={(e) => setListPosition(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  При сортировке блока «по позиции» меньшее число выше. Режимы «по просмотрам», «по продажам», «новинки»
+                  задаются настройками блока отдельно.
+                </p>
               </div>
               <div>
                 <Label>Категория витрины</Label>

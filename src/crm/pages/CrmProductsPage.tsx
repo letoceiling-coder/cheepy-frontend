@@ -186,6 +186,14 @@ export default function CrmProductsPage() {
     { key: "name", title: "Название", render: (p) => <span className="font-medium text-sm">{p.name}</span> },
     { key: "category", title: "Категория", className: "hidden lg:table-cell", render: (p) => p.category?.name ?? "—" },
     {
+      key: "list_position",
+      title: "Поз.",
+      className: "w-14 text-right hidden sm:table-cell",
+      render: (p) => (
+        <span className="font-mono text-xs tabular-nums text-muted-foreground">{p.list_position ?? 0}</span>
+      ),
+    },
+    {
       key: "price",
       title: "Цена",
       render: (p) => {

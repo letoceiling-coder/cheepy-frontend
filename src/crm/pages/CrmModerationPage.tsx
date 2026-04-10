@@ -139,6 +139,14 @@ export default function CrmModerationPage() {
     { key: "id", title: "ID", className: "w-20", render: (m) => <span className="font-mono text-xs">{m.id}</span> },
     { key: "name", title: "Название", render: (m) => <span className="font-medium text-sm">{m.name}</span> },
     { key: "category", title: "Категория", className: "hidden lg:table-cell", render: (m) => m.category?.name ?? "—" },
+    {
+      key: "list_position",
+      title: "Поз.",
+      className: "w-12 text-right hidden md:table-cell",
+      render: (m) => (
+        <span className="font-mono text-xs tabular-nums text-muted-foreground">{m.list_position ?? 0}</span>
+      ),
+    },
     { key: "donor", title: "Донор-источник", className: "hidden md:table-cell max-w-[200px] truncate", render: donorSourceLabel },
     { key: "created_at", title: "Создан", render: (m) => formatDate(m.created_at) },
     { key: "status", title: "Статус", render: (m) => <StatusBadge status={m.status} /> },
