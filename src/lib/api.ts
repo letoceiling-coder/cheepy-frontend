@@ -904,10 +904,32 @@ export interface SystemProductItem {
   brand_id?: number | null;
   created_at?: string;
   updated_at?: string;
+  seller?: { id: number; name: string; slug: string } | null;
   category?: { id: number; name: string; slug: string } | null;
+  brand?: { id: number; name: string; slug: string } | null;
+  /** Полный ответ GET /admin/system-products/:id */
+  attributes?: Array<{
+    attr_name: string;
+    attr_value: string;
+    attr_type?: string;
+    value_int?: number | null;
+    value_float?: number | null;
+  }>;
+  photos?: Array<{ url: string; is_primary?: boolean; sort_order?: number }>;
   donor_sources?: Array<{
     donor_product_id: number;
-    donor?: { id: number; external_id?: string; title?: string; source_url?: string } | null;
+    source?: string;
+    donor?: {
+      id: number;
+      external_id?: string;
+      title?: string;
+      price?: string;
+      source_url?: string;
+      photos?: string[];
+      thumbnail?: string | null;
+      category?: { id: number; name: string; slug: string };
+      seller?: { id: number; name: string; slug: string };
+    } | null;
   }>;
   product_sources?: Array<{
     id: number;
@@ -925,8 +947,14 @@ export const adminSystemProductsApi = {
     );
   },
   get: (id: number) => get<SystemProductItem>(`/admin/system-products/${id}`),
-  patch: (id: number, body: { status?: SystemProductStatus }) =>
-    patch<SystemProductItem>(`/admin/system-products/${id}`, body),
+  /** Решение модерации — только статус (бэкенд: PATCH .../moderate). */
+  moderate: (id: number, body: { status: SystemProductStatus }) =>
+    patch<SystemProductItem>(`/admin/system-products/${id}/moderate`, body),
+  /** Редактор каталога: поля карточки без смены статуса через этот метод. */
+  update: (
+    id: number,
+    body: Partial<Pick<SystemProductItem, "name" | "description" | "price" | "price_raw" | "seller_id" | "category_id" | "brand_id">>
+  ) => patch<SystemProductItem>(`/admin/system-products/${id}`, body),
 };
 
 // ──────────────────────────────────────────────

@@ -57,7 +57,7 @@ export default function CrmModerationPage() {
 
   const patchMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: "approved" | "needs_review" }) =>
-      adminSystemProductsApi.patch(id, { status }),
+      adminSystemProductsApi.moderate(id, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK });
       toast.success("Статус обновлён");

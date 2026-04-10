@@ -17,7 +17,8 @@ const fmt = (n: number) => new Intl.NumberFormat("ru-RU").format(n);
 
 export default function CrmProductsPage() {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  /** По умолчанию витринные позиции; модерация — отдельный раздел CRM */
+  const [statusFilter, setStatusFilter] = useState("published");
   const navigate = useNavigate();
 
   const { data, isLoading, isError, error } = useQuery({
@@ -85,7 +86,7 @@ export default function CrmProductsPage() {
     <div className="space-y-4 animate-fade-in">
       <PageHeader
         title="Товары"
-        description={`${data?.meta?.total ?? 0} товаров в каталоге`}
+        description={`${data?.meta?.total ?? 0} в каталоге CRM · по умолчанию показаны опубликованные`}
         actions={
           <Link to="/crm/products/new">
             <Button size="sm" className="gap-1.5">

@@ -1,27 +1,52 @@
 ---
-description: Strict repo split — backend vs frontend; no duplicates; verify server usage before edits
+description: Два проекта — cheepy (фронт) и sadavod-laravel (бек); границы кода и деплоя
 alwaysApply: true
 ---
 
-# Repository boundaries (ULTRA STRICT)
+# Границы репозиториев (фиксированная схема)
 
-## Where code lives
+## Локальные пути (не менять смысл разделения)
 
-- **Backend (Laravel, PHP, API, queues, migrations):** repository **`cheepy-backend`** only.
-- **Frontend (Vite, React, TS, admin UI):** repository **`cheepy-frontend`** (this repo) only.
+| Роль | Путь на диске | Стек |
+|------|-----------------|------|
+| **Frontend** | `C:\OSPanel\domains\cheepy` | Vite, React, TS, CRM/витрина |
+| **Backend** | `C:\OSPanel\domains\sadavod-laravel` | Laravel, API, очереди, миграции |
 
-## Forbidden in cheepy-frontend
+Два **отдельных Git-репозитория**: коммиты и push — в соответствующий репозиторий фронта или бэка; не смешивать деревья в одном корне без явного решения.
 
-- Storing or reintroducing **backend** code (Laravel `app/`, `database/migrations`, API `routes/`, copied PHP services, “reference” snapshots under `docs/`).
-- **Duplicating** Laravel or maintaining parallel “copy” trees.
-- Treating `docs/` or any non-deployed path as a place to **edit** backend logic.
+## Домены (два контура)
 
-## Before changing any file
+- **Клиент (SPA, CRM, публичные страницы):** хост витрины и админки — например `siteaacess.store` (актуальный URL из деплоя).
+- **API Laravel:** отдельный хост/поддомен — в dev/prod задаётся через `VITE_API_URL` во фронте (например `https://online-parser.siteaacess.store/api/v1`). Фронт ходит в API только по этому base URL.
 
-1. Ask: **Does the production/deployed server actually run or ship this file?** (real backend path, CI, Nginx static root, etc.)
-2. If the change belongs to **API, jobs, DB, PHP** → work in **`cheepy-backend`**, not here.
-3. If the file is **historical docs, audit reports, or unused scripts** → **do not modify** unless the user explicitly asks (avoid drive-by edits).
+При смене окружения править **`.env` у фронта** и **`.env` у Laravel** согласованно; агент не придумывает домены — сверяет с текущими `.env` и документацией деплоя.
 
-## If unsure
+## Где что править
 
-- **Do not touch.** Confirm which repo and deploy path apply first.
+- **HTTP-контракты, БД, jobs, парсер, публичное API, JWT admin:** только **`sadavod-laravel`**.
+- **UI, вызовы API, роутинг, состояние:** только **`cheepy`**.
+
+## Запрещено
+
+- Дублировать Laravel во фронт-репозитории (`app/`, `routes/`, копии сервисов под видом «доков»).
+- Менять бизнес-логику API только на фронте вместо правки бэка.
+- Смешивать в одном коммите изменения двух репозиториев без явной необходимости (удобнее два коммита в двух репо).
+
+## Перед правкой
+
+1. Файл реально деплоится из **этого** репозитория?
+2. Задача про API/БД → открыть **`sadavod-laravel`**; про экран → **`cheepy`**.
+
+## CRM и парсер — изоляция данных
+
+- **Парсер (импорт):** пишет донорские сущности (`products`, `donor_categories`, и т.д.). CRM **не редактирует** эти таблицы в рабочих сценариях каталога; допустимо только **чтение** для маппинга и отображения источника.
+- **Модерация** (`/crm/moderation`): только **решение по очереди** (статус/причина на CRM-сущности). **Не** менять на этом экране продавца, категорию витрины и поля карточки; **не** вызывать API правки парсера. Правки каталога — другие экраны, только `system_products` (и витринные связи).
+- **Инжест** в `system_products` — асинхронно (job), ошибки CRM **не** откатывают сохранение парсера.
+- **Каталог Cheepy (CRM):** дерево **`catalog_categories`** и связи **`category_mapping`** (донорская категория → категория каталога). Именно сюда направлены CRUD из CRM API (`AdminCatalogCategoryController`, `AdminCategoryMappingController`).
+- **Донорские категории** (`donor_categories`): отражают классификацию источника; в admin API сейчас ориентир — **список/просмотр**, не подмена парсерной логики. Новые фичи не должны добавлять обходной `UPDATE donor_categories` из CRM без явного решения «это инструмент супер-админа».
+- **Товары CRM:** `system_products.category_id` → **`catalog_categories.id`** (модель `CatalogCategory`), не `donor_categories`. При импорте категория берётся через резолв: донор `Product` → `DonorCategory` → `CategoryMapping` → `catalog_category_id` (`SystemProductFromDonorService`).
+- **Наследие:** таблица/модель `categories` (поле `linked_to_parser`) может использоваться парсером и старым публичным API — не смешивать с деревом CRM без миграционного плана; целевое состояние — публичное меню и товары на **`catalog_categories` + `system_products`**.
+
+## Связанное правило
+
+Пошаговый план CRM (модерация товаров/продавцов, разделение FE/BE, категории): `.cursor/rules/crm-implementation-roadmap.mdc`.
