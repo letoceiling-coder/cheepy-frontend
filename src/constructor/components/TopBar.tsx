@@ -1,7 +1,7 @@
 import React from 'react';
-import { 
-  Undo2, Redo2, Monitor, Tablet, Smartphone, Eye, Save, 
-  PanelLeftClose, PanelRightClose, FileDown, Trash2
+import {
+  Undo2, Redo2, Monitor, Tablet, Smartphone, Eye, Save,
+  PanelLeftClose, PanelRightClose, Trash2, CloudUpload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -24,6 +24,10 @@ interface TopBarProps {
   toggleLeftPanel: () => void;
   toggleRightPanel: () => void;
   blockCount: number;
+  /** Режим редактирования страницы из CRM: сохранить блоки в API */
+  onSaveToCms?: () => void;
+  cmsSaving?: boolean;
+  cmsPageTitle?: string;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -31,6 +35,9 @@ export const TopBar: React.FC<TopBarProps> = ({
   onUndo, onRedo, canUndo, canRedo, onSave, onClear,
   leftPanelOpen, rightPanelOpen, toggleLeftPanel, toggleRightPanel,
   blockCount,
+  onSaveToCms,
+  cmsSaving = false,
+  cmsPageTitle,
 }) => {
   const devices: { mode: DeviceMode; icon: typeof Monitor; label: string }[] = [
     { mode: 'desktop', icon: Monitor, label: 'Desktop' },
@@ -82,9 +89,13 @@ export const TopBar: React.FC<TopBarProps> = ({
       ))}
 
       {/* Center info */}
-      <div className="flex-1 text-center">
-        <span className="text-xs text-muted-foreground">
-          Page Constructor
+      <div className="flex-1 text-center min-w-0 px-2">
+        <span className="text-xs text-muted-foreground truncate block">
+          {cmsPageTitle ? (
+            <span className="text-foreground font-medium">CMS: {cmsPageTitle}</span>
+          ) : (
+            <>Page Constructor</>
+          )}
           {blockCount > 0 && <span className="ml-2 text-foreground font-medium">{blockCount} blocks</span>}
         </span>
       </div>
@@ -93,6 +104,18 @@ export const TopBar: React.FC<TopBarProps> = ({
       <ToolbarBtn icon={Eye} label={previewMode ? 'Edit mode' : 'Preview'} onClick={() => setPreviewMode(!previewMode)} active={previewMode} />
       
       <Separator orientation="vertical" className="h-6 mx-1" />
+
+      {onSaveToCms && (
+        <>
+          <ToolbarBtn
+            icon={CloudUpload}
+            label="Сохранить в CMS"
+            onClick={onSaveToCms}
+            disabled={cmsSaving}
+          />
+          <Separator orientation="vertical" className="h-6 mx-1" />
+        </>
+      )}
 
       <ToolbarBtn icon={Save} label="Save template" onClick={onSave} />
       <ToolbarBtn icon={Trash2} label="Clear canvas" onClick={onClear} />

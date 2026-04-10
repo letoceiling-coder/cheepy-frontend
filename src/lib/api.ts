@@ -1514,6 +1514,47 @@ export interface CmsPageBlockPayload {
   is_visible?: boolean;
 }
 
+export interface CmsPageListItem {
+  id: number;
+  page_key: string;
+  page_type: string;
+  path_prefix: string;
+  slug: string;
+  title: string;
+  is_active: boolean;
+  status: string;
+  updated_at: string | null;
+}
+
+export interface CmsPageVersionSummary {
+  id: number;
+  version_number: number;
+  status: string;
+}
+
+export interface CmsPageDetail {
+  id: number;
+  page_key: string;
+  page_type: string;
+  path_prefix: string;
+  slug: string;
+  title: string;
+  is_active: boolean;
+  status: string;
+  published_version_id: number | null;
+  seo: {
+    title: string | null;
+    description: string | null;
+    og_title: string | null;
+    og_description: string | null;
+    og_image_url: string | null;
+    canonical_url: string | null;
+    robots: string | null;
+    extra: Record<string, unknown>;
+  };
+  versions: CmsPageVersionSummary[];
+}
+
 export interface CmsPagePublicResponse {
   page: {
     id: number;
@@ -1559,13 +1600,13 @@ export const adminCmsApi = {
         if (v !== undefined) q.set(k, String(v));
       });
     }
-    return get<{ data: unknown[]; meta: { total: number; per_page: number; current_page: number; last_page: number } }>(
+    return get<{ data: CmsPageListItem[]; meta: { total: number; per_page: number; current_page: number; last_page: number } }>(
       `/admin/cms/pages${q.toString() ? `?${q}` : ''}`
     );
   },
-  get: (id: number) => get<unknown>(`/admin/cms/pages/${id}`),
+  get: (id: number) => get<CmsPageDetail>(`/admin/cms/pages/${id}`),
   create: (body: { title: string; slug: string; path_prefix?: string; page_type?: string; page_key?: string }) =>
-    post<unknown>('/admin/cms/pages', body),
+    post<CmsPageDetail>('/admin/cms/pages', body),
   update: (
     id: number,
     body: Partial<{
@@ -1580,8 +1621,8 @@ export const adminCmsApi = {
       robots: string | null;
       seo_extra: Record<string, unknown> | null;
     }>
-  ) => patch<unknown>(`/admin/cms/pages/${id}`, body),
-  publish: (id: number) => post<unknown>(`/admin/cms/pages/${id}/publish`),
+  ) => patch<CmsPageDetail>(`/admin/cms/pages/${id}`, body),
+  publish: (id: number) => post<CmsPageDetail>(`/admin/cms/pages/${id}/publish`),
   getVersion: (pageId: number, versionId: number) =>
     get<{ page_id: number; version: { id: number; version_number: number; status: string; blocks: unknown[] } }>(
       `/admin/cms/pages/${pageId}/versions/${versionId}`

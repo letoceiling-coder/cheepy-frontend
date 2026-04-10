@@ -139,6 +139,12 @@ export function useConstructorStore() {
     updateBlocks(loaded);
   }, [updateBlocks]);
 
+  /** Полная замена канваса (загрузка из CMS и т.п.) */
+  const replaceBlocks = useCallback((next: BlockConfig[]) => {
+    setSelectedBlockId(null);
+    updateBlocks(JSON.parse(JSON.stringify(next)));
+  }, [updateBlocks]);
+
   const deleteTemplate = useCallback((id: string) => {
     setTemplates(prev => {
       const next = prev.filter(t => t.id !== id);
@@ -153,7 +159,7 @@ export function useConstructorStore() {
     blocks, selectedBlock, selectedBlockId, setSelectedBlockId,
     deviceMode, setDeviceMode, previewMode, setPreviewMode,
     templates, addBlock, removeBlock, moveBlock, duplicateBlock,
-    toggleBlockVisibility, updateBlockSettings, reorderBlocks,
+    toggleBlockVisibility, updateBlockSettings, reorderBlocks, replaceBlocks,
     undo, redo, canUndo, canRedo,
     saveTemplate, loadTemplate, deleteTemplate,
   };

@@ -120,6 +120,8 @@ import CrmModerationDetailPage from "./crm/pages/CrmModerationDetailPage";
 import CrmSellerDetailPage from "./crm/pages/CrmSellerDetailPage";
 import CrmUserDetailPage from "./crm/pages/CrmUserDetailPage";
 import CrmTenantsPage from "./crm/pages/CrmTenantsPage";
+import CrmCmsPagesPage from "./crm/pages/CrmCmsPagesPage";
+import CrmCmsPageDetailPage from "./crm/pages/CrmCmsPageDetailPage";
 import MappingPage from "@/pages/admin/catalog/MappingPage";
 
 const queryClient = new QueryClient();
@@ -237,6 +239,8 @@ function AnimatedRoutes() {
           <Route index element={<CrmDashboardPage />} />
           <Route path="dashboard" element={<CrmDashboardPage />} />
           <Route path="content" element={<CrmContentPage />} />
+          <Route path="cms/pages" element={<CrmCmsPagesPage />} />
+          <Route path="cms/pages/:id" element={<CrmCmsPageDetailPage />} />
           <Route path="notifications" element={<CrmNotificationsPage />} />
           <Route path="products" element={<CrmProductsPage />} />
           <Route path="products/:id" element={<CrmProductDetailPage />} />
