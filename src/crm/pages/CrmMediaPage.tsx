@@ -206,6 +206,19 @@ export default function CrmMediaPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const quickToTrashMut = useMutation({
+    mutationFn: (fileId: number) => {
+      if (!trashId) throw new Error("Папка корзины не найдена");
+      return crmMediaApi.moveFiles({ file_ids: [fileId], folder_id: trashId });
+    },
+    onSuccess: (_data, fileId) => {
+      toast.success("Файл в корзине");
+      setSelected((s) => s.filter((x) => x !== fileId));
+      qc.invalidateQueries({ queryKey: QK });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const onDropUpload = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
@@ -454,7 +467,24 @@ export default function CrmMediaPage() {
                           className="mt-1"
                         />
                         <div className="flex-1 min-w-0">
-                          <div className="aspect-square rounded overflow-hidden border border-border/60">
+                          <div className="relative group aspect-square rounded overflow-hidden border border-border/60">
+                            {!isTrashView && trashId ? (
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="destructive"
+                                className="absolute right-1 top-1 z-20 h-8 w-8 shadow-md opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                                disabled={quickToTrashMut.isPending}
+                                aria-label="В корзину"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  quickToTrashMut.mutate(f.id);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            ) : null}
                             <CrmMediaFilePreview file={f} />
                           </div>
                           <p className="text-xs truncate mt-1" title={f.original_name}>

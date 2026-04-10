@@ -12,9 +12,54 @@ import {
 } from "lucide-react";
 import { resolveCrmMediaAssetUrl, type CrmMediaFile } from "@/lib/api";
 
+const IMAGE_EXT = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "bmp",
+  "svg",
+  "ico",
+  "avif",
+  "heic",
+  "tif",
+  "tiff",
+]);
+
+const VIDEO_EXT = new Set(["mp4", "webm", "mkv", "mov", "avi", "m4v", "ogv"]);
+
+function extFromName(fileName: string): string {
+  const base = fileName.split(/[/\\]/).pop() || fileName;
+  const i = base.lastIndexOf(".");
+  if (i <= 0 || i === base.length - 1) return "";
+  return base.slice(i + 1).toLowerCase();
+}
+
+/** MIME или расширение: бэкенд иногда отдаёт application/octet-stream вместо image/jpeg. */
+function isRenderableAsImage(
+  mime: string | null,
+  fileName: string,
+  storageUrl?: string | null
+): boolean {
+  const m = (mime || "").toLowerCase();
+  if (m.startsWith("video/")) return false;
+  const ext = extFromName(fileName);
+  if (VIDEO_EXT.has(ext)) return false;
+  if (m.startsWith("image/")) return true;
+  if (IMAGE_EXT.has(ext)) return true;
+  if (storageUrl) {
+    const path = storageUrl.split("?")[0].split("#")[0];
+    const fromUrl = extFromName(path);
+    if (VIDEO_EXT.has(fromUrl)) return false;
+    if (IMAGE_EXT.has(fromUrl)) return true;
+  }
+  return false;
+}
+
 function pickFileIcon(mime: string | null, fileName: string) {
   const m = (mime || "").toLowerCase();
-  const ext = (fileName.split(".").pop() || "").toLowerCase();
+  const ext = extFromName(fileName);
 
   if (m.startsWith("video/") || ["mp4", "webm", "mkv", "mov", "avi"].includes(ext)) {
     return FileVideo;
@@ -59,8 +104,8 @@ type Props = {
 export function CrmMediaFilePreview({ file, className }: Props) {
   const [imgBroken, setImgBroken] = useState(false);
   const url = resolveCrmMediaAssetUrl(file.url);
-  const isImageMime = file.mime_type?.startsWith("image/") ?? false;
-  const showImg = Boolean(isImageMime && url && !imgBroken);
+  const treatAsImage = isRenderableAsImage(file.mime_type, file.original_name, file.url);
+  const showImg = Boolean(treatAsImage && url && !imgBroken);
   const Icon = pickFileIcon(file.mime_type, file.original_name);
 
   return (
@@ -75,11 +120,13 @@ export function CrmMediaFilePreview({ file, className }: Props) {
           src={url}
           alt=""
           className="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
           onError={() => setImgBroken(true)}
         />
       ) : (
         <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-2 text-muted-foreground">
-          {imgBroken && isImageMime ? (
+          {imgBroken && treatAsImage ? (
             <ImageIcon className="h-10 w-10 shrink-0 opacity-70" aria-hidden />
           ) : (
             <Icon className="h-10 w-10 shrink-0" aria-hidden />
