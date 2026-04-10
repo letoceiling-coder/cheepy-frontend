@@ -50,7 +50,7 @@ export function CrmMediaPickerDialog({ open, onOpenChange, onPick }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+      <DialogContent className="w-[96vw] max-w-6xl h-[88vh] max-h-[88vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Выбор файла из медиабиблиотеки</DialogTitle>
         </DialogHeader>
@@ -72,13 +72,13 @@ export function CrmMediaPickerDialog({ open, onOpenChange, onPick }: Props) {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-h-[280px] flex-1">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[420px] flex-1">
           <div className="rounded-md border p-2 space-y-1">
             <p className="text-xs font-medium text-muted-foreground mb-2">Папки</p>
             {lf ? (
               <Loader2 className="h-6 w-6 animate-spin" />
             ) : (
-              <ul className="space-y-0.5 max-h-48 overflow-auto">
+              <ul className="space-y-0.5 max-h-[58vh] overflow-auto">
                 {parentId !== null && (
                   <li>
                     <button
@@ -114,7 +114,7 @@ export function CrmMediaPickerDialog({ open, onOpenChange, onPick }: Props) {
             )}
             {lfiles && browseId > 0 && <Loader2 className="h-6 w-6 animate-spin" />}
             {browseId > 0 && !lfiles && (
-              <ScrollArea className="h-48">
+              <ScrollArea className="h-[58vh]">
                 <div className="grid grid-cols-3 gap-2 pr-2">
                   {files.map((f: CrmMediaFile) => {
                     const isImage = f.mime_type?.startsWith("image/");
