@@ -1026,6 +1026,8 @@ export interface SystemProductItem {
   status: SystemProductStatus;
   seller_id?: number | null;
   category_id?: number | null;
+  /** Витринная категория из category_mapping по донорской категории (если в БД category_id ещё null). */
+  mapping_suggested_category_id?: number | null;
   brand_id?: number | null;
   created_at?: string;
   updated_at?: string;

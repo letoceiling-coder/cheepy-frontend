@@ -123,7 +123,13 @@ export default function CrmModerationDetailPage() {
     setName(item.name ?? "");
     setDescription(item.description ?? "");
     setPrice(item.price ?? "");
-    setCategoryId(item.category_id != null ? String(item.category_id) : "");
+    const cat =
+      item.category_id != null
+        ? item.category_id
+        : item.mapping_suggested_category_id != null
+          ? item.mapping_suggested_category_id
+          : null;
+    setCategoryId(cat != null ? String(cat) : "");
     setAttrs(
       (item.attributes ?? []).map((a) => ({
         attr_name: a.attr_name,
