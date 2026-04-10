@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Archive,
   File,
@@ -10,7 +10,7 @@ import {
   Image as ImageIcon,
   Presentation,
 } from "lucide-react";
-import { resolveCrmMediaAssetUrl, type CrmMediaFile } from "@/lib/api";
+import { fetchCrmMediaBlobUrl, resolveCrmMediaAssetUrl, type CrmMediaFile } from "@/lib/api";
 
 const IMAGE_EXT = new Set([
   "jpg",
@@ -100,13 +100,63 @@ type Props = {
   className?: string;
 };
 
-/** Превью: картинки с URL бэкенда; остальное — иконка по типу; битая картинка — запасная иконка. */
+type ImgStage = "public" | "blob" | "failed";
+
+/**
+ * Превью: сначала публичный /storage URL; при ошибке — тот же файл через JWT (blob),
+ * чтобы работало без symlink и при mixed content http/https.
+ */
 export function CrmMediaFilePreview({ file, className }: Props) {
-  const [imgBroken, setImgBroken] = useState(false);
-  const url = resolveCrmMediaAssetUrl(file.url);
+  const blobRef = useRef<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [stage, setStage] = useState<ImgStage>("public");
+  const publicUrl = resolveCrmMediaAssetUrl(file.url);
   const treatAsImage = isRenderableAsImage(file.mime_type, file.original_name, file.url);
-  const showImg = Boolean(treatAsImage && url && !imgBroken);
+  const displaySrc = blobUrl ?? publicUrl;
+  const showImg = Boolean(treatAsImage && displaySrc && stage !== "failed");
   const Icon = pickFileIcon(file.mime_type, file.original_name);
+
+  useEffect(() => {
+    if (blobRef.current) {
+      URL.revokeObjectURL(blobRef.current);
+      blobRef.current = null;
+    }
+    setBlobUrl(null);
+    setStage("public");
+  }, [file.id]);
+
+  useEffect(() => {
+    return () => {
+      if (blobRef.current) {
+        URL.revokeObjectURL(blobRef.current);
+        blobRef.current = null;
+      }
+    };
+  }, []);
+
+  const onImgError = () => {
+    if (!treatAsImage) {
+      setStage("failed");
+      return;
+    }
+    if (stage === "public") {
+      void (async () => {
+        try {
+          const u = await fetchCrmMediaBlobUrl(file.id);
+          if (blobRef.current) URL.revokeObjectURL(blobRef.current);
+          blobRef.current = u;
+          setBlobUrl(u);
+          setStage("blob");
+        } catch {
+          setStage("failed");
+        }
+      })();
+      return;
+    }
+    if (stage === "blob") {
+      setStage("failed");
+    }
+  };
 
   return (
     <div
@@ -117,16 +167,17 @@ export function CrmMediaFilePreview({ file, className }: Props) {
     >
       {showImg ? (
         <img
-          src={url}
+          key={displaySrc}
+          src={displaySrc}
           alt=""
           className="h-full w-full object-cover"
           loading="lazy"
           decoding="async"
-          onError={() => setImgBroken(true)}
+          onError={onImgError}
         />
       ) : (
         <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-2 text-muted-foreground">
-          {imgBroken && treatAsImage ? (
+          {stage === "failed" && treatAsImage ? (
             <ImageIcon className="h-10 w-10 shrink-0 opacity-70" aria-hidden />
           ) : (
             <Icon className="h-10 w-10 shrink-0" aria-hidden />

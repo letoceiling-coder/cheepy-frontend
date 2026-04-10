@@ -43,14 +43,29 @@ const BASE_URL = resolveApiBaseUrl();
 export function resolveCrmMediaAssetUrl(url: string): string {
   const u = String(url || '').trim();
   if (!u) return '';
-  if (/^https?:\/\//i.test(u)) return u;
-  try {
-    const origin = new URL(BASE_URL).origin;
-    if (u.startsWith('/')) return `${origin}${u}`;
-    return `${origin}/${u.replace(/^\/+/, '')}`;
-  } catch {
-    return u;
+  let out: string;
+  if (/^https?:\/\//i.test(u)) {
+    out = u;
+  } else {
+    try {
+      const origin = new URL(BASE_URL).origin;
+      if (u.startsWith('/')) out = `${origin}${u}`;
+      else out = `${origin}/${u.replace(/^\/+/, '')}`;
+    } catch {
+      return u;
+    }
   }
+  // Mixed content: HTTPS CRM не загрузит http:// картинку с API
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && out.startsWith('http://')) {
+    try {
+      const x = new URL(out);
+      x.protocol = 'https:';
+      out = x.toString();
+    } catch {
+      out = out.replace(/^http:\/\//i, 'https://');
+    }
+  }
+  return out;
 }
 
 /** Single source for GET/POST — all `request()` calls use BASE_URL + path */
@@ -152,6 +167,39 @@ export class ApiError extends Error {
   ) {
     super(message);
   }
+}
+
+/** Превью через JWT, если публичный /storage в <img> даёт 404 или mixed content. */
+export async function fetchCrmMediaBlobUrl(fileId: number): Promise<string> {
+  const token = localStorage.getItem('admin_token');
+  if (!token) throw new Error('Требуется вход');
+  const url = `${BASE_URL}/admin/media/files/${fileId}/content`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}`, Accept: '*/*' },
+  });
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname;
+      if (p.startsWith('/crm')) {
+        const next = encodeURIComponent(p + window.location.search);
+        window.location.assign(`/admin/login?next=${next}`);
+      }
+    }
+    throw new ApiError(401, 'Unauthorized');
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    let msg = text;
+    try {
+      const j = JSON.parse(text) as { message?: string };
+      if (j?.message) msg = j.message;
+    } catch {
+      /* ignore */
+    }
+    throw new ApiError(res.status, msg || res.statusText);
+  }
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
 }
 
 const get = <T>(path: string, isPublic = false) => request<T>('GET', path, undefined, isPublic);
