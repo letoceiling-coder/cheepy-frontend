@@ -1499,6 +1499,100 @@ export const crmPaymentProvidersApi = {
     }>('/crm/payment-alerts'),
 };
 
+// ──────────────────────────────────────────────
+// CMS (динамические страницы конструктора, JWT для админки)
+// ──────────────────────────────────────────────
+
+/** Произвольные настройки блока — расширяемый JSON, как в БД cms_page_blocks.settings */
+export type CmsBlockSettings = Record<string, unknown>;
+
+export interface CmsPageBlockPayload {
+  block_type: string;
+  sort_order?: number;
+  settings?: CmsBlockSettings;
+  client_key?: string | null;
+  is_visible?: boolean;
+}
+
+export interface CmsPagePublicResponse {
+  page: {
+    id: number;
+    page_key: string;
+    page_type: string;
+    path_prefix: string;
+    slug: string;
+    title: string;
+    seo: {
+      title: string | null;
+      description: string | null;
+      og_title: string | null;
+      og_description: string | null;
+      og_image_url: string | null;
+      canonical_url: string | null;
+      robots: string | null;
+      extra: Record<string, unknown>;
+    };
+  };
+  blocks: Array<{
+    block_type: string;
+    sort_order: number;
+    settings: CmsBlockSettings;
+    client_key: string | null;
+    is_visible: boolean;
+  }>;
+}
+
+export const publicCmsApi = {
+  /** GET /api/v1/public/cms/pages/{pathPrefix}/{slug} */
+  getPage: (pathPrefix: string, slug: string) =>
+    get<CmsPagePublicResponse>(
+      `/public/cms/pages/${encodeURIComponent(pathPrefix)}/${encodeURIComponent(slug)}`,
+      true
+    ),
+};
+
+export const adminCmsApi = {
+  list: (params?: { page?: number; per_page?: number; status?: string; is_active?: boolean; search?: string }) => {
+    const q = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined) q.set(k, String(v));
+      });
+    }
+    return get<{ data: unknown[]; meta: { total: number; per_page: number; current_page: number; last_page: number } }>(
+      `/admin/cms/pages${q.toString() ? `?${q}` : ''}`
+    );
+  },
+  get: (id: number) => get<unknown>(`/admin/cms/pages/${id}`),
+  create: (body: { title: string; slug: string; path_prefix?: string; page_type?: string; page_key?: string }) =>
+    post<unknown>('/admin/cms/pages', body),
+  update: (
+    id: number,
+    body: Partial<{
+      title: string;
+      is_active: boolean;
+      seo_title: string | null;
+      seo_description: string | null;
+      og_title: string | null;
+      og_description: string | null;
+      og_image_url: string | null;
+      canonical_url: string | null;
+      robots: string | null;
+      seo_extra: Record<string, unknown> | null;
+    }>
+  ) => patch<unknown>(`/admin/cms/pages/${id}`, body),
+  publish: (id: number) => post<unknown>(`/admin/cms/pages/${id}/publish`),
+  getVersion: (pageId: number, versionId: number) =>
+    get<{ page_id: number; version: { id: number; version_number: number; status: string; blocks: unknown[] } }>(
+      `/admin/cms/pages/${pageId}/versions/${versionId}`
+    ),
+  syncBlocks: (pageId: number, versionId: number, body: { blocks: CmsPageBlockPayload[] }) =>
+    put<{ version: { id: number; version_number: number; status: string; blocks: unknown[] } }>(
+      `/admin/cms/pages/${pageId}/versions/${versionId}/blocks`,
+      body
+    ),
+};
+
 // Payment status — public, for return pages
 export interface PaymentStatus {
   id: number;
@@ -1537,6 +1631,8 @@ export default {
   logs: logsApi,
   settings: settingsApi,
   public: publicApi,
+  publicCms: publicCmsApi,
+  adminCms: adminCmsApi,
   attributeRules: attributeRulesApi,
   attributeDictionary: attributeRulesApi.dictionary,
   attributeCanonical: attributeRulesApi.canonical,

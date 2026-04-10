@@ -11,7 +11,7 @@
 ### 1.1 pages
 
 - **Responsibility:** A **content page** that can be the home page, a category page override, a landing page, or a promo page. Identified by a **page key** (e.g. `home`, `category:shoes`, `landing:summer-sale`, `promo:black-friday`) so the frontend can request “layout for this key.” One row per logical page; which **version** is live is determined by status (draft / review / published) and optional versioning (page_versions).
-- **Columns (conceptual):** id, page_key (unique, e.g. home | category:{slug} | landing:{slug} | promo:{slug}), title (display name for admin), description (optional), page_type (home | category | landing | promo), status (draft | review | published — see STEP 3), published_version_id (nullable, FK page_versions; which version is live), published_at (nullable), created_at, updated_at. Optional: category_id (nullable, FK catalog_categories — for category pages, which category this page is for), slug (for landing/promo URL; or derived from page_key), meta_title, meta_description, og_image_url.
+- **Columns (conceptual):** id, page_key (unique, e.g. home | category:{slug} | landing:{slug} | promo:{slug} | custom:{slug}), title (display name for admin), description (optional), page_type (home | category | landing | promo | **custom**), status (draft | review | published — see STEP 3), **is_active** (boolean; storefront visibility — see STEP 5), published_version_id (nullable, FK page_versions; which version is live), published_at (nullable), created_at, updated_at. Optional: category_id (nullable, FK catalog_categories — for category pages, which category this page is for), **slug** (URL segment for user-created and landing pages; unique among routable pages), **path_prefix** (optional; e.g. `p`, `landing`, `promo` — full public path = `/{path_prefix}/{slug}` when page_type is custom/landing/promo). SEO fields — see STEP 5.
 - **Relationship:** pages have many page_versions; pages have many page_blocks (or page_blocks belong to a version: see below). For **category pages:** page_key = `category:{catalog_category.slug}`; optional category_id for quick lookup. For **landing / promo:** page_key = `landing:{slug}` or `promo:{slug}`; slug is URL path (e.g. `/promo/summer-sale` → promo:summer-sale). **Home:** page_key = `home`, one row.
 
 ### 1.2 page_versions
@@ -23,7 +23,7 @@
 ### 1.3 page_blocks
 
 - **Responsibility:** One **block** in a page version. Mirrors the constructor’s **BlockConfig**: block type (same string as in blockRegistry), order, and settings (JSON). The frontend can render the page by loading the published version’s page_blocks and passing each to blockRenderer (type + settings).
-- **Columns (conceptual):** id, page_version_id (FK page_versions), block_type (string; e.g. HeroWithSlider, Bestsellers, PromoBanner), sort_order (int; order on page), settings (JSON; title, initialCount, categorySlug, etc. — same shape as constructor block.settings), is_visible (boolean; default true), created_at, updated_at. Optional: block_label (for admin display), block_id (unique per version; for frontend key/undo like constructor id).
+- **Columns (conceptual):** id, page_version_id (FK page_versions), block_type (string; e.g. HeroWithSlider, Bestsellers, PromoBanner), **sort_order** (int; **position on page** — ordering of blocks; see STEP 6), settings (JSON; title, initialCount, categorySlug, etc. — same shape as constructor block.settings), is_visible (boolean; default true), created_at, updated_at. Optional: block_label (for admin display), client_key (unique per version; stable id for editor undo/sync with constructor BlockConfig.id).
 - **Relationship:** page_blocks.page_version_id → page_versions. One version has many page_blocks ordered by sort_order. **Integration with constructor:** block_type must be one of the types in the frontend blockRegistry; settings is the same structure as BlockConfig.settings so the same React section components can be used with CMS-driven props.
 
 ### 1.4 menus
@@ -57,6 +57,7 @@ banners (banner_key, placement, placement_scope, starts_at, ends_at)
 - **Category page (/category/:slug):** Page with page_key = `category:{slug}` (or page_type = category and slug/category_id). If present and published, render that version’s page_blocks (e.g. category-specific hero + product grid); otherwise fallback to default category template (e.g. CategoryPage with standard layout).
 - **Landing page (/landing/:slug or /p/:slug):** Page with page_key = `landing:{slug}`. Full block layout from CMS.
 - **Promo page (/promo/:slug):** Page with page_key = `promo:{slug}`. Same as landing; type promo for reporting/filtering.
+- **Custom / additional CMS pages (/p/:slug or chosen prefix):** Page with page_type = **custom** (or landing), **slug** + **path_prefix**; created via admin; **page_key** e.g. `custom:{slug}`. Full block layout from CMS; see STEP 5.
 - **Menus:** Header/footer fetch menus by menu_key and render links (category, page, URL).
 - **Banners:** Fetched by placement and optional page_key/category; rendered in slots (top strip, sidebar, popup).
 
@@ -134,9 +135,9 @@ banners (banner_key, placement, placement_scope, starts_at, ends_at)
 
 | Entity | Purpose |
 |--------|---------|
-| **pages** | Content page: home, category, landing, promo. Identified by page_key; has status and published_version_id. |
+| **pages** | Content page: home, category, landing, promo, **custom**. Identified by page_key; **slug**, **path_prefix**, **is_active**; has status and published_version_id; **SEO** fields (STEP 5). |
 | **page_versions** | Snapshot of page content; status draft | review | published. One published version per page. |
-| **page_blocks** | Blocks in a version: block_type, sort_order, settings (JSON). Same types as constructor; rendered by blockRenderer. |
+| **page_blocks** | Blocks in a version: block_type, **sort_order (position)**, settings (JSON). Same types as constructor; rendered by blockRenderer; reorder = change sort_order (STEP 6). |
 | **menus** | Navigation menus (header, footer); menu_items with link_type (url, category, page). |
 | **banners** | Standalone banners by slot; placement, schedule, content (image/html/video). |
 
@@ -171,6 +172,154 @@ banners (banner_key, placement, placement_scope, starts_at, ends_at)
 - **menus:** (menu_key unique).
 - **menu_items:** (menu_id), (parent_id), (sort_order).
 - **banners:** (banner_key), (placement), (starts_at, ends_at), (is_active).
+
+---
+
+## STEP 5 — DYNAMIC PAGES, URL, ACTIVATION, SEO
+
+This step extends **pages** so editors can **create additional layouts** (new templates) with **dedicated URLs**, toggle visibility without deleting content, and configure **SEO** per page. Aligns with storefront routes and reserved paths in the frontend router.
+
+### 5.1 User-created pages and URL strategy
+
+- **Goal:** Beyond fixed keys (`home`, `category:*`), allow **N new pages**, each with its own block composition (template instance), **created and added** over time via admin/CRM.
+- **Identification:**
+  - **page_key:** e.g. `custom:{slug}` or `landing:{slug}` — unique string in DB.
+  - **slug:** URL-safe segment, unique among all pages that expose a public path (validate: lowercase, hyphens, no reserved words).
+  - **path_prefix:** convention for public URL, e.g. `/p/:slug`, `/landing/:slug`, or `/promo/:slug`. One product decision: e.g. all **custom CMS pages** live under **`/p/:slug`** to avoid colliding with static app routes.
+- **Frontend routing:** Register **one dynamic route** (e.g. `<Route path="/p/:slug" element={<CmsPage />} />`) **after** static routes, **before** `*`. `CmsPage` resolves `slug` → API `GET /api/v1/cms/pages/by-slug?path_prefix=p&slug=...` (or composite key) and renders published `page_blocks` with **blockRenderer**; 404 if missing or inactive.
+- **Reserved paths:** Maintain a **deny list** synced with `App.tsx` (`/`, `/cart`, `/category`, `/product`, `/brand`, `/seller`, `/account`, `/person`, `/auth`, `/admin`, `/crm`, `/constructor`, `/payment`, `/faq`, `/about`, …) so new **slug** cannot equal a first path segment used by the app.
+- **Creation API:** `POST /api/v1/cms/pages` with `{ page_type, slug, path_prefix, title }` creates a **pages** row and an initial **draft page_version** (optionally with empty or default `page_blocks`). Subsequent edits add blocks and reorder (STEP 6).
+
+### 5.2 Activation and deactivation
+
+- **`pages.is_active` (boolean, default true):**
+  - **Active + published:** page is reachable at its public URL (if version is published).
+  - **Inactive:** storefront returns **404** (or **410 Gone** if preferred for “delisted” content) even if `status = published` — useful for seasonal campaigns without losing drafts/history.
+- **Combination for “live”:**  
+  `is_active === true` **and** `status === published` **and** `published_version_id IS NOT NULL` **and** (optional) inside schedule window `published_starts_at` / `published_ends_at`.
+- **Difference from draft:** `status = draft` means “not yet approved”; `is_active = false` means “intentionally off air” while content may still be published internally for preview.
+
+### 5.3 SEO settings (per page)
+
+Store on **pages** (or on **page_versions** if SEO must version with content — recommended: **pages** for canonical URL stability, **optional overrides** on version for A/B).
+
+| Field | Use |
+|--------|-----|
+| **seo_title** | `<title>` and default OG title |
+| **seo_description** | meta description |
+| **og_title**, **og_description** | Overrides for Open Graph (fallback: seo_*) |
+| **og_image_url** | Social preview image |
+| **canonical_url** | Optional absolute URL override |
+| **robots** | e.g. `index,follow` \| `noindex,nofollow` \| `noindex,follow` |
+| **twitter_card** | optional: `summary_large_image` etc. |
+| **structured_data** | optional JSON-LD blob (WebPage, BreadcrumbList) |
+
+- **Frontend:** CMS-driven layout route wraps **react-helmet-async** (or similar) and sets tags from API response for each `/p/:slug` (and later home/category when CMS-backed).
+- **Sitemap:** Only include pages where `is_active && published && robots` allows index.
+
+### 5.4 Admin UX (brief)
+
+- List pages: filters **type**, **is_active**, **status**, search by title/slug.
+- Create page: wizard — title, slug, path prefix, template starter (empty / duplicate from existing).
+- Page editor: blocks canvas (constructor), **SEO** side panel, toggles **Active**, **Publish**.
+
+---
+
+## STEP 6 — BLOCK ORDER (POSITION) AND MOVEMENT
+
+Blocks in a template are **ordered**. The **position** is the single field **sort_order** on **page_blocks** (per **page_version**).
+
+### 6.1 Rules
+
+- **sort_order:** integer; lower values render **first** (top of page), or define convention as ascending order (document one convention and stick to it site-wide).
+- **Gaps:** use increments of 10 (0, 10, 20, …) so a new block can be inserted between without renumbering all rows.
+- **Uniqueness:** unique `(page_version_id, sort_order)` or enforce by renumbering after each change.
+
+### 6.2 Moving blocks (editor and API)
+
+- **Constructor / CRM UI:** drag-and-drop reorder (same as constructor **Canvas**); on save, persist new order as updated **sort_order** for each `page_block` id.
+- **API:**
+  - `PATCH .../page-versions/:id/blocks/reorder` with body `[{ "id": 1, "sort_order": 0 }, ...]`, or
+  - Full replace: `PUT .../page-versions/:id/blocks` with ordered array (server assigns sort_order from index).
+- **Conflict handling:** optimistic UI; server validates version is **draft** (or allowed role) before reorder.
+
+### 6.3 Alignment with constructor **BlockConfig**
+
+- Order of `blocks[]` in the constructor store **equals** display order; when saving to CMS, map array index → **sort_order** (or explicit positions).
+- **BlockConfig.id** ↔ **page_blocks.client_key** (or map to DB id after first save) for stable references when updating settings.
+
+### 6.4 Storefront rendering
+
+- Query: `SELECT * FROM page_blocks WHERE page_version_id = ? ORDER BY sort_order ASC`.
+- Pass to **blockRenderer** in that order; no secondary sort unless tie-breaking by `id`.
+
+---
+
+## IMPLEMENTATION PRINCIPLES — Flexible and evolvable (avoid unnecessary complexity)
+
+These rules keep the system **easy to extend** (new block types, new page kinds, new locales) without locking into rigid schemas or duplicate sources of truth.
+
+### P.1 Single pipeline: blocks always `type + settings + sort_order`
+
+- **Do not** add bespoke DB columns per block type. Everything variable lives in **`settings` (JSON)** on `page_blocks`.
+- **`settings` is an open object:** any keys (e.g. `title`, `categorySlug`, `dataSource`, `initialCount`, nested objects for filters). The same `block_type` on different pages can differ only by `settings`; reuse is by reference to **block_type**, not by row duplication in code.
+- New marketing blocks = new React section + **blockRegistry** entry + rows in DB with new `block_type` string — **no migration** for each block.
+- Optional later: JSON Schema per `block_type` for validation in admin — not required on day one.
+
+### P.2 Versioning from the start (`page_versions`)
+
+- Store content (blocks) on **versions**, not only on `pages`. Avoids a future painful migration when you need draft vs published or rollback.
+- **pages** holds identity, URL, SEO flags, pointer **`published_version_id`**.
+
+### P.3 URLs: composite, not one opaque path
+
+- Use **`path_prefix` + `slug`** (and optional future **`locale`**) instead of a single free-form `path` string. Same page model supports `/p/`, `/landing/`, regional prefixes later without schema churn.
+
+### P.4 `page_key` and `page_type` as open-ended strings
+
+- Use **string** identifiers with a naming convention (`custom:…`, `landing:…`, `home`). Validation in application code, not ENUM-only in DB (or use ENUM only if you accept migrations when adding types — prefer **string + allowlist in code** for flexibility).
+
+### P.5 SEO: minimal fixed columns + optional JSON
+
+- Fixed columns for what search engines always need: **`seo_title`, `seo_description`, `robots`** (and optionally **og_image_url**).
+- Put rare or experimental tags in **`seo_extra` JSON** (hreflang, alternate, custom meta) to extend without migrations.
+
+### P.6 Block types: one registry, no drift
+
+- **Source of truth:** frontend **`blockRegistry`** (type names + default settings) until you introduce a synced `block_types` table.
+- Backend validates `block_type` against **the same list** (shared export, CI check, or GET `/api/cms/block-registry` generated at build). **Never** maintain two independent lists by hand.
+
+### P.7 API shape: resources, not RPC soup
+
+- Prefer **`/cms/pages`**, **`/cms/pages/{id}/versions`**, **`/cms/page-versions/{id}/blocks`** with clear REST verbs. Easier to cache, document, and extend than dozens of custom endpoints.
+
+### P.8 Storefront: one loader, one renderer
+
+- **One** public route component (e.g. `CmsDynamicPage`) loads layout JSON and renders **`blockRenderer`** in **`sort_order`** order. Home/category CMS later = same code path with different `page_key` resolution — **no second templating engine**.
+
+### P.9 Reserved slugs and collisions
+
+- Keep **reserved first segments** in **one config** (Laravel `config/cms.php` + mirror constant in frontend router) so adding a new static route updates one list. Validate new slugs against it server-side.
+
+### P.10 Activation vs lifecycle
+
+- **`is_active`**: quick on/off (merchandising). **`status` + versions**: editorial workflow. Do not merge into one flag — avoids “unpublish” hacks later.
+
+### P.11 What to defer (on purpose)
+
+- **Scheduling** (`publish_at`), **A/B versions**, **per-locale body** — add when needed; the model above does not block them (extra columns or child tables).
+- **WYSIWYG HTML pages** — if needed, add block type `HtmlBlock` with `settings.html` rather than a parallel “HTML page” system.
+
+---
+
+## STEP 7 — UPDATED RECAP (entities + new concerns)
+
+| Concern | Mechanism |
+|---------|-----------|
+| **New URLs / templates** | `pages` with `slug` + `path_prefix`; dynamic route `/p/:slug` (or chosen prefix); `page_key` e.g. `custom:{slug}`. |
+| **Activation** | `pages.is_active`; live = active + published + version. |
+| **SEO** | seo_*, og_*, canonical, robots on `pages` (and/or version). |
+| **Block position** | `page_blocks.sort_order`; reorder API + constructor drag-drop. |
 
 ---
 

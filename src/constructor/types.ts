@@ -1,9 +1,15 @@
+/**
+ * Настройки блока — произвольный объект: один и тот же block_type на разных страницах
+ * может задавать title, categorySlug, dataSource, limits и т.д. (см. blockRegistry defaultSettings + CMS page_blocks.settings).
+ */
+export type BlockSettings = Record<string, unknown>;
+
 export interface BlockConfig {
   id: string;
   type: string;
   label: string;
   category: BlockCategory;
-  settings: Record<string, any>;
+  settings: BlockSettings;
   hidden?: boolean;
 }
 

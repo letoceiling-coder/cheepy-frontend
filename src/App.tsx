@@ -61,6 +61,7 @@ import AboutPage from "./pages/info/AboutPage";
 import ContactsPage from "./pages/info/ContactsPage";
 import CareersPage from "./pages/info/CareersPage";
 import BlogPage from "./pages/info/BlogPage";
+import CmsDynamicPage from "./pages/CmsDynamicPage";
 import ConstructorPage from "./constructor/pages/ConstructorPage";
 import { AdminLayout } from "./admin/components/AdminLayout";
 import { AdminAuthGuard } from "./admin/components/AdminAuthGuard";
@@ -190,6 +191,9 @@ function AnimatedRoutes() {
         <Route path="/contacts" element={<PageTransition><ContactsPage /></PageTransition>} />
         <Route path="/careers" element={<PageTransition><CareersPage /></PageTransition>} />
         <Route path="/blog" element={<PageTransition><BlogPage /></PageTransition>} />
+
+        {/* CMS-страницы конструктора: /p/:slug → API public/cms/pages/p/{slug} */}
+        <Route path="/p/:slug" element={<PageTransition><CmsDynamicPage /></PageTransition>} />
 
         {/* Constructor */}
         <Route path="/constructor" element={<PageTransition><ConstructorPage /></PageTransition>} />

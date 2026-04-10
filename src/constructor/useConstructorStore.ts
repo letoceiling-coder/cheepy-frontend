@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { BlockConfig, DeviceMode, HistoryEntry, PageTemplate } from './types';
+import { BlockConfig, DeviceMode, HistoryEntry, PageTemplate, type BlockSettings } from './types';
 
 const MAX_HISTORY = 50;
 
@@ -35,7 +35,7 @@ export function useConstructorStore() {
     pushHistory(newBlocks);
   }, [pushHistory]);
 
-  const addBlock = useCallback((type: string, label: string, category: BlockConfig['category'], settings: Record<string, any>, index?: number) => {
+  const addBlock = useCallback((type: string, label: string, category: BlockConfig['category'], settings: BlockConfig['settings'], index?: number) => {
     const block: BlockConfig = { id: generateId(), type, label, category, settings: { ...settings } };
     setBlocks(prev => {
       const next = [...prev];
@@ -90,7 +90,7 @@ export function useConstructorStore() {
     });
   }, [pushHistory]);
 
-  const updateBlockSettings = useCallback((id: string, settings: Record<string, any>) => {
+  const updateBlockSettings = useCallback((id: string, settings: Partial<BlockSettings>) => {
     setBlocks(prev => {
       const next = prev.map(b => b.id === id ? { ...b, settings: { ...b.settings, ...settings } } : b);
       pushHistory(next);
