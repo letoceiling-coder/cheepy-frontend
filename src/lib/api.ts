@@ -146,30 +146,67 @@ const put = <T>(path: string, body?: unknown) => request<T>('PUT', path, body);
 const patch = <T>(path: string, body?: unknown) => request<T>('PATCH', path, body);
 const del = <T>(path: string) => request<T>('DELETE', path);
 
-/** Multipart upload (no JSON Content-Type). */
-export async function postFormData<T>(path: string, formData: FormData): Promise<T> {
+/** Multipart upload with optional progress callback. */
+export async function postFormData<T>(
+  path: string,
+  formData: FormData,
+  onProgress?: (percent: number) => void
+): Promise<T> {
   const token = localStorage.getItem('admin_token');
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
   const url = `${BASE_URL}${path}`;
-  const res = await fetch(url, { method: 'POST', headers, body: formData });
-  if (res.status === 401) {
-    if (typeof window !== 'undefined') {
-      const p = window.location.pathname;
-      if (p.startsWith('/crm')) {
-        const next = encodeURIComponent(p + window.location.search);
-        window.location.assign(`/admin/login?next=${next}`);
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+
+    xhr.upload.onprogress = (ev) => {
+      if (!onProgress) return;
+      if (!ev.lengthComputable || ev.total <= 0) return;
+      const p = Math.min(100, Math.max(0, Math.round((ev.loaded / ev.total) * 100)));
+      onProgress(p);
+    };
+
+    xhr.onerror = () => reject(new Error('Network error'));
+    xhr.onload = () => {
+      const status = xhr.status;
+      const text = xhr.responseText || '';
+      const json = (() => {
+        try {
+          return text ? JSON.parse(text) : {};
+        } catch {
+          return {};
+        }
+      })();
+
+      if (status === 401) {
+        if (typeof window !== 'undefined') {
+          const p = window.location.pathname;
+          if (p.startsWith('/crm')) {
+            const next = encodeURIComponent(p + window.location.search);
+            window.location.assign(`/admin/login?next=${next}`);
+          }
+        }
+        reject(new ApiError(401, json.error || 'Unauthorized'));
+        return;
       }
-    }
-    const err = await res.json().catch(() => ({ error: 'Unauthorized' }));
-    throw new ApiError(401, err.error || 'Unauthorized');
-  }
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: res.statusText }));
-    throw new ApiError(res.status, error.error || res.statusText, error.errors);
-  }
-  if (res.status === 204) return undefined as T;
-  return res.json();
+
+      if (status === 204) {
+        resolve(undefined as T);
+        return;
+      }
+
+      if (status < 200 || status >= 300) {
+        reject(new ApiError(status, json.error || xhr.statusText || 'Request failed', json.errors));
+        return;
+      }
+
+      resolve((json ?? {}) as T);
+    };
+
+    xhr.send(formData);
+  });
 }
 
 // ──────────────────────────────────────────────
@@ -1055,11 +1092,11 @@ export const crmMediaApi = {
     if (params.per_page) q.set('per_page', String(params.per_page));
     return get<{ data: CrmMediaFile[]; meta: PaginatedResponse<CrmMediaFile>['meta'] }>(`/admin/media/files?${q}`);
   },
-  upload: (folderId: number, files: File[]) => {
+  upload: (folderId: number, files: File[], onProgress?: (percent: number) => void) => {
     const fd = new FormData();
     fd.append('folder_id', String(folderId));
     files.forEach((f) => fd.append('files[]', f));
-    return postFormData<{ data: CrmMediaFile[] }>('/admin/media/files', fd);
+    return postFormData<{ data: CrmMediaFile[] }>('/admin/media/files', fd, onProgress);
   },
   moveFiles: (body: { file_ids: number[]; folder_id: number }) =>
     post<{ message: string }>('/admin/media/files/move', body),

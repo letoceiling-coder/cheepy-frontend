@@ -4,6 +4,7 @@ import { crmMediaApi, type CrmMediaFile, type CrmMediaFolder } from "@/lib/api";
 import { PageHeader } from "../components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -97,6 +98,7 @@ export default function CrmMediaPage() {
   const [selected, setSelected] = useState<number[]>([]);
   const [moveOpen, setMoveOpen] = useState(false);
   const [moveTargetId, setMoveTargetId] = useState<number | "">("");
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const { data: allFolders = [] } = useQuery({
     queryKey: [...QK, "all-flat"],
@@ -138,13 +140,25 @@ export default function CrmMediaPage() {
   const uploadMut = useMutation({
     mutationFn: (fileList: File[]) => {
       if (!browseFolderId) throw new Error("Выберите папку");
-      return crmMediaApi.upload(browseFolderId, fileList);
+      setUploadProgress(0);
+      return crmMediaApi.upload(browseFolderId, fileList, (p) => setUploadProgress(p));
     },
     onSuccess: () => {
       toast.success("Загружено");
+      setUploadProgress(100);
       qc.invalidateQueries({ queryKey: QK });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      if ((e as any)?.status === 413) {
+        toast.error("Файл слишком большой для сервера (413). Уменьшите размер или загрузите по частям.");
+      } else {
+        toast.error(e.message);
+      }
+      setUploadProgress(0);
+    },
+    onSettled: () => {
+      setTimeout(() => setUploadProgress(0), 800);
+    },
   });
 
   const moveMut = useMutation({
@@ -387,6 +401,16 @@ export default function CrmMediaPage() {
               )}
             </div>
           </div>
+
+          {uploadMut.isPending && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Загрузка файлов...</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <Progress value={uploadProgress} />
+            </div>
+          )}
 
           {!browseFolderId && (
             <p className="text-sm text-muted-foreground">
