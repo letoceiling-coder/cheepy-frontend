@@ -25,6 +25,30 @@ import { toast } from "sonner";
 
 const QK = ["admin-system-products"];
 
+const STATUS_FILTER_STORAGE_KEY = "crm.products.statusFilter";
+const VALID_STATUS_FILTERS = new Set(["all", "published", "approved", "draft", "pending", "needs_review"]);
+
+function readStoredStatusFilter(): string {
+  if (typeof window === "undefined") return "published";
+  try {
+    const v = localStorage.getItem(STATUS_FILTER_STORAGE_KEY);
+    if (v && VALID_STATUS_FILTERS.has(v)) return v;
+  } catch {
+    /* ignore quota / private mode */
+  }
+  return "published";
+}
+
+function persistStatusFilter(value: string): void {
+  try {
+    if (VALID_STATUS_FILTERS.has(value)) {
+      localStorage.setItem(STATUS_FILTER_STORAGE_KEY, value);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 const fmt = (n: number) => new Intl.NumberFormat("ru-RU").format(n);
 
 /** Относительные пути и /storage — с origin API; http→https на HTTPS-странице. */
@@ -68,7 +92,7 @@ function ThumbCell({ url }: { url: string | null | undefined }) {
 
 export default function CrmProductsPage() {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("published");
+  const [statusFilter, setStatusFilter] = useState(readStoredStatusFilter);
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -181,7 +205,7 @@ export default function CrmProductsPage() {
     <div className="space-y-4 animate-fade-in">
       <PageHeader
         title="Товары"
-        description={`${data?.meta?.total ?? 0} в каталоге CRM · по умолчанию показаны опубликованные`}
+        description={`${data?.meta?.total ?? 0} в каталоге CRM · фильтр по статусу сохраняется в браузере`}
         actions={
           <Link to="/crm/products/new">
             <Button size="sm" className="gap-1.5">
@@ -196,7 +220,13 @@ export default function CrmProductsPage() {
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по названию..." className="pl-8 h-8 text-sm" />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => {
+            setStatusFilter(v);
+            persistStatusFilter(v);
+          }}
+        >
           <SelectTrigger className="h-8 w-36 text-sm">
             <SelectValue placeholder="Статус" />
           </SelectTrigger>
