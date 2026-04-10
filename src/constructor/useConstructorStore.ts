@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { BlockConfig, DeviceMode, HistoryEntry, PageTemplate, type BlockSettings } from './types';
+import { getBuiltinPageTemplates, isBuiltinTemplateId } from './builtin/builtinTemplates';
 
 const MAX_HISTORY = 50;
 
@@ -7,16 +8,27 @@ function generateId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
+function loadTemplatesFromStorage(): PageTemplate[] {
+  const builtins = getBuiltinPageTemplates();
+  let user: PageTemplate[] = [];
+  try {
+    user = JSON.parse(localStorage.getItem('constructor_templates') || '[]');
+  } catch { /* ignore */ }
+  const userClean = user.filter((t) => t?.id && !isBuiltinTemplateId(t.id));
+  return [...builtins, ...userClean];
+}
+
+function persistUserTemplatesOnly(list: PageTemplate[]) {
+  const userOnly = list.filter((t) => !isBuiltinTemplateId(t.id));
+  localStorage.setItem('constructor_templates', JSON.stringify(userOnly));
+}
+
 export function useConstructorStore() {
   const [blocks, setBlocks] = useState<BlockConfig[]>([]);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop');
   const [previewMode, setPreviewMode] = useState(false);
-  const [templates, setTemplates] = useState<PageTemplate[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('constructor_templates') || '[]');
-    } catch { return []; }
-  });
+  const [templates, setTemplates] = useState<PageTemplate[]>(loadTemplatesFromStorage);
 
   const historyRef = useRef<HistoryEntry[]>([]);
   const historyIndexRef = useRef(-1);
@@ -129,7 +141,7 @@ export function useConstructorStore() {
     const tpl: PageTemplate = { id: generateId(), name, blocks: JSON.parse(JSON.stringify(blocks)), createdAt: new Date().toISOString() };
     setTemplates(prev => {
       const next = [...prev, tpl];
-      localStorage.setItem('constructor_templates', JSON.stringify(next));
+      persistUserTemplatesOnly(next);
       return next;
     });
   }, [blocks]);
@@ -146,9 +158,10 @@ export function useConstructorStore() {
   }, [updateBlocks]);
 
   const deleteTemplate = useCallback((id: string) => {
+    if (isBuiltinTemplateId(id)) return;
     setTemplates(prev => {
       const next = prev.filter(t => t.id !== id);
-      localStorage.setItem('constructor_templates', JSON.stringify(next));
+      persistUserTemplatesOnly(next);
       return next;
     });
   }, []);

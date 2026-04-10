@@ -3,6 +3,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Trash2, FileDown, Clock } from 'lucide-react';
 import { PageTemplate } from '../types';
+import { isBuiltinTemplateId } from '../builtin/builtinTemplates';
 
 interface TemplatesPanelProps {
   templates: PageTemplate[];
@@ -37,9 +38,13 @@ export const TemplatesPanel: React.FC<TemplatesPanelProps> = ({ templates, onLoa
               <Button variant="outline" size="sm" className="h-7 text-xs flex-1" onClick={() => onLoad(tpl)}>
                 <FileDown className="h-3 w-3 mr-1" /> Load
               </Button>
-              <Button variant="outline" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => onDelete(tpl.id)}>
-                <Trash2 className="h-3 w-3" />
-              </Button>
+              {!isBuiltinTemplateId(tpl.id) ? (
+                <Button variant="outline" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => onDelete(tpl.id)}>
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              ) : (
+                <span className="text-[10px] text-muted-foreground px-2 self-center shrink-0">встроенный</span>
+              )}
             </div>
           </div>
         ))}

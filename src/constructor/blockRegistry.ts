@@ -93,6 +93,9 @@ export const blockRegistry: BlockDefinition[] = [
   { type: 'LookbookSlider', label: 'Lookbook Slider', category: 'lookbook', icon: 'BookOpen', defaultSettings: {} },
   { type: 'LookOfTheDay', label: 'Look of the Day', category: 'lookbook', icon: 'Sparkles', defaultSettings: {} },
   { type: 'InteractiveLookbook', label: 'Interactive Lookbook', category: 'lookbook', icon: 'Hand', defaultSettings: {} },
+  { type: 'RandomModelShowcase', label: 'Random Model Showcase', category: 'lookbook', icon: 'User', defaultSettings: {} },
+  { type: 'TrendingFashionShowcase', label: 'Trending Fashion Showcase', category: 'lookbook', icon: 'Sparkles', defaultSettings: {} },
+  { type: 'NewCollectionModels', label: 'New Collection Models', category: 'lookbook', icon: 'Shirt', defaultSettings: {} },
 
   // Quiz
   { type: 'ProductFinderQuiz', label: 'Product Finder', category: 'quiz', icon: 'HelpCircle', defaultSettings: {} },
