@@ -1,5 +1,5 @@
 /**
- * Единый источник порядка блоков главной (1:1 с Index.tsx).
+ * Главная: как Index.tsx — Header, <main>…, Footer, MobileBottomNav.
  * Запуск: node scripts/generate-homepage-layout.mjs
  * Пишет: src/constructor/builtin/homepageLayout.json
  *        ../sadavod-laravel/database/data/homepage_layout_spec.json
@@ -11,7 +11,7 @@ import { dirname, join } from 'path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 
-const spec = [
+const mainBlocks = [
   ['HeroSlider', {}],
   ['CategoryCircleSlider', {}],
   ['CategorySliderSection', {}],
@@ -112,6 +112,13 @@ const spec = [
   ['MarketplaceCta', {}],
   ['InformBlock', {}],
   ['MapSection', {}],
+];
+
+const spec = [
+  ['Header', {}],
+  ...mainBlocks,
+  ['Footer', {}],
+  ['MobileBottomNav', {}],
 ].map(([type, settings]) =>
   Object.keys(settings).length ? { type, settings } : { type }
 );

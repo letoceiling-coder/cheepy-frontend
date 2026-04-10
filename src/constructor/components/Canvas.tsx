@@ -99,7 +99,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           >
             {/* Block toolbar */}
             {!previewMode && (
-              <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-card/95 backdrop-blur-sm border border-border rounded-md shadow-sm p-0.5">
+              <div className="absolute top-9 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-card/95 backdrop-blur-sm border border-border rounded-md shadow-sm p-0.5">
                 <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={e => { e.stopPropagation(); onMoveBlock(block.id, 'up'); }}>
                   <ChevronUp className="h-3 w-3" />
                 </Button>
@@ -118,17 +118,16 @@ export const Canvas: React.FC<CanvasProps> = ({
               </div>
             )}
 
-            {/* Block label */}
+            {/* Постоянная подпись блока — читаемый текст, не только по hover */}
             {!previewMode && (
-              <div className="absolute top-2 left-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
-                <span className="text-[10px] px-2 py-0.5 bg-primary/90 text-primary-foreground rounded-full font-medium">
-                  {block.label}
-                </span>
+              <div className="sticky top-0 z-10 flex flex-wrap items-center gap-x-2 gap-y-0.5 px-2 py-1.5 bg-card/95 backdrop-blur-sm border-b border-border text-xs">
+                <span className="font-semibold text-foreground truncate max-w-[min(100%,14rem)]">{block.label}</span>
+                <span className="text-[10px] font-mono text-muted-foreground shrink-0">{block.type}</span>
               </div>
             )}
 
-            {/* Block content */}
-            <div className="overflow-hidden pointer-events-none">
+            {/* Контент: без обрезки по вертикали; в режиме правок отключаем клики внутри для перетаскивания */}
+            <div className={`${previewMode ? '' : 'pointer-events-none'} overflow-x-auto overflow-y-visible`}>
               <BlockRenderer block={block} />
             </div>
           </div>

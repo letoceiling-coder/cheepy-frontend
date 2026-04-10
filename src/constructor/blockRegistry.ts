@@ -131,6 +131,14 @@ export const blockRegistry: BlockDefinition[] = [
   // Navigation
   { type: 'Header', label: 'Header', category: 'navigation', icon: 'Menu', defaultSettings: {} },
   { type: 'Footer', label: 'Footer', category: 'footer', icon: 'PanelBottom', defaultSettings: {} },
+  { type: 'MobileBottomNav', label: 'Mobile bottom nav', category: 'navigation', icon: 'Smartphone', defaultSettings: {} },
+  {
+    type: 'LivePageEmbed',
+    label: 'Страница сайта (превью)',
+    category: 'navigation',
+    icon: 'ExternalLink',
+    defaultSettings: { path: '/', minHeight: 720, caption: '' },
+  },
 ];
 
 export const getBlocksByCategory = () => {

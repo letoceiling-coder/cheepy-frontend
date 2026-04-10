@@ -103,6 +103,8 @@ const componentMap: Record<string, React.LazyExoticComponent<React.ComponentType
   TrendingGrid: lazy(() => import('@/components/sections/TrendingGrid')),
   Header: lazy(() => import('@/components/Header')),
   Footer: lazy(() => import('@/components/Footer')),
+  MobileBottomNav: lazy(() => import('@/components/MobileBottomNav')),
+  LivePageEmbed: lazy(() => import('@/constructor/components/LivePageEmbed')),
 };
 
 const BlockSkeleton = () => (
