@@ -1075,7 +1075,16 @@ export interface SystemProductItem {
 }
 
 export const adminSystemProductsApi = {
-  list: (params?: { status?: string; search?: string; page?: number; per_page?: number }) => {
+  list: (params?: {
+    status?: string;
+    search?: string;
+    page?: number;
+    per_page?: number;
+    category_id?: number;
+    seller_id?: number;
+    sort_by?: 'created_at' | 'updated_at' | 'name' | 'status' | 'price_raw';
+    sort_dir?: 'asc' | 'desc';
+  }) => {
     const q = new URLSearchParams();
     if (params) Object.entries(params).forEach(([k, v]) => { if (v !== undefined) q.set(k, String(v)); });
     return get<{ data: SystemProductItem[]; meta: { total: number; per_page: number; current_page: number; last_page: number } }>(

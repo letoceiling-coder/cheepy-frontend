@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader";
@@ -6,8 +6,14 @@ import { DataTable, Column } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { adminSystemProductsApi, type SystemProductItem } from "@/lib/api";
-import { Search, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import {
+  adminSystemProductsApi,
+  adminCatalogApi,
+  sellersApi,
+  type SystemProductItem,
+  type CatalogCategoryItem,
+} from "@/lib/api";
+import { Search, CheckCircle, XCircle, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 const QK = ["admin-system-products-moderation"];
@@ -39,19 +45,72 @@ function formatDate(s: string | undefined): string {
   }
 }
 
+function buildCategoryTreeOptions(cats: CatalogCategoryItem[]): { id: number; label: string }[] {
+  const byParent = new Map<number | null, CatalogCategoryItem[]>();
+  cats.forEach((c) => {
+    const pid = c.parent_id ?? null;
+    if (!byParent.has(pid)) byParent.set(pid, []);
+    byParent.get(pid)!.push(c);
+  });
+  const out: { id: number; label: string }[] = [];
+  function walk(pid: number | null, depth: number) {
+    const arr = byParent.get(pid) ?? [];
+    arr.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    for (const c of arr) {
+      const pad = depth > 0 ? `${"—".repeat(depth)} ` : "";
+      out.push({ id: c.id, label: `${pad}${c.name}` });
+      walk(c.id, depth + 1);
+    }
+  }
+  walk(null, 0);
+  return out;
+}
+
+const PER_PAGE = 25;
+
 export default function CrmModerationPage() {
-  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "needs_review">("pending");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [sellerFilter, setSellerFilter] = useState("");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedSearch(searchInput), 300);
+    return () => window.clearTimeout(t);
+  }, [searchInput]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, categoryFilter, sellerFilter, debouncedSearch]);
+
+  const { data: categoriesRes } = useQuery({
+    queryKey: ["catalog-categories-flat", "moderation-list"],
+    queryFn: () => adminCatalogApi.catalogCategoriesList({ per_page: 500, page: 1 }),
+  });
+  const categoryOptions = useMemo(
+    () => buildCategoryTreeOptions(categoriesRes?.data ?? []),
+    [categoriesRes?.data]
+  );
+
+  const { data: sellersRes } = useQuery({
+    queryKey: ["crm-sellers-dd", "moderation"],
+    queryFn: () => sellersApi.list({ per_page: 500, page: 1 }),
+  });
+
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: [QK[0], statusFilter === "all" ? undefined : statusFilter, search],
+    queryKey: [QK[0], statusFilter, debouncedSearch, categoryFilter, sellerFilter, page],
     queryFn: () =>
       adminSystemProductsApi.list({
         status: statusFilter === "all" ? undefined : statusFilter,
-        search: search || undefined,
-        per_page: 100,
+        search: debouncedSearch.trim() || undefined,
+        category_id: categoryFilter ? Number(categoryFilter) : undefined,
+        seller_id: sellerFilter ? Number(sellerFilter) : undefined,
+        page,
+        per_page: PER_PAGE,
       }),
   });
 
@@ -68,7 +127,13 @@ export default function CrmModerationPage() {
   });
 
   const items = data?.data ?? [];
-  const pendingCount = statusFilter === "pending" ? (data?.meta?.total ?? 0) : items.filter((i) => i.status === "pending").length;
+  const meta = data?.meta;
+  const lastPage = meta?.last_page ?? 1;
+  const total = meta?.total ?? 0;
+  const listDescription =
+    statusFilter === "pending"
+      ? `${total} в очереди модерации`
+      : `${total} по выбранным фильтрам`;
 
   const columns: Column<SystemProductItem>[] = [
     { key: "id", title: "ID", className: "w-20", render: (m) => <span className="font-mono text-xs">{m.id}</span> },
@@ -142,12 +207,17 @@ export default function CrmModerationPage() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <PageHeader title="Модерация" description={`${pendingCount} товаров ожидают проверки`} />
+      <PageHeader title="Модерация" description={listDescription} />
 
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по названию..." className="pl-8 h-8 text-sm" />
+          <Input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Поиск по названию..."
+            className="pl-8 h-8 text-sm"
+          />
         </div>
         <select
           value={statusFilter}
@@ -159,10 +229,64 @@ export default function CrmModerationPage() {
           <option value="approved">Одобрены</option>
           <option value="needs_review">Отклонены</option>
         </select>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="h-8 min-w-[160px] max-w-[220px] rounded-md border border-input bg-background px-3 text-sm truncate"
+          title="Категория витрины"
+        >
+          <option value="">Все категории</option>
+          {categoryOptions.map((c) => (
+            <option key={c.id} value={String(c.id)}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+        <select
+          value={sellerFilter}
+          onChange={(e) => setSellerFilter(e.target.value)}
+          className="h-8 min-w-[160px] max-w-[220px] rounded-md border border-input bg-background px-3 text-sm truncate"
+          title="Продавец"
+        >
+          <option value="">Все продавцы</option>
+          {(sellersRes?.data ?? []).map((s) => (
+            <option key={s.id} value={String(s.id)}>
+              {s.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <DataTable data={items} columns={columns} onRowClick={(m) => navigate(`/crm/moderation/${m.id}`)} />
-      <p className="text-xs text-muted-foreground">Показано {items.length} из {data?.meta?.total ?? 0}</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          Страница {meta?.current_page ?? 1} из {lastPage} · на странице {items.length} · всего {total}
+        </p>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            aria-label="Предыдущая страница"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0"
+            disabled={page >= lastPage}
+            onClick={() => setPage((p) => p + 1)}
+            aria-label="Следующая страница"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

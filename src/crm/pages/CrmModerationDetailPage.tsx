@@ -23,6 +23,8 @@ import {
   Save,
   GripVertical,
   ImagePlus,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { PermissionGate } from "../rbac/PermissionGate";
 import {
@@ -209,6 +211,16 @@ export default function CrmModerationDetailPage() {
     setDragIdx(null);
   };
 
+  const movePhoto = (idx: number, dir: -1 | 1) => {
+    setPhotos((prev) => {
+      const to = idx + dir;
+      if (to < 0 || to >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[to]] = [next[to], next[idx]];
+      return next.map((p, i) => ({ ...p, sort_order: i }));
+    });
+  };
+
   const setPrimary = (idx: number) => {
     setPhotos((prev) =>
       prev.map((p, i) => ({ ...p, is_primary: i === idx }))
@@ -307,7 +319,8 @@ export default function CrmModerationDetailPage() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Перетаскивайте карточки за иконку ⋮⋮. Выключите переключатель, чтобы скрыть кадр на витрине.
+              Порядок: кнопки «вверх/вниз» или перетаскивание за ⋮⋮. Выключите переключатель, чтобы скрыть кадр на витрине.
+              Сохраните карточку, чтобы зафиксировать порядок на сервере.
             </p>
             {photos.length === 0 ? (
               <p className="text-sm text-muted-foreground">Нет фото в карточке CRM. Добавьте из медиа или введите URL ниже.</p>
@@ -323,15 +336,44 @@ export default function CrmModerationDetailPage() {
                     onDrop={() => onDrop(idx)}
                   >
                     <div className="flex gap-2">
-                      <button
-                        type="button"
-                        draggable
-                        onDragStart={() => onDragStart(idx)}
-                        className="cursor-grab text-muted-foreground pt-1"
-                        aria-label="Переместить"
-                      >
-                        <GripVertical className="h-5 w-5" />
-                      </button>
+                      <div className="flex flex-col items-center gap-0.5 pt-0.5 shrink-0">
+                        <button
+                          type="button"
+                          draggable
+                          onDragStart={() => onDragStart(idx)}
+                          className="cursor-grab text-muted-foreground"
+                          aria-label="Перетащить"
+                        >
+                          <GripVertical className="h-5 w-5" />
+                        </button>
+                        <div className="flex flex-col gap-0">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            disabled={idx === 0}
+                            onClick={() => movePhoto(idx, -1)}
+                            aria-label="Выше"
+                          >
+                            <ChevronUp className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            disabled={idx >= photos.length - 1}
+                            onClick={() => movePhoto(idx, 1)}
+                            aria-label="Ниже"
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <span className="text-[10px] tabular-nums text-muted-foreground leading-none pt-0.5">
+                          {idx + 1}/{photos.length}
+                        </span>
+                      </div>
                       <div className="flex-1 min-w-0 space-y-2">
                         <div
                           className="aspect-video rounded-md bg-muted bg-cover bg-center border"
