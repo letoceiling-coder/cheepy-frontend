@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader";
 import { DataTable, Column } from "../components/DataTable";
@@ -7,19 +7,70 @@ import { StatusBadge } from "../components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { adminSystemProductsApi, type SystemProductItem } from "@/lib/api";
-import { Plus, Search, Download, Loader2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  adminSystemProductsApi,
+  resolveCrmMediaAssetUrl,
+  type SystemProductItem,
+  type SystemProductStatus,
+} from "@/lib/api";
+import { Plus, Search, Download, Loader2, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
 const QK = ["admin-system-products"];
 
 const fmt = (n: number) => new Intl.NumberFormat("ru-RU").format(n);
 
+/** Относительные пути и /storage — с origin API; http→https на HTTPS-странице. */
+function thumbnailSrc(raw: string | null | undefined): string {
+  const u = String(raw || "").trim();
+  if (!u) return "";
+  const resolved = /^https?:\/\//i.test(u) ? u : resolveCrmMediaAssetUrl(u);
+  if (typeof window !== "undefined" && window.location.protocol === "https:" && resolved.startsWith("http://")) {
+    return resolved.replace(/^http:\/\//i, "https://");
+  }
+  return resolved;
+}
+
+const QUICK_STATUSES: { value: SystemProductStatus; label: string }[] = [
+  { value: "published", label: "Опубликован" },
+  { value: "approved", label: "Одобрен" },
+  { value: "pending", label: "На модерации" },
+  { value: "needs_review", label: "На проверке" },
+  { value: "draft", label: "Черновик" },
+];
+
+function ThumbCell({ url }: { url: string | null | undefined }) {
+  const src = thumbnailSrc(url || "");
+  if (!src) {
+    return <div className="h-10 w-10 rounded bg-muted shrink-0" />;
+  }
+  return (
+    <div className="h-10 w-10 rounded overflow-hidden bg-muted shrink-0 border border-border/50">
+      <img
+        src={src}
+        alt=""
+        className="h-full w-full object-cover"
+        loading="lazy"
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = "none";
+        }}
+      />
+    </div>
+  );
+}
+
 export default function CrmProductsPage() {
   const [search, setSearch] = useState("");
-  /** По умолчанию витринные позиции; модерация — отдельный раздел CRM */
   const [statusFilter, setStatusFilter] = useState("published");
   const navigate = useNavigate();
+  const qc = useQueryClient();
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: [QK[0], statusFilter === "all" ? undefined : statusFilter, search],
@@ -33,12 +84,22 @@ export default function CrmProductsPage() {
 
   const items = data?.data ?? [];
 
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: SystemProductStatus }) =>
+      adminSystemProductsApi.moderate(id, { status }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QK });
+      toast.success("Статус обновлён");
+    },
+    onError: (e: Error) => toast.error(e.message || "Не удалось сменить статус"),
+  });
+
   const columns: Column<SystemProductItem>[] = [
     {
       key: "image",
       title: "Фото",
       className: "w-14",
-      render: () => <div className="h-10 w-10 rounded bg-muted" />,
+      render: (p) => <ThumbCell url={p.thumbnail_url} />,
     },
     { key: "name", title: "Название", render: (p) => <span className="font-medium text-sm">{p.name}</span> },
     { key: "category", title: "Категория", className: "hidden lg:table-cell", render: (p) => p.category?.name ?? "—" },
@@ -57,7 +118,41 @@ export default function CrmProductsPage() {
       className: "hidden md:table-cell",
       render: () => "—",
     },
-    { key: "status", title: "Статус", render: (p) => <StatusBadge status={p.status} /> },
+    {
+      key: "status",
+      title: "Статус",
+      className: "min-w-[200px]",
+      render: (p) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <StatusBadge status={p.status} />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-0.5 px-2"
+                disabled={statusMutation.isPending}
+                aria-label="Изменить статус"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {QUICK_STATUSES.map((opt) => (
+                <DropdownMenuItem
+                  key={opt.value}
+                  disabled={p.status === opt.value || statusMutation.isPending}
+                  onClick={() => statusMutation.mutate({ id: p.id, status: opt.value })}
+                >
+                  {opt.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ),
+    },
   ];
 
   if (isLoading) {
@@ -119,7 +214,7 @@ export default function CrmProductsPage() {
         </Button>
       </div>
 
-      <DataTable data={items} columns={columns} onRowClick={(p) => navigate(`/crm/products/${p.id}`)} />
+      <DataTable data={items} columns={columns} onRowClick={(p) => navigate(`/crm/moderation/${p.id}`)} />
       <p className="text-xs text-muted-foreground">
         Показано {items.length} из {data?.meta?.total ?? 0}
       </p>

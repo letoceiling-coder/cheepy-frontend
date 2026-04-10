@@ -1029,6 +1029,8 @@ export interface SystemProductItem {
   /** Витринная категория из category_mapping по донорской категории (если в БД category_id ещё null). */
   mapping_suggested_category_id?: number | null;
   brand_id?: number | null;
+  /** URL превью для списков (CRM-фото или донор). */
+  thumbnail_url?: string | null;
   created_at?: string;
   updated_at?: string;
   seller?: { id: number; name: string; slug: string } | null;
