@@ -1634,6 +1634,49 @@ export const adminCmsApi = {
     ),
 };
 
+// ──────────────────────────────────────────────
+// Конструктор витрины — шаблоны макетов (JWT)
+// ──────────────────────────────────────────────
+
+export interface ConstructorLayoutTemplateRow {
+  id: number;
+  template_key: string;
+  name: string;
+  description?: string | null;
+  is_system: boolean;
+  sort_order: number;
+  blocks_count: number;
+  updated_at: string | null;
+}
+
+export interface ConstructorLayoutTemplateDetail {
+  id: number;
+  template_key: string;
+  name: string;
+  description?: string | null;
+  is_system: boolean;
+  sort_order: number;
+  updated_at: string | null;
+  blocks: Array<{
+    id: number;
+    block_type: string;
+    sort_order: number;
+    settings: CmsBlockSettings;
+    client_key: string | null;
+    is_visible: boolean;
+  }>;
+}
+
+export const adminConstructorLayoutApi = {
+  list: () => get<{ data: ConstructorLayoutTemplateRow[] }>('/admin/constructor/layout-templates'),
+  show: (id: number) => get<ConstructorLayoutTemplateDetail>(`/admin/constructor/layout-templates/${id}`),
+  create: (body: { name: string; description?: string | null; blocks?: CmsPageBlockPayload[] }) =>
+    post<ConstructorLayoutTemplateDetail>('/admin/constructor/layout-templates', body),
+  syncBlocks: (id: number, body: { blocks: CmsPageBlockPayload[] }) =>
+    put<ConstructorLayoutTemplateDetail>(`/admin/constructor/layout-templates/${id}/blocks`, body),
+  remove: (id: number) => del<{ ok: boolean }>(`/admin/constructor/layout-templates/${id}`),
+};
+
 // Payment status — public, for return pages
 export interface PaymentStatus {
   id: number;
@@ -1674,6 +1717,7 @@ export default {
   public: publicApi,
   publicCms: publicCmsApi,
   adminCms: adminCmsApi,
+  adminConstructorLayout: adminConstructorLayoutApi,
   attributeRules: attributeRulesApi,
   attributeDictionary: attributeRulesApi.dictionary,
   attributeCanonical: attributeRulesApi.canonical,

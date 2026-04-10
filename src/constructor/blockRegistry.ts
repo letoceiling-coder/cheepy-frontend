@@ -128,6 +128,26 @@ export const blockRegistry: BlockDefinition[] = [
   { type: 'AiRecommendations', label: 'AI Recommendations', category: 'social', icon: 'Bot', defaultSettings: {} },
   { type: 'RecentlyViewed', label: 'Recently Viewed', category: 'social', icon: 'History', defaultSettings: {} },
 
+  // Витрина — секции страниц (как на /product, /category, …)
+  { type: 'ProductPageBreadcrumbs', label: 'Товар: крошки', category: 'navigation', icon: 'ChevronRight', defaultSettings: {} },
+  { type: 'ProductDetailHero', label: 'Товар: галерея и покупка', category: 'products', icon: 'ShoppingBag', defaultSettings: {} },
+  { type: 'ProductDetailTabsSection', label: 'Товар: вкладки', category: 'text', icon: 'Layers', defaultSettings: {} },
+  { type: 'ProductSellerCardSection', label: 'Товар: продавец', category: 'social', icon: 'Store', defaultSettings: {} },
+  { type: 'ProductRecentlyViewedSection', label: 'Товар: недавно', category: 'products', icon: 'History', defaultSettings: {} },
+  { type: 'ProductBuyTogetherSection', label: 'Товар: вместе', category: 'products', icon: 'Package', defaultSettings: {} },
+  { type: 'ProductSimilarProductsSection', label: 'Товар: похожие', category: 'products', icon: 'Grid3x3', defaultSettings: {} },
+  { type: 'CategoryPageBreadcrumbs', label: 'Категория: крошки', category: 'navigation', icon: 'ChevronRight', defaultSettings: {} },
+  { type: 'CategoryHeroBanner', label: 'Категория: баннер', category: 'hero', icon: 'Image', defaultSettings: {} },
+  { type: 'CategoryListingContent', label: 'Категория: фильтры и сетка', category: 'products', icon: 'LayoutGrid', defaultSettings: {} },
+  { type: 'CartPageContent', label: 'Корзина: содержимое', category: 'mixed', icon: 'ShoppingCart', defaultSettings: {} },
+  { type: 'FavoritesPageContent', label: 'Избранное', category: 'products', icon: 'Heart', defaultSettings: {} },
+  { type: 'AuthPageContent', label: 'Вход / регистрация', category: 'cta', icon: 'LogIn', defaultSettings: {} },
+  { type: 'BrandsListBreadcrumbs', label: 'Бренды: крошки', category: 'navigation', icon: 'ChevronRight', defaultSettings: {} },
+  { type: 'BrandsListHero', label: 'Бренды: hero', category: 'hero', icon: 'Award', defaultSettings: {} },
+  { type: 'BrandsListPopularSection', label: 'Бренды: популярные', category: 'categories', icon: 'TrendingUp', defaultSettings: {} },
+  { type: 'BrandsListAllSection', label: 'Бренды: список А-Я', category: 'categories', icon: 'List', defaultSettings: {} },
+  { type: 'BrandsListInfoSection', label: 'Бренды: текст', category: 'text', icon: 'Info', defaultSettings: {} },
+
   // Navigation
   { type: 'Header', label: 'Header', category: 'navigation', icon: 'Menu', defaultSettings: {} },
   { type: 'Footer', label: 'Footer', category: 'footer', icon: 'PanelBottom', defaultSettings: {} },

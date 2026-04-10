@@ -30,13 +30,6 @@ export type BlockCategory =
   | 'navigation'
   | 'footer';
 
-export interface PageTemplate {
-  id: string;
-  name: string;
-  blocks: BlockConfig[];
-  createdAt: string;
-}
-
 export interface HistoryEntry {
   blocks: BlockConfig[];
   timestamp: number;
