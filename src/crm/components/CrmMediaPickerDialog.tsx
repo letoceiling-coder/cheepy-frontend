@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChevronRight, FolderOpen, Image as ImageIcon, Loader2 } from "lucide-react";
+import { ChevronRight, FolderOpen, Loader2 } from "lucide-react";
+import { CrmMediaFilePreview } from "./CrmMediaFilePreview";
 
 type Props = {
   open: boolean;
@@ -116,29 +117,22 @@ export function CrmMediaPickerDialog({ open, onOpenChange, onPick }: Props) {
             {browseId > 0 && !lfiles && (
               <ScrollArea className="h-[58vh]">
                 <div className="grid grid-cols-3 gap-2 pr-2">
-                  {files.map((f: CrmMediaFile) => {
-                    const isImage = f.mime_type?.startsWith("image/");
-                    return (
-                      <button
-                        key={f.id}
-                        type="button"
-                        className="rounded border p-1 text-left hover:border-primary"
-                        onClick={() => {
-                          onPick(f);
-                          onOpenChange(false);
-                        }}
-                      >
-                        <div className="aspect-square bg-muted rounded flex items-center justify-center overflow-hidden">
-                          {isImage ? (
-                            <img src={f.url} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                          )}
-                        </div>
-                        <p className="text-[10px] truncate mt-0.5">{f.original_name}</p>
-                      </button>
-                    );
-                  })}
+                  {files.map((f: CrmMediaFile) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      className="rounded border p-1 text-left hover:border-primary"
+                      onClick={() => {
+                        onPick(f);
+                        onOpenChange(false);
+                      }}
+                    >
+                      <div className="aspect-square overflow-hidden rounded bg-muted">
+                        <CrmMediaFilePreview file={f} />
+                      </div>
+                      <p className="text-[10px] truncate mt-0.5">{f.original_name}</p>
+                    </button>
+                  ))}
                 </div>
               </ScrollArea>
             )}

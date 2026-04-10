@@ -39,6 +39,20 @@ function resolveApiBaseUrl(): string {
 
 const BASE_URL = resolveApiBaseUrl();
 
+/** Публичные URL из API (`/storage/...`) без домена — браузер резолвит от витрины; подставляем origin бэкенда. */
+export function resolveCrmMediaAssetUrl(url: string): string {
+  const u = String(url || '').trim();
+  if (!u) return '';
+  if (/^https?:\/\//i.test(u)) return u;
+  try {
+    const origin = new URL(BASE_URL).origin;
+    if (u.startsWith('/')) return `${origin}${u}`;
+    return `${origin}/${u.replace(/^\/+/, '')}`;
+  } catch {
+    return u;
+  }
+}
+
 /** Single source for GET/POST — all `request()` calls use BASE_URL + path */
 console.log('API URL', BASE_URL);
 if (import.meta.env.DEV) {
@@ -1092,11 +1106,45 @@ export const crmMediaApi = {
     if (params.per_page) q.set('per_page', String(params.per_page));
     return get<{ data: CrmMediaFile[]; meta: PaginatedResponse<CrmMediaFile>['meta'] }>(`/admin/media/files?${q}`);
   },
-  upload: (folderId: number, files: File[], onProgress?: (percent: number) => void) => {
-    const fd = new FormData();
-    fd.append('folder_id', String(folderId));
-    files.forEach((f) => fd.append('files[]', f));
-    return postFormData<{ data: CrmMediaFile[] }>('/admin/media/files', fd, onProgress);
+  /**
+   * По одному файлу на запрос: сбой одного не отменяет остальные.
+   * Возвращает загруженные записи и список ошибок по имени файла.
+   */
+  upload: async (
+    folderId: number,
+    files: File[],
+    onProgress?: (percent: number) => void
+  ): Promise<{
+    data: CrmMediaFile[];
+    failures: Array<{ name: string; status: number; message: string }>;
+  }> => {
+    const data: CrmMediaFile[] = [];
+    const failures: Array<{ name: string; status: number; message: string }> = [];
+    const n = files.length;
+    if (n === 0) return { data: [], failures: [] };
+
+    for (let i = 0; i < n; i++) {
+      const file = files[i];
+      const fd = new FormData();
+      fd.append('folder_id', String(folderId));
+      fd.append('files[]', file);
+      try {
+        const res = await postFormData<{ data: CrmMediaFile[] }>('/admin/media/files', fd, (p) => {
+          if (!onProgress) return;
+          const overall = Math.round((i * 100 + p) / n);
+          onProgress(overall);
+        });
+        data.push(...(res.data ?? []));
+      } catch (e: unknown) {
+        const ae = e instanceof ApiError ? e : null;
+        failures.push({
+          name: file.name,
+          status: ae?.status ?? 0,
+          message: ae?.message ?? (e instanceof Error ? e.message : String(e)),
+        });
+      }
+    }
+    return { data, failures };
   },
   moveFiles: (body: { file_ids: number[]; folder_id: number }) =>
     post<{ message: string }>('/admin/media/files/move', body),

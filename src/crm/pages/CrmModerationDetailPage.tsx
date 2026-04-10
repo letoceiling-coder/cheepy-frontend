@@ -28,6 +28,7 @@ import { PermissionGate } from "../rbac/PermissionGate";
 import {
   adminSystemProductsApi,
   adminCatalogApi,
+  resolveCrmMediaAssetUrl,
   type CatalogCategoryItem,
   type CrmMediaFile,
 } from "@/lib/api";
@@ -214,7 +215,7 @@ export default function CrmModerationDetailPage() {
   const onPickMedia = (f: CrmMediaFile) => {
     setPhotos((prev) => {
       const row: PhotoRow = {
-        url: f.url,
+        url: resolveCrmMediaAssetUrl(f.url),
         sort_order: prev.length,
         is_primary: prev.length === 0,
         is_enabled: true,
@@ -306,7 +307,9 @@ export default function CrmModerationDetailPage() {
               <p className="text-sm text-muted-foreground">Нет фото в карточке CRM. Добавьте из медиа или введите URL ниже.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {photos.map((p, idx) => (
+                {photos.map((p, idx) => {
+                  const thumbUrl = resolveCrmMediaAssetUrl(p.url);
+                  return (
                   <div
                     key={`${p.id ?? "n"}-${idx}`}
                     className="rounded-lg border border-border p-3 space-y-2"
@@ -327,9 +330,7 @@ export default function CrmModerationDetailPage() {
                         <div
                           className="aspect-video rounded-md bg-muted bg-cover bg-center border"
                           style={
-                            p.url.startsWith("http")
-                              ? { backgroundImage: `url(${p.url})` }
-                              : undefined
+                            thumbUrl ? { backgroundImage: `url(${thumbUrl})` } : undefined
                           }
                         />
                         <Input
@@ -375,7 +376,8 @@ export default function CrmModerationDetailPage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

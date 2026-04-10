@@ -19,7 +19,6 @@ import {
   ChevronRight,
   FolderPlus,
   FolderOpen,
-  Image as ImageIcon,
   Loader2,
   Trash2,
   RotateCcw,
@@ -27,6 +26,7 @@ import {
   Pencil,
   Search,
 } from "lucide-react";
+import { CrmMediaFilePreview } from "../components/CrmMediaFilePreview";
 
 const QK = ["crm-media"];
 
@@ -138,26 +138,38 @@ export default function CrmMediaPage() {
   });
 
   const uploadMut = useMutation({
-    mutationFn: (fileList: File[]) => {
+    mutationFn: async (fileList: File[]) => {
       if (!browseFolderId) throw new Error("Выберите папку");
       setUploadProgress(0);
-      return crmMediaApi.upload(browseFolderId, fileList, (p) => setUploadProgress(p));
-    },
-    onSuccess: () => {
-      toast.success("Загружено");
+      const { data, failures } = await crmMediaApi.upload(
+        browseFolderId,
+        fileList,
+        (p) => setUploadProgress(p)
+      );
       setUploadProgress(100);
+      return { data, failures };
+    },
+    onSuccess: ({ data, failures }) => {
       qc.invalidateQueries({ queryKey: QK });
+      if (data.length && failures.length) {
+        toast.success(`Загружено файлов: ${data.length}. Не удалось: ${failures.length}.`);
+      } else if (data.length) {
+        toast.success(data.length > 1 ? `Загружено файлов: ${data.length}` : "Загружено");
+      } else if (failures.length) {
+        toast.error("Не удалось загрузить файлы");
+      }
+      for (const f of failures) {
+        const hint =
+          f.status === 413
+            ? "слишком большой для сервера (413). На сервере нужны upload_max_filesize / post_max_size в PHP и client_max_body_size в nginx."
+            : f.message;
+        toast.error(`${f.name}: ${hint}`);
+      }
+      setTimeout(() => setUploadProgress(0), 600);
     },
     onError: (e: Error) => {
-      if ((e as any)?.status === 413) {
-        toast.error("Файл слишком большой для сервера (413). Уменьшите размер или загрузите по частям.");
-      } else {
-        toast.error(e.message);
-      }
+      toast.error(e.message);
       setUploadProgress(0);
-    },
-    onSettled: () => {
-      setTimeout(() => setUploadProgress(0), 800);
     },
   });
 
@@ -424,7 +436,6 @@ export default function CrmMediaPage() {
             <ScrollArea className="h-[min(60vh,520px)]">
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pr-3">
                 {files.map((f: CrmMediaFile) => {
-                  const isImage = f.mime_type?.startsWith("image/");
                   const checked = selected.includes(f.id);
                   return (
                     <div
@@ -443,16 +454,8 @@ export default function CrmMediaPage() {
                           className="mt-1"
                         />
                         <div className="flex-1 min-w-0">
-                          <div className="aspect-square rounded bg-muted flex items-center justify-center overflow-hidden">
-                            {isImage ? (
-                              <img
-                                src={f.url}
-                                alt=""
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <ImageIcon className="h-10 w-10 text-muted-foreground" />
-                            )}
+                          <div className="aspect-square rounded overflow-hidden border border-border/60">
+                            <CrmMediaFilePreview file={f} />
                           </div>
                           <p className="text-xs truncate mt-1" title={f.original_name}>
                             {f.original_name}
