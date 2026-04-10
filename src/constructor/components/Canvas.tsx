@@ -126,8 +126,10 @@ export const Canvas: React.FC<CanvasProps> = ({
               </div>
             )}
 
-            {/* Контент: без обрезки по вертикали; в режиме правок отключаем клики внутри для перетаскивания */}
-            <div className={`${previewMode ? '' : 'pointer-events-none'} overflow-x-auto overflow-y-visible`}>
+            {/* translateZ(0) — новый контекст для position:fixed внутри превью (Header, MobileBottomNav), иначе они цепляются к viewport и ломают весь экран конструктора */}
+            <div
+              className={`${previewMode ? '' : 'pointer-events-none'} w-full overflow-x-auto overflow-y-visible [transform:translateZ(0)]`}
+            >
               <BlockRenderer block={block} />
             </div>
           </div>
