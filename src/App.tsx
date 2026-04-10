@@ -98,6 +98,7 @@ import CrmPromotionsPage from "./crm/pages/CrmPromotionsPage";
 import CrmReviewsPage from "./crm/pages/CrmReviewsPage";
 import CrmSettingsPage from "./crm/pages/CrmSettingsPage";
 import CrmModerationPage from "./crm/pages/CrmModerationPage";
+import CrmMediaPage from "./crm/pages/CrmMediaPage";
 import CrmFulfillmentPage from "./crm/pages/CrmFulfillmentPage";
 import CrmPaymentsPage from "./crm/pages/CrmPaymentsPage";
 import CrmPayoutsPage from "./crm/pages/CrmPayoutsPage";
@@ -237,6 +238,7 @@ function AnimatedRoutes() {
           <Route path="products/:id" element={<CrmProductDetailPage />} />
           <Route path="categories" element={<CrmCategoriesPage />} />
           <Route path="catalog/mapping" element={<MappingPage />} />
+          <Route path="media" element={<CrmMediaPage />} />
           <Route path="moderation" element={<CrmModerationPage />} />
           <Route path="moderation/:id" element={<CrmModerationDetailPage />} />
           <Route path="orders" element={<CrmOrdersPage />} />

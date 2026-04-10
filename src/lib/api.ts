@@ -146,6 +146,32 @@ const put = <T>(path: string, body?: unknown) => request<T>('PUT', path, body);
 const patch = <T>(path: string, body?: unknown) => request<T>('PATCH', path, body);
 const del = <T>(path: string) => request<T>('DELETE', path);
 
+/** Multipart upload (no JSON Content-Type). */
+export async function postFormData<T>(path: string, formData: FormData): Promise<T> {
+  const token = localStorage.getItem('admin_token');
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const url = `${BASE_URL}${path}`;
+  const res = await fetch(url, { method: 'POST', headers, body: formData });
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname;
+      if (p.startsWith('/crm')) {
+        const next = encodeURIComponent(p + window.location.search);
+        window.location.assign(`/admin/login?next=${next}`);
+      }
+    }
+    const err = await res.json().catch(() => ({ error: 'Unauthorized' }));
+    throw new ApiError(401, err.error || 'Unauthorized');
+  }
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: res.statusText }));
+    throw new ApiError(res.status, error.error || res.statusText, error.errors);
+  }
+  if (res.status === 204) return undefined as T;
+  return res.json();
+}
+
 // ──────────────────────────────────────────────
 // Types
 // ──────────────────────────────────────────────
@@ -915,7 +941,14 @@ export interface SystemProductItem {
     value_int?: number | null;
     value_float?: number | null;
   }>;
-  photos?: Array<{ url: string; is_primary?: boolean; sort_order?: number }>;
+  photos?: Array<{
+    id?: number;
+    url: string;
+    is_primary?: boolean;
+    sort_order?: number;
+    is_enabled?: boolean;
+    media_file_id?: number | null;
+  }>;
   donor_sources?: Array<{
     donor_product_id: number;
     source?: string;
@@ -955,6 +988,83 @@ export const adminSystemProductsApi = {
     id: number,
     body: Partial<Pick<SystemProductItem, "name" | "description" | "price" | "price_raw" | "seller_id" | "category_id" | "brand_id">>
   ) => patch<SystemProductItem>(`/admin/system-products/${id}`, body),
+  /** Только CRM: атрибуты карточки (парсер не меняется). */
+  syncCrmAttributes: (id: number, body: { attributes: Array<{ attr_name: string; attr_value?: string | null }> }) =>
+    patch<SystemProductItem>(`/admin/system-products/${id}/crm-attributes`, body),
+  /** Только CRM: фото, порядок, вкл/выкл (парсер не меняется). */
+  syncCrmPhotos: (
+    id: number,
+    body: {
+      photos: Array<{
+        id?: number | null;
+        url: string;
+        sort_order: number;
+        is_primary?: boolean;
+        is_enabled?: boolean;
+        media_file_id?: number | null;
+      }>;
+    }
+  ) => patch<SystemProductItem>(`/admin/system-products/${id}/crm-photos`, body),
+};
+
+// ──────────────────────────────────────────────
+// CRM MEDIA LIBRARY
+// ──────────────────────────────────────────────
+
+export interface CrmMediaFolder {
+  id: number;
+  parent_id: number | null;
+  name: string;
+  slug: string;
+  is_system: boolean;
+  sort_order: number;
+}
+
+export interface CrmMediaFile {
+  id: number;
+  folder_id: number;
+  original_name: string;
+  mime_type: string | null;
+  size_bytes: number;
+  url: string;
+  restore_folder_id: number | null;
+}
+
+export const crmMediaApi = {
+  folders: (params?: { parent_id?: number | null }) => {
+    const q = new URLSearchParams();
+    if (params?.parent_id !== undefined && params.parent_id !== null) q.set('parent_id', String(params.parent_id));
+    return get<{ data: CrmMediaFolder[] }>(`/admin/media/folders${q.toString() ? `?${q}` : ''}`);
+  },
+  createFolder: (body: { name: string; parent_id?: number | null }) =>
+    post<CrmMediaFolder>('/admin/media/folders', body),
+  updateFolder: (id: number, body: { name: string }) => patch<CrmMediaFolder>(`/admin/media/folders/${id}`, body),
+  deleteFolder: (id: number) => del(`/admin/media/folders/${id}`),
+  files: (params: {
+    folder_id: number;
+    search?: string;
+    mime?: string;
+    page?: number;
+    per_page?: number;
+  }) => {
+    const q = new URLSearchParams();
+    q.set('folder_id', String(params.folder_id));
+    if (params.search) q.set('search', params.search);
+    if (params.mime) q.set('mime', params.mime);
+    if (params.page) q.set('page', String(params.page));
+    if (params.per_page) q.set('per_page', String(params.per_page));
+    return get<{ data: CrmMediaFile[]; meta: PaginatedResponse<CrmMediaFile>['meta'] }>(`/admin/media/files?${q}`);
+  },
+  upload: (folderId: number, files: File[]) => {
+    const fd = new FormData();
+    fd.append('folder_id', String(folderId));
+    files.forEach((f) => fd.append('files[]', f));
+    return postFormData<{ data: CrmMediaFile[] }>('/admin/media/files', fd);
+  },
+  moveFiles: (body: { file_ids: number[]; folder_id: number }) =>
+    post<{ message: string }>('/admin/media/files/move', body),
+  restoreFile: (id: number) => post<CrmMediaFile>(`/admin/media/files/${id}/restore`, {}),
+  emptyTrash: () => post<{ message: string }>('/admin/media/trash/empty', {}),
 };
 
 // ──────────────────────────────────────────────
