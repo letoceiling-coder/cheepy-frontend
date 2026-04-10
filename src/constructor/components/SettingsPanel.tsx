@@ -39,9 +39,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     <div className="flex flex-col h-full">
       {/* Block header */}
       <div className="p-3 border-b border-border">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-foreground truncate">{block.label}</h3>
-          <span className="text-[10px] px-2 py-0.5 bg-muted text-muted-foreground rounded-full">{block.category}</span>
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h3 className="text-sm font-semibold text-foreground leading-snug break-words min-w-0 flex-1 [overflow-wrap:anywhere]">
+            {block.label}
+          </h3>
+          <span className="text-[10px] px-2 py-0.5 bg-muted text-muted-foreground rounded-full shrink-0">{block.category}</span>
         </div>
         <div className="flex gap-1">
           <Button variant="outline" size="sm" className="h-7 text-xs flex-1" onClick={() => onDuplicate(block.id)}>
@@ -66,30 +68,68 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </TabsList>
 
           <TabsContent value="general" className="p-3 space-y-4">
-            <SettingField label="Title">
-              <Input
-                value={String(block.settings.title ?? '')}
-                onChange={e => onUpdateSettings(block.id, { title: e.target.value })}
-                placeholder="Section title"
-                className="h-8 text-xs"
-              />
-            </SettingField>
-            <SettingField label="Subtitle">
-              <Input
-                value={String(block.settings.subtitle ?? '')}
-                onChange={e => onUpdateSettings(block.id, { subtitle: e.target.value })}
-                placeholder="Section subtitle"
-                className="h-8 text-xs"
-              />
-            </SettingField>
-            <SettingField label="CTA Text">
-              <Input
-                value={String(block.settings.ctaText ?? '')}
-                onChange={e => onUpdateSettings(block.id, { ctaText: e.target.value })}
-                placeholder="Button text"
-                className="h-8 text-xs"
-              />
-            </SettingField>
+            {block.type === 'LivePageEmbed' ? (
+              <>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Один блок = целая страница витрины в iframe (тот же URL, что в браузере). Все секции страницы на месте, без упрощения.
+                </p>
+                <SettingField label="Путь (path)">
+                  <Input
+                    value={String(block.settings.path ?? '/')}
+                    onChange={(e) => onUpdateSettings(block.id, { path: e.target.value })}
+                    placeholder="/delivery"
+                    className="h-8 text-xs font-mono"
+                  />
+                </SettingField>
+                <SettingField label="Мин. высота iframe (px)">
+                  <Input
+                    type="number"
+                    min={320}
+                    max={4000}
+                    value={Number(block.settings.minHeight ?? 720)}
+                    onChange={(e) =>
+                      onUpdateSettings(block.id, { minHeight: Number(e.target.value) || 720 })
+                    }
+                    className="h-8 text-xs"
+                  />
+                </SettingField>
+                <SettingField label="Подпись под превью">
+                  <Input
+                    value={String(block.settings.caption ?? '')}
+                    onChange={(e) => onUpdateSettings(block.id, { caption: e.target.value })}
+                    placeholder="Название для подписи"
+                    className="h-8 text-xs"
+                  />
+                </SettingField>
+              </>
+            ) : (
+              <>
+                <SettingField label="Title">
+                  <Input
+                    value={String(block.settings.title ?? '')}
+                    onChange={(e) => onUpdateSettings(block.id, { title: e.target.value })}
+                    placeholder="Section title"
+                    className="h-8 text-xs"
+                  />
+                </SettingField>
+                <SettingField label="Subtitle">
+                  <Input
+                    value={String(block.settings.subtitle ?? '')}
+                    onChange={(e) => onUpdateSettings(block.id, { subtitle: e.target.value })}
+                    placeholder="Section subtitle"
+                    className="h-8 text-xs"
+                  />
+                </SettingField>
+                <SettingField label="CTA Text">
+                  <Input
+                    value={String(block.settings.ctaText ?? '')}
+                    onChange={(e) => onUpdateSettings(block.id, { ctaText: e.target.value })}
+                    placeholder="Button text"
+                    className="h-8 text-xs"
+                  />
+                </SettingField>
+              </>
+            )}
             {block.type === 'ProductGrid' && (
               <SettingField label="Product Count">
                 <Slider
@@ -104,91 +144,121 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </TabsContent>
 
           <TabsContent value="layout" className="p-3 space-y-4">
-            <SettingField label="Columns">
-              <Select
-                value={String(block.settings.columns ?? 'auto')}
-                onValueChange={v => onUpdateSettings(block.id, { columns: v })}
-              >
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="auto">Auto</SelectItem>
-                  <SelectItem value="2">2 Columns</SelectItem>
-                  <SelectItem value="3">3 Columns</SelectItem>
-                  <SelectItem value="4">4 Columns</SelectItem>
-                  <SelectItem value="6">6 Columns</SelectItem>
-                </SelectContent>
-              </Select>
-            </SettingField>
-            <SettingField label="Padding">
-              <Slider
-                value={[Number(block.settings.padding ?? 0)]}
-                onValueChange={([v]) => onUpdateSettings(block.id, { padding: v })}
-                min={0} max={64} step={4}
-              />
-              <span className="text-xs text-muted-foreground">{Number(block.settings.padding ?? 0)}px</span>
-            </SettingField>
-            <SettingField label="Margin Top">
-              <Slider
-                value={[Number(block.settings.marginTop ?? 0)]}
-                onValueChange={([v]) => onUpdateSettings(block.id, { marginTop: v })}
-                min={0} max={96} step={4}
-              />
-              <span className="text-xs text-muted-foreground">{Number(block.settings.marginTop ?? 0)}px</span>
-            </SettingField>
-            <SettingField label="Full Width">
-              <Switch
-                checked={Boolean(block.settings.fullWidth)}
-                onCheckedChange={v => onUpdateSettings(block.id, { fullWidth: v })}
-              />
-            </SettingField>
+            {block.type === 'LivePageEmbed' ? (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Колонки и отступы не применяются к превью страницы — макет задаётся самой страницей в iframe.
+              </p>
+            ) : null}
+            {block.type !== 'LivePageEmbed' && (
+              <>
+                <SettingField label="Columns">
+                  <Select
+                    value={String(block.settings.columns ?? 'auto')}
+                    onValueChange={(v) => onUpdateSettings(block.id, { columns: v })}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto</SelectItem>
+                      <SelectItem value="2">2 Columns</SelectItem>
+                      <SelectItem value="3">3 Columns</SelectItem>
+                      <SelectItem value="4">4 Columns</SelectItem>
+                      <SelectItem value="6">6 Columns</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </SettingField>
+                <SettingField label="Padding">
+                  <Slider
+                    value={[Number(block.settings.padding ?? 0)]}
+                    onValueChange={([v]) => onUpdateSettings(block.id, { padding: v })}
+                    min={0}
+                    max={64}
+                    step={4}
+                  />
+                  <span className="text-xs text-muted-foreground">{Number(block.settings.padding ?? 0)}px</span>
+                </SettingField>
+                <SettingField label="Margin Top">
+                  <Slider
+                    value={[Number(block.settings.marginTop ?? 0)]}
+                    onValueChange={([v]) => onUpdateSettings(block.id, { marginTop: v })}
+                    min={0}
+                    max={96}
+                    step={4}
+                  />
+                  <span className="text-xs text-muted-foreground">{Number(block.settings.marginTop ?? 0)}px</span>
+                </SettingField>
+                <SettingField label="Full Width">
+                  <Switch
+                    checked={Boolean(block.settings.fullWidth)}
+                    onCheckedChange={(v) => onUpdateSettings(block.id, { fullWidth: v })}
+                  />
+                </SettingField>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="style" className="p-3 space-y-4">
-            <SettingField label="Background Color">
-              <Input
-                type="color"
-                value={String(block.settings.bgColor ?? '#ffffff')}
-                onChange={e => onUpdateSettings(block.id, { bgColor: e.target.value })}
-                className="h-8 w-full"
-              />
-            </SettingField>
-            <SettingField label="Border Radius">
-              <Slider
-                value={[Number(block.settings.borderRadius ?? 0)]}
-                onValueChange={([v]) => onUpdateSettings(block.id, { borderRadius: v })}
-                min={0} max={32} step={2}
-              />
-              <span className="text-xs text-muted-foreground">{block.settings.borderRadius || 0}px</span>
-            </SettingField>
-            <SettingField label="Shadow">
-              <Select
-                value={String(block.settings.shadow ?? 'none')}
-                onValueChange={v => onUpdateSettings(block.id, { shadow: v })}
-              >
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="sm">Small</SelectItem>
-                  <SelectItem value="md">Medium</SelectItem>
-                  <SelectItem value="lg">Large</SelectItem>
-                  <SelectItem value="xl">Extra Large</SelectItem>
-                </SelectContent>
-              </Select>
-            </SettingField>
-            <SettingField label="Animation">
-              <Select
-                value={String(block.settings.animation ?? 'none')}
-                onValueChange={v => onUpdateSettings(block.id, { animation: v })}
-              >
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="fade">Fade In</SelectItem>
-                  <SelectItem value="slide">Slide Up</SelectItem>
-                  <SelectItem value="zoom">Zoom In</SelectItem>
-                </SelectContent>
-              </Select>
-            </SettingField>
+            {block.type === 'LivePageEmbed' ? (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Стили iframe не настраиваются здесь — используйте оформление на самой странице витрины.
+              </p>
+            ) : null}
+            {block.type !== 'LivePageEmbed' && (
+              <>
+                <SettingField label="Background Color">
+                  <Input
+                    type="color"
+                    value={String(block.settings.bgColor ?? '#ffffff')}
+                    onChange={(e) => onUpdateSettings(block.id, { bgColor: e.target.value })}
+                    className="h-8 w-full"
+                  />
+                </SettingField>
+                <SettingField label="Border Radius">
+                  <Slider
+                    value={[Number(block.settings.borderRadius ?? 0)]}
+                    onValueChange={([v]) => onUpdateSettings(block.id, { borderRadius: v })}
+                    min={0}
+                    max={32}
+                    step={2}
+                  />
+                  <span className="text-xs text-muted-foreground">{block.settings.borderRadius || 0}px</span>
+                </SettingField>
+                <SettingField label="Shadow">
+                  <Select
+                    value={String(block.settings.shadow ?? 'none')}
+                    onValueChange={(v) => onUpdateSettings(block.id, { shadow: v })}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="sm">Small</SelectItem>
+                      <SelectItem value="md">Medium</SelectItem>
+                      <SelectItem value="lg">Large</SelectItem>
+                      <SelectItem value="xl">Extra Large</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </SettingField>
+                <SettingField label="Animation">
+                  <Select
+                    value={String(block.settings.animation ?? 'none')}
+                    onValueChange={(v) => onUpdateSettings(block.id, { animation: v })}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="fade">Fade In</SelectItem>
+                      <SelectItem value="slide">Slide Up</SelectItem>
+                      <SelectItem value="zoom">Zoom In</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </SettingField>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="data" className="p-3 space-y-2">

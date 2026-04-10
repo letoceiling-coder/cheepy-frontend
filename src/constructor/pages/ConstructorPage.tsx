@@ -158,7 +158,7 @@ const ConstructorPage: React.FC = () => {
 
       <div className="flex-1 flex overflow-hidden">
         {leftPanelOpen && !store.previewMode && (
-          <div className="w-64 border-r border-border bg-card shrink-0 flex flex-col animate-slide-in-right" style={{ animationDirection: 'reverse' }}>
+          <div className="w-[20rem] sm:w-80 max-w-[min(100vw-2rem,22rem)] border-r border-border bg-card shrink-0 flex flex-col animate-slide-in-right" style={{ animationDirection: 'reverse' }}>
             <Tabs defaultValue="blocks" className="flex flex-col h-full">
               <TabsList className="w-full grid grid-cols-2 h-9 rounded-none border-b border-border bg-transparent">
                 <TabsTrigger value="blocks" className="text-xs h-8 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary">
