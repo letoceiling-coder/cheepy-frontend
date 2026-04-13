@@ -1511,7 +1511,11 @@ export interface CmsPageBlockPayload {
   sort_order?: number;
   settings?: CmsBlockSettings;
   client_key?: string | null;
+  is_enabled?: boolean;
   is_visible?: boolean;
+  is_required?: boolean;
+  is_locked?: boolean;
+  slot_key?: string | null;
 }
 
 export interface CmsPageListItem {
@@ -1643,7 +1647,12 @@ export interface ConstructorLayoutTemplateRow {
   template_key: string;
   name: string;
   description?: string | null;
+  template_type: "system" | "content";
+  page_scope: "page" | "global";
+  page_key: string | null;
   is_system: boolean;
+  is_editable: boolean;
+  is_active: boolean;
   sort_order: number;
   blocks_count: number;
   updated_at: string | null;
@@ -1654,7 +1663,12 @@ export interface ConstructorLayoutTemplateDetail {
   template_key: string;
   name: string;
   description?: string | null;
+  template_type: "system" | "content";
+  page_scope: "page" | "global";
+  page_key: string | null;
   is_system: boolean;
+  is_editable: boolean;
+  is_active: boolean;
   sort_order: number;
   updated_at: string | null;
   blocks: Array<{
@@ -1663,12 +1677,26 @@ export interface ConstructorLayoutTemplateDetail {
     sort_order: number;
     settings: CmsBlockSettings;
     client_key: string | null;
+    is_enabled: boolean;
     is_visible: boolean;
+    is_required: boolean;
+    is_locked: boolean;
+    slot_key: string | null;
   }>;
 }
 
 export const adminConstructorLayoutApi = {
-  list: () => get<{ data: ConstructorLayoutTemplateRow[] }>('/admin/constructor/layout-templates'),
+  list: (params?: { template_type?: "system" | "content"; page_scope?: "page" | "global"; is_active?: boolean }) => {
+    const q = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined) q.set(k, String(v));
+      });
+    }
+    return get<{ data: ConstructorLayoutTemplateRow[] }>(
+      `/admin/constructor/layout-templates${q.toString() ? `?${q}` : ""}`
+    );
+  },
   show: (id: number) => get<ConstructorLayoutTemplateDetail>(`/admin/constructor/layout-templates/${id}`),
   create: (body: { name: string; description?: string | null; blocks?: CmsPageBlockPayload[] }) =>
     post<ConstructorLayoutTemplateDetail>('/admin/constructor/layout-templates', body),

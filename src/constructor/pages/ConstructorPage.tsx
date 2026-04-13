@@ -12,6 +12,8 @@ import { toast } from 'sonner';
 import { adminCmsApi, adminConstructorLayoutApi, ApiError, type ConstructorLayoutTemplateRow } from '@/lib/api';
 import { mapBlockConfigsToCmsPayload, mapCmsApiBlocksToBlockConfigs } from '../cmsBlockMap';
 
+const GLOBAL_ONLY_BLOCK_TYPES = new Set(['Header', 'Footer', 'MobileBottomNav']);
+
 const ConstructorPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const store = useConstructorStore();
@@ -24,6 +26,9 @@ const ConstructorPage: React.FC = () => {
   const [layoutRows, setLayoutRows] = useState<ConstructorLayoutTemplateRow[]>([]);
   const [layoutListLoading, setLayoutListLoading] = useState(true);
   const [loadedLayoutTemplateId, setLoadedLayoutTemplateId] = useState<number | null>(null);
+  const [currentTemplateScope, setCurrentTemplateScope] = useState<'page' | 'global'>('page');
+  const [currentTemplateType, setCurrentTemplateType] = useState<'system' | 'content'>('content');
+  const [currentTemplateEditable, setCurrentTemplateEditable] = useState(true);
 
   const cmsPageId = useMemo(() => {
     const raw = searchParams.get('cmsPageId')?.trim();
@@ -85,6 +90,9 @@ const ConstructorPage: React.FC = () => {
         const rows = ver.version.blocks as Parameters<typeof mapCmsApiBlocksToBlockConfigs>[0];
         store.replaceBlocks(mapCmsApiBlocksToBlockConfigs(rows));
         setLoadedLayoutTemplateId(null);
+        setCurrentTemplateScope('page');
+        setCurrentTemplateType('content');
+        setCurrentTemplateEditable(true);
         toast.success('Макет загружен из CMS');
       })
       .catch((e: unknown) => {
@@ -102,23 +110,31 @@ const ConstructorPage: React.FC = () => {
 
   const handleAddBlock = useCallback(
     (type: string, label: string, category: BlockCategory, settings: Record<string, unknown>) => {
+      if (currentTemplateScope === 'page' && GLOBAL_ONLY_BLOCK_TYPES.has(type)) {
+        toast.error('Header/Footer/MobileBottomNav настраиваются в отдельном глобальном шаблоне.');
+        return;
+      }
       store.addBlock(type, label, category, settings);
       toast.success(`Добавлено: ${label}`);
     },
-    [store]
+    [currentTemplateScope, store]
   );
 
   const handleDropNewBlock = useCallback(
     (jsonData: string, index: number) => {
       try {
         const block = JSON.parse(jsonData) as { type: string; label: string; category: BlockCategory; defaultSettings?: Record<string, unknown> };
+        if (currentTemplateScope === 'page' && GLOBAL_ONLY_BLOCK_TYPES.has(block.type)) {
+          toast.error('Header/Footer/MobileBottomNav настраиваются только в глобальном шаблоне.');
+          return;
+        }
         store.addBlock(block.type, block.label, block.category, block.defaultSettings || {}, index);
         toast.success(`Добавлено: ${block.label}`);
       } catch {
         /* ignore */
       }
     },
-    [store]
+    [currentTemplateScope, store]
   );
 
   const handleSaveLayoutTemplate = useCallback(async () => {
@@ -133,6 +149,10 @@ const ConstructorPage: React.FC = () => {
     const payload = { blocks: mapBlockConfigsToCmsPayload(store.blocks) };
     try {
       if (loadedLayoutTemplateId != null) {
+        if (!currentTemplateEditable) {
+          toast.error('Этот шаблон заблокирован для редактирования.');
+          return;
+        }
         await adminConstructorLayoutApi.syncBlocks(loadedLayoutTemplateId, payload);
         toast.success('Шаблон сохранён в БД');
       } else {
@@ -147,7 +167,7 @@ const ConstructorPage: React.FC = () => {
       const msg = e instanceof ApiError ? e.message : 'Ошибка сохранения шаблона';
       toast.error(msg);
     }
-  }, [cmsMode, loadedLayoutTemplateId, refreshLayoutTemplates, store.blocks]);
+  }, [cmsMode, currentTemplateEditable, loadedLayoutTemplateId, refreshLayoutTemplates, store.blocks]);
 
   const handleSaveToCms = useCallback(async () => {
     if (!cmsPageId || !cmsVersionId) return;
@@ -181,11 +201,18 @@ const ConstructorPage: React.FC = () => {
               sort_order: b.sort_order,
               settings: b.settings,
               client_key: b.client_key,
+              is_enabled: b.is_enabled,
               is_visible: b.is_visible,
+              is_required: b.is_required,
+              is_locked: b.is_locked,
+              slot_key: b.slot_key,
             }))
           )
         );
         setLoadedLayoutTemplateId(row.id);
+        setCurrentTemplateScope(detail.page_scope);
+        setCurrentTemplateType(detail.template_type);
+        setCurrentTemplateEditable(detail.is_editable);
         toast.success(`Загружено: ${row.name}`);
       } catch (e: unknown) {
         const msg = e instanceof ApiError ? e.message : 'Не удалось загрузить шаблон';
@@ -271,6 +298,11 @@ const ConstructorPage: React.FC = () => {
           Загрузка макета из CMS…
         </div>
       )}
+      <div className="shrink-0 border-b border-border bg-card px-3 py-1 text-center text-[11px] text-muted-foreground">
+        Режим шаблона: {currentTemplateScope === 'global' ? 'глобальный (Header/Footer)' : 'страница'} ·{' '}
+        {currentTemplateType === 'system' ? 'системный' : 'контентный'} ·{' '}
+        {currentTemplateEditable ? 'редактируемый' : 'только чтение'}
+      </div>
 
       <div className="flex-1 flex overflow-hidden">
         {leftPanelOpen && !store.previewMode && (
@@ -288,7 +320,7 @@ const ConstructorPage: React.FC = () => {
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="blocks" className="flex-1 m-0 overflow-hidden">
-                <BlockLibrary onAddBlock={handleAddBlock} />
+                <BlockLibrary onAddBlock={handleAddBlock} pageScope={currentTemplateScope} />
               </TabsContent>
               <TabsContent value="templates" className="flex-1 m-0 overflow-hidden">
                 <TemplatesPanel

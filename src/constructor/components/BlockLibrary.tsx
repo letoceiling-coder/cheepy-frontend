@@ -8,9 +8,12 @@ import { CATEGORY_LABELS, BlockCategory } from '../types';
 
 interface BlockLibraryProps {
   onAddBlock: (type: string, label: string, category: BlockCategory, settings: Record<string, any>) => void;
+  pageScope?: "page" | "global";
 }
 
-export const BlockLibrary: React.FC<BlockLibraryProps> = ({ onAddBlock }) => {
+const GLOBAL_ONLY_BLOCKS = new Set(["Header", "Footer", "MobileBottomNav"]);
+
+export const BlockLibrary: React.FC<BlockLibraryProps> = ({ onAddBlock, pageScope = "page" }) => {
   const [search, setSearch] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['hero', 'products']));
 
@@ -25,10 +28,14 @@ export const BlockLibrary: React.FC<BlockLibraryProps> = ({ onAddBlock }) => {
   };
 
   const filteredByCategory = Object.entries(byCategory).reduce((acc, [cat, blocks]) => {
-    const filtered = blocks.filter(b => 
-      b.label.toLowerCase().includes(search.toLowerCase()) ||
-      b.type.toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = blocks.filter((b) => {
+      if (pageScope === "page" && GLOBAL_ONLY_BLOCKS.has(b.type)) return false;
+      if (pageScope === "global" && !GLOBAL_ONLY_BLOCKS.has(b.type)) return false;
+      return (
+        b.label.toLowerCase().includes(search.toLowerCase()) ||
+        b.type.toLowerCase().includes(search.toLowerCase())
+      );
+    });
     if (filtered.length > 0) acc[cat] = filtered;
     return acc;
   }, {} as Record<string, typeof blockRegistry>);

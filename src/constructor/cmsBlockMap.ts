@@ -14,7 +14,11 @@ export function mapCmsApiBlocksToBlockConfigs(
     sort_order?: number;
     settings?: Record<string, unknown> | null;
     client_key?: string | null;
+    is_enabled?: boolean;
     is_visible?: boolean;
+    is_required?: boolean;
+    is_locked?: boolean;
+    slot_key?: string | null;
   }>
 ): BlockConfig[] {
   const sorted = [...rows].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
@@ -28,7 +32,7 @@ export function mapCmsApiBlocksToBlockConfigs(
       label: def?.label ?? row.block_type,
       category: (def?.category ?? 'hero') as BlockCategory,
       settings: { ...defaults, ...saved },
-      hidden: row.is_visible === false,
+      hidden: row.is_enabled === false || row.is_visible === false,
     };
   });
 }
@@ -40,6 +44,7 @@ export function mapBlockConfigsToCmsPayload(blocks: BlockConfig[]): CmsPageBlock
     sort_order: i * 10,
     settings: { ...b.settings },
     client_key: b.id,
+    is_enabled: !b.hidden,
     is_visible: !b.hidden,
   }));
 }
