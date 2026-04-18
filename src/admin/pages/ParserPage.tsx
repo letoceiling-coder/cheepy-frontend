@@ -627,12 +627,14 @@ export default function ParserPage() {
             )}
             {diagnostics.photo_queue_workers_stalled && (
               <p className="text-xs text-amber-100/90 border-t border-amber-700/40 pt-2 mt-1">
-                На сервере API: добавьте{" "}
-                <code className="rounded bg-black/30 px-1">photo-worker</code> в supervisor (пример в репозитории бэка{" "}
+                На сервере API: в supervisor нужна отдельная группа с <code className="rounded bg-black/30 px-1">--queue=photos</code>
+                — часто это <code className="rounded bg-black/30 px-1">photo-worker</code> или{" "}
+                <code className="rounded bg-black/30 px-1">parser-worker-photos</code> (см.{" "}
                 <code className="rounded bg-black/30 px-1">supervisor-parser-queues.conf.example</code>
-                ), команда с <code className="rounded bg-black/30 px-1">--queue=photos</code>, затем{" "}
+                ). Затем{" "}
                 <code className="rounded bg-black/30 px-1">{`supervisorctl reread && supervisorctl update`}</code> и{" "}
-                <code className="rounded bg-black/30 px-1">supervisorctl start &apos;photo-worker:*&apos;</code>.
+                <code className="rounded bg-black/30 px-1">supervisorctl start &apos;photo-worker:*&apos;</code> или{" "}
+                <code className="rounded bg-black/30 px-1">supervisorctl start &apos;parser-worker-photos:*&apos;</code>.
               </p>
             )}
           </CardContent>
