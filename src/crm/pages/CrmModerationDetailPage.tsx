@@ -39,8 +39,25 @@ import {
 } from "@/lib/api";
 import { toast } from "sonner";
 import { CrmMediaPickerDialog } from "../components/CrmMediaPickerDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const QK_LIST = ["admin-system-products-moderation"];
+
+const DEFAULT_DESCRIPTION_AGENT_PROMPT = `Ты готовишь описание товара для витрины маркетплейса.
+
+Сделай текст аккуратным и читаемым: убери мусор, дубли, служебные пометки и «воду»; если есть HTML — оставь смысл в виде обычного текста или коротких абзацев.
+Удали лишние ссылки и URL (в том числе рекламные), не добавляй новых ссылок.
+Сохрани смысл и важные характеристики (материал, состав, размер, уход — если они уже в тексте).
+Нормализуй язык и пунктуацию.
+
+Ответь только готовым текстом описания, без вступлений вроде «Вот описание» или пояснений.`;
 
 function productQueryKey(id: number) {
   return ["admin-system-products", id] as const;
