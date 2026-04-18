@@ -141,11 +141,16 @@ async function request<T>(
       if (import.meta.env.DEV) {
         console.error('[API] Error:', res.status, url, error);
       }
+      const errObj = error as { message?: string; error?: string; errors?: Record<string, string[]> };
+      const rawMessage = typeof errObj.message === "string" ? errObj.message.trim() : "";
+      const rawError = typeof errObj.error === "string" ? errObj.error.trim() : "";
       const msg =
-        (typeof error.error === 'string' && error.error) ||
-        (typeof (error as { message?: string }).message === 'string' && (error as { message: string }).message) ||
+        (rawMessage && rawMessage !== "Bad Request" ? rawMessage : "") ||
+        (rawError && rawError !== "Bad Request" ? rawError : "") ||
+        rawMessage ||
+        rawError ||
         res.statusText;
-      throw new ApiError(res.status, msg, error.errors);
+      throw new ApiError(res.status, msg, errObj.errors);
     }
 
     if (res.status === 204) return undefined as T;

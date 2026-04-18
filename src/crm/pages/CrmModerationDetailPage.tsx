@@ -51,6 +51,9 @@ import {
 
 const QK_LIST = ["admin-system-products-moderation"];
 
+/** Лимит site-al PRODUCT_PHOTO_VERIFY_MAX_ITEMS (дефолт 24). */
+const PHOTO_VERIFY_MAX = 24;
+
 const DEFAULT_DESCRIPTION_AGENT_PROMPT = `Ты готовишь описание товара для витрины маркетплейса.
 
 Сделай текст аккуратным и читаемым: убери мусор, дубли, служебные пометки и «воду»; если есть HTML — оставь смысл в виде обычного текста или коротких абзацев.
@@ -247,9 +250,15 @@ export default function CrmModerationDetailPage() {
   const photoVerifyMutation = useMutation({
     mutationFn: () => {
       const productName = name.trim() || "Товар";
-      const payloadPhotos = photos
+      let payloadPhotos = photos
         .map((p) => ({ url: resolveCrmMediaAssetUrl(p.url.trim()) }))
         .filter((p) => /^https:\/\//i.test(p.url));
+      if (payloadPhotos.length > PHOTO_VERIFY_MAX) {
+        toast.info(
+          `Проверяются первые ${PHOTO_VERIFY_MAX} фото (лимит сервиса). Остальные пропущены — при необходимости проверьте отдельно.`
+        );
+        payloadPhotos = payloadPhotos.slice(0, PHOTO_VERIFY_MAX);
+      }
       if (payloadPhotos.length === 0) {
         return Promise.reject(
           new Error("Нужен хотя бы один URL с https:// (внешний сервис скачивает картинки по ссылке).")
