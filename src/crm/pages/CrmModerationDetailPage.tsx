@@ -75,14 +75,33 @@ function isPhotoKeptOnShowcaseAfterVerify(hit: SiteAlPhotoVerifyResultItem): boo
   return !!hit.active;
 }
 
-const DEFAULT_DESCRIPTION_AGENT_PROMPT = `Ты готовишь описание товара для витрины маркетплейса.
+const DEFAULT_DESCRIPTION_AGENT_PROMPT = `Ты готовишь описание товара для витрины маркетплейса на русском языке.
 
+ЯЗЫК (обязательно):
+— Весь итоговый текст только на русском (кириллица). Пунктуация и числа — как принято в русской витрине.
+— Латиница допустима только там, где она уже уместна в товарном контексте: маркировки размеров (S, M, L), известные бренды из исходника, международные единицы, если они уже в тексте. Не добавляй новые английские предложения и пояснения.
+— Запрещено: китайский, японский, корейский и любой другой не-русский текст; фразы вроде «please rephrase», «cold water» вместо нормального русского ухода; обращения к пользователю сменить язык или «переформулируйте запрос».
+— Если в исходнике фрагмент на другом языке — переведи смысл на русский или опусти, не цитируй иероглифы.
+
+Содержание:
 Сделай текст аккуратным и читаемым: убери мусор, дубли, служебные пометки и «воду»; если есть HTML — оставь смысл в виде обычного текста или коротких абзацев.
 Удали лишние ссылки и URL (в том числе рекламные), не добавляй новых ссылок.
 Сохрани смысл и важные характеристики (материал, состав, размер, уход — если они уже в тексте).
-Нормализуй язык и пунктуацию.
+Допиши блок «Уход» по-русски, если в данных есть факты, но нет нормальной формулировки; не вставляй отказ и не проси переформулировать запрос.
 
 Ответь только готовым текстом описания, без вступлений вроде «Вот описание» или пояснений.`;
+
+/** Иероглифы/кана/корейский — не должны попадать в ответ для русской витрины. */
+const SITE_AL_REPLY_FORBIDDEN_SCRIPTS = /[\u3040-\u30FF\u3400-\u9FFF\uF900-\uFAFF\uAC00-\uD7AF]/;
+
+function siteAlDescriptionReplyViolatesRussianOnly(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (SITE_AL_REPLY_FORBIDDEN_SCRIPTS.test(t)) return true;
+  if (/\bplease rephrase\b/i.test(t)) return true;
+  if (/将需求|请您将|以便我能|冷水，请/.test(t)) return true;
+  return false;
+}
 
 function productQueryKey(id: number) {
   return ["admin-system-products", id] as const;
@@ -247,7 +266,7 @@ export default function CrmModerationDetailPage() {
 
   const descriptionAgentMutation = useMutation({
     mutationFn: () => {
-      const message = `${descriptionAgentPrompt.trim()}\n\n---\n\nТекущее описание товара для правки:\n\n${description.trim() || "(пусто)"}`;
+      const message = `${descriptionAgentPrompt.trim()}\n\n---\n\nТекущее описание товара для правки:\n\n${description.trim() || "(пусто)"}\n\n---\nФинальное требование: выведи только русское описание для покупателя; без иероглифов и без просьб сменить язык.`;
       return adminSiteAlApi.chat({
         message,
         conversationId: siteAlConversationId || undefined,
@@ -257,6 +276,13 @@ export default function CrmModerationDetailPage() {
       if (data.conversationId) setSiteAlConversationId(data.conversationId);
       const reply = typeof data.reply === "string" ? data.reply.trim() : "";
       if (reply) {
+        if (siteAlDescriptionReplyViolatesRussianOnly(reply)) {
+          setSiteAlConversationId(null);
+          toast.error(
+            "Агент вернул текст с недопустимыми символами (не русский). Диалог сброшен — нажмите «Запуск» ещё раз; при необходимости откройте «Агент» и задайте промпт."
+          );
+          return;
+        }
         setDescription(reply);
         toast.success("Описание подставлено из ответа агента");
       } else {
