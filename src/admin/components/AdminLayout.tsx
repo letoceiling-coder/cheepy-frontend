@@ -7,6 +7,7 @@ import { healthApi, parserApi } from "@/lib/api";
 import { useAdminAuth } from "../contexts/AdminAuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { useParserChannel } from "@/hooks/useParserChannel";
+import { summarizeParserActivity } from "@/admin/parserActivity";
 import { LogOut, Circle, Loader2 } from "lucide-react";
 
 export function AdminLayout() {
@@ -34,7 +35,28 @@ export function AdminLayout() {
   }, []);
 
   const lastFailed = parserStatus?.last_completed?.status === "failed";
-  const parserLabel = parserStatus?.is_running ? "Парсер работает" : lastFailed ? "Парсер: ошибка" : "Парсер: ожидание";
+  const act = summarizeParserActivity({
+    parserState: parserStatus?.parser_state,
+    daemonEnabled: parserStatus?.daemon_enabled,
+    jobInDbActive: !!parserStatus?.is_running,
+    queueParser: parserStatus?.queue_parser_size,
+    queuePhotos: parserStatus?.queue_photos_size,
+    queueWorkersStalled: parserStatus?.queue_workers_stalled,
+    photoQueueWorkersStalled: parserStatus?.photo_queue_workers_stalled,
+    lastJobFailed: lastFailed,
+  });
+  const parserLabel =
+    act.tone === "active"
+      ? "Парсер работает"
+      : act.tone === "error"
+        ? `Парсер: ${act.shortLabel}`
+        : act.tone === "paused"
+          ? `Парсер: ${act.shortLabel}`
+          : act.tone === "queue"
+            ? "Парсер: очередь"
+            : act.tone === "idle"
+              ? "Парсер: ожидание"
+              : "Парсер: остановлен";
 
   return (
     <SidebarProvider>
@@ -59,15 +81,19 @@ export function AdminLayout() {
               </span>
               <span
                 className="flex items-center gap-1 text-xs text-muted-foreground"
-                title={parserLabel}
+                title={act.detail}
               >
                 <span
                   className={`h-2 w-2 rounded-full shrink-0 ${
-                    parserStatus?.is_running
+                    act.tone === "active" || act.tone === "queue"
                       ? "bg-emerald-500 animate-pulse"
-                      : lastFailed
+                      : act.tone === "error"
                         ? "bg-destructive"
-                        : "bg-muted-foreground/50"
+                        : act.tone === "paused"
+                          ? "bg-amber-500"
+                          : act.tone === "idle"
+                            ? "bg-sky-500/80"
+                            : "bg-muted-foreground/50"
                   }`}
                 />
                 <span className="hidden sm:inline">{parserLabel}</span>

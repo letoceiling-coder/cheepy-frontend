@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { dashboardApi, parserApi, systemApi, logsApi } from "@/lib/api";
+import { summarizeParserActivity } from "@/admin/parserActivity";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -15,6 +16,8 @@ const statusColors: Record<string, string> = {
   running: "bg-emerald-100 text-emerald-800",
   stopped: "bg-muted text-muted-foreground",
   paused: "bg-amber-100 text-amber-800",
+  idle: "bg-sky-100 text-sky-900",
+  queue: "bg-emerald-100 text-emerald-800",
 };
 
 export default function DashboardPage() {
@@ -148,7 +151,39 @@ export default function DashboardPage() {
   const p = d.products;
   const parser = d.parser;
   const s = systemStatus ?? stats ?? null;
-  const isRunning = s?.parser_running ?? parser.is_running;
+  const isRunning = !!(diagnostics?.parser_running ?? s?.parser_running ?? parser.is_running);
+  const parserAct = summarizeParserActivity({
+    parserState: diagnostics?.parser_state,
+    daemonEnabled: diagnostics?.daemon_enabled,
+    jobInDbActive: isRunning,
+    queueParser: diagnostics?.parser_queue_size,
+    queuePhotos: diagnostics?.photos_queue_size,
+    queueWorkersStalled: diagnostics?.queue_workers_stalled,
+    photoQueueWorkersStalled: diagnostics?.photo_queue_workers_stalled,
+    lastJobFailed: false,
+  });
+  const parserCardClass =
+    parserAct.tone === "active" || parserAct.tone === "queue"
+      ? statusColors.queue
+      : parserAct.tone === "idle"
+        ? statusColors.idle
+        : parserAct.tone === "paused"
+          ? statusColors.paused
+          : parserAct.tone === "error"
+            ? statusColors.error
+            : statusColors.stopped;
+  const parserCardText =
+    parserAct.tone === "active"
+      ? "Работает"
+      : parserAct.tone === "queue"
+        ? "Очередь"
+        : parserAct.tone === "idle"
+          ? "Демон: ожидание"
+          : parserAct.tone === "paused"
+            ? parserAct.shortLabel
+            : parserAct.tone === "error"
+              ? parserAct.shortLabel
+              : "Остановлен";
   const lastRun = s?.last_parser_run ?? parser.last_run_at;
   const productsTotal = s?.products_total ?? p.total;
   const productsToday = s?.products_today ?? p.new_today;
@@ -177,8 +212,8 @@ export default function DashboardPage() {
             <Bug className="h-5 w-5 text-primary" />
             <div>
               <p className="text-sm text-muted-foreground">Парсер</p>
-              <Badge className={isRunning ? statusColors.running : statusColors.stopped}>
-                {isRunning ? "Работает" : "Остановлен"}
+              <Badge className={parserCardClass} title={parserAct.detail}>
+                {parserCardText}
               </Badge>
             </div>
           </CardContent>

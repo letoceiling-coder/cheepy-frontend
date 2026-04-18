@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Play, Square, Pause, Loader2, RotateCcw, Trash2, RefreshCw, RotateCw, Plus } from "lucide-react";
 import { parserApi, categoriesApi, logsApi } from "@/lib/api";
+import { summarizeParserActivity } from "@/admin/parserActivity";
 import type { ParserJob, Category, ParserSettings } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -490,6 +491,16 @@ export default function ParserPage() {
   const totalProducts = activeJob?.progress?.products?.total ?? 0;
   const processedCount = activeJob?.progress?.products?.done ?? activeJob?.progress?.saved ?? 0;
   const lastFailed = statusData?.last_completed?.status === "failed";
+  const parserActivity = summarizeParserActivity({
+    parserState: parserState?.status,
+    daemonEnabled,
+    jobInDbActive: isRunning,
+    queueParser: diagnostics?.parser_queue_size,
+    queuePhotos: diagnostics?.photos_queue_size,
+    queueWorkersStalled: diagnostics?.queue_workers_stalled,
+    photoQueueWorkersStalled: diagnostics?.photo_queue_workers_stalled,
+    lastJobFailed: lastFailed,
+  });
 
   const parserStateStatusRu = (s: string | undefined) => {
     const m: Record<string, string> = {
@@ -536,17 +547,27 @@ export default function ParserPage() {
       <Badge variant="destructive">Сеть недоступна</Badge>
     ) : parserState?.status === "paused" ? (
       <Badge variant="secondary">На паузе</Badge>
-    ) : parserState?.status === "stopped" ? (
-      <Badge variant="secondary">Остановлен</Badge>
-    ) : isRunning ? (
+    ) : parserActivity.tone === "active" ? (
       <Badge className="bg-emerald-600 hover:bg-emerald-600">
         <span className="h-2 w-2 rounded-full bg-white/80 animate-pulse mr-1.5" />
         Парсер работает
       </Badge>
-    ) : lastFailed ? (
-      <Badge variant="destructive">Парсер: ошибка</Badge>
+    ) : parserActivity.tone === "queue" ? (
+      <Badge className="bg-amber-600 hover:bg-amber-600" title={parserActivity.detail}>
+        Очередь Redis
+      </Badge>
+    ) : parserActivity.tone === "idle" ? (
+      <Badge className="bg-sky-700 hover:bg-sky-700 text-white" title={parserActivity.detail}>
+        Демон: ожидание
+      </Badge>
+    ) : parserActivity.tone === "error" ? (
+      <Badge variant="destructive" title={parserActivity.detail}>
+        Парсер: {parserActivity.shortLabel}
+      </Badge>
     ) : (
-      <Badge variant="secondary">Парсер ожидает</Badge>
+      <Badge variant="secondary" title={parserActivity.detail}>
+        Остановлен
+      </Badge>
     );
 
   return (
@@ -570,6 +591,31 @@ export default function ParserPage() {
             </p>
             <p className="text-muted-foreground">
               Причина: {proxyBlockReason ?? "не указана"}{proxyAction ? `, действие: ${proxyAction}` : ""}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {diagnostics &&
+        (diagnostics.queue_workers_stalled ||
+          diagnostics.photo_queue_workers_stalled ||
+          (diagnostics.warning && diagnostics.warning.trim() !== "")) && (
+        <Card className="border-amber-600/45 bg-amber-950/25">
+          <CardHeader>
+            <CardTitle className="text-base text-amber-200">Диагностика: очередь и воркеры</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm space-y-2 text-amber-50/95">
+            {diagnostics.warning && <p className="leading-relaxed">{diagnostics.warning}</p>}
+            <p className="text-xs text-amber-200/80">
+              Воркеры: parser — {diagnostics.workers_running ?? 0}, photos — {diagnostics.photo_workers_running ?? 0}
+              {diagnostics.workers_detection ? (
+                <>
+                  {" "}
+                  (supervisor/ps: {diagnostics.workers_detection.supervisor_parser}/
+                  {diagnostics.workers_detection.ps_parser} · {diagnostics.workers_detection.supervisor_photo}/
+                  {diagnostics.workers_detection.ps_photo})
+                </>
+              ) : null}
             </p>
           </CardContent>
         </Card>
@@ -662,11 +708,15 @@ export default function ParserPage() {
             </div>
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div className="rounded border p-3">
-                <p className="text-muted-foreground">Статус воркеров</p>
+                <p className="text-muted-foreground">Воркеры очереди (parser / photos)</p>
                 <p className="font-medium">
+                  parser: {diagnostics.workers_running ?? 0} —{" "}
                   {workerStatusRu(
                     diagnostics.worker_status ?? (diagnostics.workers_running > 0 ? "running" : "stopped"),
                   )}
+                </p>
+                <p className="text-muted-foreground mt-1">
+                  photos: {diagnostics.photo_workers_running ?? 0}
                 </p>
                 <p className="text-muted-foreground mt-1">
                   Прокси:{" "}

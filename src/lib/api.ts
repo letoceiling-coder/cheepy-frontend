@@ -438,10 +438,18 @@ export interface ParserJob {
 export interface ParserStatus {
   is_running: boolean;
   daemon_enabled?: boolean;
+  parser_state?: 'running' | 'stopped' | 'paused' | 'paused_network';
   current_job: ParserJob | null;
   last_completed: ParserJob | null;
   queue_parser_size?: number;
+  queue_default_size?: number;
   queue_photos_size?: number;
+  queue_total_size?: number;
+  workers_running?: number;
+  photo_workers_running?: number;
+  queue_workers_stalled?: boolean;
+  photo_queue_workers_stalled?: boolean;
+  warning?: string | null;
   proxy_blocked?: boolean;
   proxy_blocked_until?: string | null;
   proxy_block_reason?: string | null;
@@ -602,8 +610,23 @@ export interface ParserStats {
 
 export interface ParserDiagnostics {
   workers_running: number;
+  /** Воркеры очереди `photos` (отдельно от parser). */
+  photo_workers_running?: number;
+  /** В очереди parser/default есть задачи, но нет процессов `queue:work` для `parser`. */
+  queue_workers_stalled?: boolean;
+  /** В очереди photos есть задачи, но нет воркеров для `photos`. */
+  photo_queue_workers_stalled?: boolean;
+  /** Отладка: сколько нашли через supervisor vs ps */
+  workers_detection?: {
+    supervisor_parser: number;
+    ps_parser: number;
+    supervisor_photo: number;
+    ps_photo: number;
+  };
   worker_status?: 'running' | 'stopped';
   parser_running: boolean;
+  /** То же, что parser_state === running: демон включён. */
+  daemon_enabled?: boolean;
   parser_state?: 'running' | 'stopped' | 'paused' | 'paused_network';
   parser_queue_size: number;
   photos_queue_size: number;
@@ -648,6 +671,8 @@ export interface ParserDiagnostics {
     blocked_requests?: number;
     retry_count?: number;
   };
+  /** Сводное предупреждение (орфаны, переполнение, воркеры остановлены и т.д.) */
+  warning?: string | null;
 }
 
 export interface ParserHealth {
