@@ -123,20 +123,21 @@ echo "📦 DIST CONTENT"
 ls -la dist | head -n 5
 
 ########################################
-# SERVICES
+# SERVICES — nginx/redis/php-fpm/supervisor, очереди, Reverb
 ########################################
 
-systemctl reload nginx
-systemctl is-active nginx
-
-supervisorctl restart all
-
-echo "🔍 CHECK WORKERS"
-supervisorctl status
-
-if supervisorctl status | grep -E "STOPPED|FATAL|EXITED"; then
-  echo "❌ WORKERS FAILED"
-  exit 1
+if [[ -f /var/www/siteaacess.store/scripts/server-ensure-services.sh ]]; then
+  bash /var/www/siteaacess.store/scripts/server-ensure-services.sh
+else
+  echo "⚠️ server-ensure-services.sh not found — fallback: nginx + supervisor restart only"
+  systemctl reload nginx
+  systemctl is-active nginx
+  supervisorctl restart all
+  supervisorctl status
+  if supervisorctl status | grep -E '\<(FATAL|EXITED)\>'; then
+    echo "❌ WORKERS FAILED (FATAL/EXITED)"
+    exit 1
+  fi
 fi
 
 ########################################
