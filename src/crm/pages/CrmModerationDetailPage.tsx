@@ -37,6 +37,7 @@ import {
   resolveCrmMediaAssetUrl,
   type CatalogCategoryItem,
   type CrmMediaFile,
+  type SiteAlPhotoVerifyResultItem,
 } from "@/lib/api";
 import { toast } from "sonner";
 import { CrmMediaPickerDialog } from "../components/CrmMediaPickerDialog";
@@ -53,6 +54,26 @@ const QK_LIST = ["admin-system-products-moderation"];
 
 /** Лимит site-al PRODUCT_PHOTO_VERIFY_MAX_ITEMS (дефолт 24). */
 const PHOTO_VERIFY_MAX = 24;
+
+/** Порог уверенности для запроса и доп. проверки на клиенте (ниже — не оставляем на витрине). */
+const PHOTO_VERIFY_MIN_CONFIDENCE = 0.72;
+
+/**
+ * Итог для переключателя «На витрине»: модель ошибается, поэтому жёстче, чем одно поле active.
+ * - любые issues → выкл;
+ * - явный match: false → выкл;
+ * - при известной confidence ниже порога → выкл;
+ * - ошибка загрузки/vision → выкл.
+ */
+function isPhotoKeptOnShowcaseAfterVerify(hit: SiteAlPhotoVerifyResultItem): boolean {
+  if (hit.error) return false;
+  if (hit.match === false) return false;
+  if (Array.isArray(hit.issues) && hit.issues.length > 0) return false;
+  if (typeof hit.confidence === "number" && Number.isFinite(hit.confidence)) {
+    if (hit.confidence < PHOTO_VERIFY_MIN_CONFIDENCE) return false;
+  }
+  return !!hit.active;
+}
 
 const DEFAULT_DESCRIPTION_AGENT_PROMPT = `Ты готовишь описание товара для витрины маркетплейса.
 
@@ -269,7 +290,7 @@ export default function CrmModerationDetailPage() {
         description: description.trim() || undefined,
         color: extractColorFromAttrs(attrs),
         photos: payloadPhotos,
-        options: { language: "ru", minConfidence: 0.55 },
+        options: { language: "ru", minConfidence: PHOTO_VERIFY_MIN_CONFIDENCE },
       });
     },
     onSuccess: (data) => {
@@ -279,14 +300,24 @@ export default function CrmModerationDetailPage() {
           const abs = resolveCrmMediaAssetUrl(row.url.trim());
           const hit = results.find((r) => photoVerifyUrlsEqual(r.url, abs));
           if (!hit) return row;
-          const active = hit.error ? false : !!hit.active;
-          return { ...row, is_enabled: active };
+          const strict = isPhotoKeptOnShowcaseAfterVerify(hit);
+          return { ...row, is_enabled: strict };
         })
       );
-      const inactive = results.filter((r) => (r.error ? true : !r.active)).length;
+      let stricterOff = 0;
+      for (const hit of results) {
+        const serverWould = !hit.error && !!hit.active;
+        const strict = isPhotoKeptOnShowcaseAfterVerify(hit);
+        if (serverWould && !strict) stricterOff += 1;
+      }
+      const inactive = results.filter((r) => !isPhotoKeptOnShowcaseAfterVerify(r)).length;
       const active = results.length - inactive;
+      const extra =
+        stricterOff > 0
+          ? ` Дополнительно скрыто ${stricterOff} кадров (замечания модели, низкая уверенность или явное несоответствие).`
+          : "";
       toast.success(
-        `Проверка фото: подходят ${active}, на витрине отключены ${inactive}. Сохраните карточку, чтобы зафиксировать.`
+        `Проверка фото: на витрине оставлено ${active}, отключено ${inactive}.${extra} Сохраните карточку, чтобы зафиксировать.`
       );
     },
     onError: (e: Error) => {
@@ -516,7 +547,8 @@ export default function CrmModerationDetailPage() {
             </div>
             <p className="text-xs text-muted-foreground">
               Порядок: кнопки «вверх/вниз» или перетаскивание за ⋮⋮. Выключите переключатель, чтобы скрыть кадр на витрине.
-              «Проверка фото» вызывает внешний vision-сервис по https-URL; при несоответствии переключатель «На витрине» снимается автоматически.
+              «Проверка фото» вызывает vision-модель (вероятностный ответ): при замечаниях, низкой уверенности или явном несоответствии кадр
+              снимается с витрины; логотипы и посторонние изображения модель может пропустить — проверяйте глазами.
               Сохраните карточку, чтобы зафиксировать порядок на сервере.
             </p>
             {photos.length === 0 ? (
