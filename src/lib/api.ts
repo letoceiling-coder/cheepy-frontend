@@ -141,7 +141,11 @@ async function request<T>(
       if (import.meta.env.DEV) {
         console.error('[API] Error:', res.status, url, error);
       }
-      throw new ApiError(res.status, error.error || res.statusText, error.errors);
+      const msg =
+        (typeof error.error === 'string' && error.error) ||
+        (typeof (error as { message?: string }).message === 'string' && (error as { message: string }).message) ||
+        res.statusText;
+      throw new ApiError(res.status, msg, error.errors);
     }
 
     if (res.status === 204) return undefined as T;
@@ -1122,6 +1126,21 @@ export const adminSystemProductsApi = {
       }>;
     }
   ) => patch<SystemProductItem>(`/admin/system-products/${id}/crm-photos`, body),
+};
+
+export type SiteAlChatResponse = {
+  reply: string | null;
+  conversationId?: string | null;
+};
+
+/** Прокси к внешнему агенту site-al (ключ на бэкенде). */
+export const adminSiteAlApi = {
+  chat: (body: {
+    message: string;
+    conversationId?: string | null;
+    agentId?: string;
+    model?: string;
+  }) => post<SiteAlChatResponse>('/admin/site-al/chat', body),
 };
 
 // ──────────────────────────────────────────────

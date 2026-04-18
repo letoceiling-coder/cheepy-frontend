@@ -25,10 +25,13 @@ import {
   ImagePlus,
   ChevronUp,
   ChevronDown,
+  Sparkles,
+  Play,
 } from "lucide-react";
 import { PermissionGate } from "../rbac/PermissionGate";
 import {
   adminSystemProductsApi,
+  adminSiteAlApi,
   adminCatalogApi,
   resolveCrmMediaAssetUrl,
   type CatalogCategoryItem,
@@ -121,6 +124,15 @@ export default function CrmModerationDetailPage() {
   const [photos, setPhotos] = useState<PhotoRow[]>([]);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [agentPromptOpen, setAgentPromptOpen] = useState(false);
+  const [descriptionAgentPrompt, setDescriptionAgentPrompt] = useState(DEFAULT_DESCRIPTION_AGENT_PROMPT);
+  const [siteAlConversationId, setSiteAlConversationId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!validId) return;
+    setDescriptionAgentPrompt(DEFAULT_DESCRIPTION_AGENT_PROMPT);
+    setSiteAlConversationId(null);
+  }, [validId, id]);
 
   useEffect(() => {
     if (!item) return;
@@ -162,6 +174,29 @@ export default function CrmModerationDetailPage() {
     },
     onError: (e: Error) => {
       toast.error(e.message || "Ошибка обновления");
+    },
+  });
+
+  const descriptionAgentMutation = useMutation({
+    mutationFn: () => {
+      const message = `${descriptionAgentPrompt.trim()}\n\n---\n\nТекущее описание товара для правки:\n\n${description.trim() || "(пусто)"}`;
+      return adminSiteAlApi.chat({
+        message,
+        conversationId: siteAlConversationId || undefined,
+      });
+    },
+    onSuccess: (data) => {
+      if (data.conversationId) setSiteAlConversationId(data.conversationId);
+      const reply = typeof data.reply === "string" ? data.reply.trim() : "";
+      if (reply) {
+        setDescription(reply);
+        toast.success("Описание подставлено из ответа агента");
+      } else {
+        toast.warning("Агент не вернул текст — проверьте настройки SITE_AL в .env на сервере API");
+      }
+    },
+    onError: (e: Error) => {
+      toast.error(e.message || "Ошибка запроса к агенту");
     },
   });
 
@@ -291,6 +326,50 @@ export default function CrmModerationDetailPage() {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl">
+      <Dialog open={agentPromptOpen} onOpenChange={setAgentPromptOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 shrink-0" />
+              Системный промпт агента
+            </DialogTitle>
+            <DialogDescription>
+              Текст ниже задаёт правила обработки. Кнопка «Запуск» отправит промпт вместе с текущим полем «Описание» на
+              сервер (ключ API хранится только на бэкенде). Повторные запуски в этой сессии продолжают диалог, если
+              сервер вернул conversationId.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="agent-system-prompt">Промпт</Label>
+            <Textarea
+              id="agent-system-prompt"
+              rows={14}
+              value={descriptionAgentPrompt}
+              onChange={(e) => setDescriptionAgentPrompt(e.target.value)}
+              className="font-normal text-sm"
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0 flex-col sm:flex-row sm:justify-between">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDescriptionAgentPrompt(DEFAULT_DESCRIPTION_AGENT_PROMPT)}
+              >
+                Сбросить промпт
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setSiteAlConversationId(null)}>
+                Новый диалог
+              </Button>
+            </div>
+            <Button type="button" onClick={() => setAgentPromptOpen(false)}>
+              Закрыть
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <CrmMediaPickerDialog open={pickerOpen} onOpenChange={setPickerOpen} onPick={onPickMedia} />
 
       <div className="flex items-center gap-3 flex-wrap">
@@ -484,7 +563,37 @@ export default function CrmModerationDetailPage() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="sp-desc">Описание</Label>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <Label htmlFor="sp-desc" className="mb-0">
+                    Описание
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      onClick={() => setAgentPromptOpen(true)}
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Агент
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="gap-1.5"
+                      disabled={descriptionAgentMutation.isPending}
+                      onClick={() => descriptionAgentMutation.mutate()}
+                    >
+                      {descriptionAgentMutation.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Play className="h-3.5 w-3.5" />
+                      )}
+                      Запуск
+                    </Button>
+                  </div>
+                </div>
                 <Textarea
                   id="sp-desc"
                   rows={8}
@@ -492,6 +601,11 @@ export default function CrmModerationDetailPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   className="font-normal"
                 />
+                {siteAlConversationId ? (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Активен диалог агента (conversationId). «Новый диалог» в окне «Агент» начнёт цепочку заново.
+                  </p>
+                ) : null}
               </div>
             </div>
             <div className="text-xs text-muted-foreground">
