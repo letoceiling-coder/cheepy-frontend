@@ -1133,6 +1133,38 @@ export type SiteAlChatResponse = {
   conversationId?: string | null;
 };
 
+export type SiteAlPhotoVerifyOptions = {
+  minConfidence?: number;
+  concurrency?: number;
+  language?: "ru" | "en";
+};
+
+export type SiteAlPhotoVerifyRequest = {
+  productName: string;
+  description?: string | null;
+  color?: string | null;
+  photos: Array<{ url: string }>;
+  options?: SiteAlPhotoVerifyOptions;
+};
+
+export type SiteAlPhotoVerifyResultItem = {
+  url: string;
+  active: boolean;
+  match?: boolean;
+  confidence?: number;
+  issues?: string[];
+  error?: string;
+};
+
+export type SiteAlPhotoVerifyResponse = {
+  productName?: string;
+  description?: string | null;
+  color?: string | null;
+  modelUsed?: string;
+  minConfidence?: number;
+  photos: SiteAlPhotoVerifyResultItem[];
+};
+
 /** Прокси к внешнему агенту site-al (ключ на бэкенде). */
 export const adminSiteAlApi = {
   chat: (body: {
@@ -1141,6 +1173,8 @@ export const adminSiteAlApi = {
     agentId?: string;
     model?: string;
   }) => post<SiteAlChatResponse>('/admin/site-al/chat', body),
+  verifyProductPhotos: (body: SiteAlPhotoVerifyRequest) =>
+    post<SiteAlPhotoVerifyResponse>("/admin/site-al/product-photos/verify", body),
 };
 
 // ──────────────────────────────────────────────

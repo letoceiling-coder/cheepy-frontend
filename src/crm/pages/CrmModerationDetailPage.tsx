@@ -27,6 +27,7 @@ import {
   ChevronDown,
   Sparkles,
   Play,
+  ScanSearch,
 } from "lucide-react";
 import { PermissionGate } from "../rbac/PermissionGate";
 import {
@@ -88,6 +89,32 @@ type PhotoRow = {
 };
 
 type AttrRow = { attr_name: string; attr_value: string };
+
+function extractColorFromAttrs(rows: AttrRow[]): string | undefined {
+  for (const r of rows) {
+    const key = r.attr_name.trim().toLowerCase();
+    if (!key) continue;
+    if (
+      key === "цвет" ||
+      key === "color" ||
+      key === "colour" ||
+      key === "цвет товара" ||
+      key.includes("цвет")
+    ) {
+      const v = r.attr_value.trim();
+      if (v) return v;
+    }
+  }
+  return undefined;
+}
+
+function normalizePhotoVerifyUrl(url: string): string {
+  return resolveCrmMediaAssetUrl(url.trim()).replace(/\/+$/, "");
+}
+
+function photoVerifyUrlsEqual(a: string, b: string): boolean {
+  return normalizePhotoVerifyUrl(a) === normalizePhotoVerifyUrl(b);
+}
 
 function buildCategoryTreeOptions(cats: CatalogCategoryItem[]): { id: number; label: string }[] {
   const byParent = new Map<number | null, CatalogCategoryItem[]>();
@@ -214,6 +241,47 @@ export default function CrmModerationDetailPage() {
     },
     onError: (e: Error) => {
       toast.error(e.message || "Ошибка запроса к агенту");
+    },
+  });
+
+  const photoVerifyMutation = useMutation({
+    mutationFn: () => {
+      const productName = name.trim() || "Товар";
+      const payloadPhotos = photos
+        .map((p) => ({ url: resolveCrmMediaAssetUrl(p.url.trim()) }))
+        .filter((p) => /^https:\/\//i.test(p.url));
+      if (payloadPhotos.length === 0) {
+        return Promise.reject(
+          new Error("Нужен хотя бы один URL с https:// (внешний сервис скачивает картинки по ссылке).")
+        );
+      }
+      return adminSiteAlApi.verifyProductPhotos({
+        productName,
+        description: description.trim() || undefined,
+        color: extractColorFromAttrs(attrs),
+        photos: payloadPhotos,
+        options: { language: "ru", minConfidence: 0.55 },
+      });
+    },
+    onSuccess: (data) => {
+      const results = data.photos ?? [];
+      setPhotos((prev) =>
+        prev.map((row) => {
+          const abs = resolveCrmMediaAssetUrl(row.url.trim());
+          const hit = results.find((r) => photoVerifyUrlsEqual(r.url, abs));
+          if (!hit) return row;
+          const active = hit.error ? false : !!hit.active;
+          return { ...row, is_enabled: active };
+        })
+      );
+      const inactive = results.filter((r) => (r.error ? true : !r.active)).length;
+      const active = results.length - inactive;
+      toast.success(
+        `Проверка фото: подходят ${active}, на витрине отключены ${inactive}. Сохраните карточку, чтобы зафиксировать.`
+      );
+    },
+    onError: (e: Error) => {
+      toast.error(e.message || "Ошибка проверки фото");
     },
   });
 
@@ -414,13 +482,32 @@ export default function CrmModerationDetailPage() {
               <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
                 Галерея CRM
               </h3>
-              <Button size="sm" variant="secondary" className="gap-1" onClick={() => setPickerOpen(true)}>
-                <ImagePlus className="h-4 w-4" />
-                Из медиабиблиотеки
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1"
+                  disabled={photos.length === 0 || photoVerifyMutation.isPending}
+                  onClick={() => photoVerifyMutation.mutate()}
+                  title="Сверка кадров с названием, описанием и цветом (атрибут «Цвет» / Color). Несоответствующие отключаются на витрине в форме — сохраните карточку."
+                >
+                  {photoVerifyMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ScanSearch className="h-4 w-4" />
+                  )}
+                  Проверка фото
+                </Button>
+                <Button size="sm" variant="secondary" className="gap-1" onClick={() => setPickerOpen(true)}>
+                  <ImagePlus className="h-4 w-4" />
+                  Из медиабиблиотеки
+                </Button>
+              </div>
             </div>
             <p className="text-xs text-muted-foreground">
               Порядок: кнопки «вверх/вниз» или перетаскивание за ⋮⋮. Выключите переключатель, чтобы скрыть кадр на витрине.
+              «Проверка фото» вызывает внешний vision-сервис по https-URL; при несоответствии переключатель «На витрине» снимается автоматически.
               Сохраните карточку, чтобы зафиксировать порядок на сервере.
             </p>
             {photos.length === 0 ? (
