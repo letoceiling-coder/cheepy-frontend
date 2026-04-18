@@ -607,16 +607,34 @@ export default function ParserPage() {
           <CardContent className="text-sm space-y-2 text-amber-50/95">
             {diagnostics.warning && <p className="leading-relaxed">{diagnostics.warning}</p>}
             <p className="text-xs text-amber-200/80">
-              Воркеры: parser — {diagnostics.workers_running ?? 0}, photos — {diagnostics.photo_workers_running ?? 0}
+              Итого воркеров: parser — {diagnostics.workers_running ?? 0}, photos — {diagnostics.photo_workers_running ?? 0}
               {diagnostics.workers_detection ? (
                 <>
-                  {" "}
-                  (supervisor/ps: {diagnostics.workers_detection.supervisor_parser}/
-                  {diagnostics.workers_detection.ps_parser} · {diagnostics.workers_detection.supervisor_photo}/
-                  {diagnostics.workers_detection.ps_photo})
+                  <br />
+                  Детализация: parser — supervisor {diagnostics.workers_detection.supervisor_parser}, по процессам{" "}
+                  {diagnostics.workers_detection.ps_parser} (берётся max); photos — supervisor{" "}
+                  {diagnostics.workers_detection.supervisor_photo}, по процессам {diagnostics.workers_detection.ps_photo}.
                 </>
               ) : null}
             </p>
+            {diagnostics.queue_workers_stalled && (
+              <p className="text-xs text-amber-100/90 border-t border-amber-700/40 pt-2 mt-1">
+                На сервере API: в supervisor должна быть группа вроде{" "}
+                <code className="rounded bg-black/30 px-1">parser-worker</code> с командой{" "}
+                <code className="rounded bg-black/30 px-1">queue:work … --queue=parser</code>, затем{" "}
+                <code className="rounded bg-black/30 px-1">supervisorctl start &apos;parser-worker:*&apos;</code>.
+              </p>
+            )}
+            {diagnostics.photo_queue_workers_stalled && (
+              <p className="text-xs text-amber-100/90 border-t border-amber-700/40 pt-2 mt-1">
+                На сервере API: добавьте{" "}
+                <code className="rounded bg-black/30 px-1">photo-worker</code> в supervisor (пример в репозитории бэка{" "}
+                <code className="rounded bg-black/30 px-1">supervisor-parser-queues.conf.example</code>
+                ), команда с <code className="rounded bg-black/30 px-1">--queue=photos</code>, затем{" "}
+                <code className="rounded bg-black/30 px-1">{`supervisorctl reread && supervisorctl update`}</code> и{" "}
+                <code className="rounded bg-black/30 px-1">supervisorctl start &apos;photo-worker:*&apos;</code>.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
