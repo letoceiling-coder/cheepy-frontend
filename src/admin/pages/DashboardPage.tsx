@@ -241,7 +241,9 @@ export default function DashboardPage() {
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <Activity className="h-5 w-5 text-primary" />
-            <div>
+            <div
+              title="Reverb на сервере API: «stopped» — не отвечает порт REVERB_SERVER_PORT на localhost или не запущен процесс `php artisan reverb:start` (часто supervisor program `reverb`). Админка всё равно опрашивает API по таймеру."
+            >
               <p className="text-sm text-muted-foreground">WebSocket</p>
               <Badge className={sys?.websocket === "running" ? statusColors.active : statusColors.stopped}>
                 {sys?.websocket ?? "—"}
