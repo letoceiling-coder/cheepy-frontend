@@ -138,6 +138,9 @@ else
     echo "❌ WORKERS FAILED (FATAL/EXITED)"
     exit 1
   fi
+  if supervisorctl status 2>/dev/null | grep -E '\<(ERROR|STOPPED)\>'; then
+    echo "⚠️ есть ERROR/STOPPED — проверьте логи supervisor"
+  fi
 fi
 
 ########################################

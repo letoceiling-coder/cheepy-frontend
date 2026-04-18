@@ -42,11 +42,9 @@ fi
 
 supervisorctl reread
 supervisorctl update
-# Подхватить autostart и явно стартануть всё объявленное
-supervisorctl start all 2>/dev/null || true
-sleep 2
+# Один перезапуск (двойной start all + restart давал лишние ERROR/abnormal termination)
 supervisorctl restart all
-sleep 2
+sleep 3
 
 echo "=== supervisorctl status ==="
 supervisorctl status
@@ -56,8 +54,8 @@ if supervisorctl status 2>/dev/null | grep -E '\<(FATAL|EXITED)\>'; then
   exit 1
 fi
 
-if supervisorctl status 2>/dev/null | grep 'STOPPED'; then
-  echo "⚠️ supervisor: есть STOPPED — проверьте /etc/supervisor/conf.d (reverb, parser-worker, parser-worker-photos / photo-worker)"
+if supervisorctl status 2>/dev/null | grep -E '\<(ERROR|STOPPED)\>'; then
+  echo "⚠️ supervisor: есть ERROR или STOPPED — смотрите storage/logs и stderr логов программ"
 fi
 
 echo "=== server-ensure-services: done ==="
