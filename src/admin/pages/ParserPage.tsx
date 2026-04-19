@@ -109,6 +109,7 @@ export default function ParserPage() {
   const [settingsForm, setSettingsForm] = useState({
     download_photos: false,
     store_photo_links: true,
+    download_medium: false,
     max_workers: 3,
     request_delay_min: 1500,
     request_delay_max: 3000,
@@ -132,6 +133,7 @@ export default function ParserPage() {
     setSettingsForm({
       download_photos: parserSettings.download_photos,
       store_photo_links: parserSettings.store_photo_links,
+      download_medium: parserSettings.download_medium ?? false,
       max_workers: parserSettings.max_workers,
       request_delay_min: parserSettings.request_delay_min,
       request_delay_max: parserSettings.request_delay_max,
@@ -459,6 +461,7 @@ export default function ParserPage() {
         setSettingsForm({
           download_photos: d.download_photos,
           store_photo_links: d.store_photo_links,
+          download_medium: d.download_medium ?? false,
           max_workers: d.max_workers,
           request_delay_min: d.request_delay_min,
           request_delay_max: d.request_delay_max,
@@ -890,6 +893,18 @@ export default function ParserPage() {
               <Switch
                 checked={settingsForm.store_photo_links}
                 onCheckedChange={(v) => setSettingsForm({ ...settingsForm, store_photo_links: v })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label
+                title="Дополнительно качать medium-версию каждого фото — удваивает количество HTTP-запросов к донору. Рекомендуется выключено."
+              >
+                Качать medium-версию фото
+              </Label>
+              <Switch
+                checked={settingsForm.download_medium}
+                disabled={!settingsForm.download_photos}
+                onCheckedChange={(v) => setSettingsForm({ ...settingsForm, download_medium: v })}
               />
             </div>
             <div>
