@@ -42,8 +42,10 @@ fi
 
 supervisorctl reread
 supervisorctl update
-# Один перезапуск (двойной start all + restart давал лишние ERROR/abnormal termination)
-supervisorctl restart all
+# Один перезапуск. Ненулевой код бывает при частичном ERROR у дочерних программ — не рвём деплой.
+if ! supervisorctl restart all; then
+  echo "⚠️ supervisorctl restart all вернул ошибку — смотрите status ниже и логи программ"
+fi
 sleep 3
 
 echo "=== supervisorctl status ==="
