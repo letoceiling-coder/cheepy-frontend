@@ -110,6 +110,7 @@ export default function ParserPage() {
     download_photos: false,
     store_photo_links: true,
     download_medium: false,
+    update_existing: true,
     max_workers: 3,
     request_delay_min: 1500,
     request_delay_max: 3000,
@@ -134,6 +135,7 @@ export default function ParserPage() {
       download_photos: parserSettings.download_photos,
       store_photo_links: parserSettings.store_photo_links,
       download_medium: parserSettings.download_medium ?? false,
+      update_existing: parserSettings.update_existing ?? true,
       max_workers: parserSettings.max_workers,
       request_delay_min: parserSettings.request_delay_min,
       request_delay_max: parserSettings.request_delay_max,
@@ -462,6 +464,7 @@ export default function ParserPage() {
           download_photos: d.download_photos,
           store_photo_links: d.store_photo_links,
           download_medium: d.download_medium ?? false,
+          update_existing: d.update_existing ?? true,
           max_workers: d.max_workers,
           request_delay_min: d.request_delay_min,
           request_delay_max: d.request_delay_max,
@@ -905,6 +908,17 @@ export default function ParserPage() {
                 checked={settingsForm.download_medium}
                 disabled={!settingsForm.download_photos}
                 onCheckedChange={(v) => setSettingsForm({ ...settingsForm, download_medium: v })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label
+                title="ВКЛ — полный режим: парсер обходит все товары и обновляет уже существующие. ВЫКЛ — режим «только новые»: пропускает товары, у которых external_id уже есть в БД, что экономит HTTP-запросы и ускоряет проход в разы."
+              >
+                Обновлять существующие товары
+              </Label>
+              <Switch
+                checked={settingsForm.update_existing}
+                onCheckedChange={(v) => setSettingsForm({ ...settingsForm, update_existing: v })}
               />
             </div>
             <div>

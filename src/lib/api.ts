@@ -697,6 +697,7 @@ export interface ParserSettings {
   download_photos: boolean;
   store_photo_links: boolean;
   download_medium: boolean;
+  update_existing: boolean;
   max_workers: number;
   request_delay_min: number;
   request_delay_max: number;
