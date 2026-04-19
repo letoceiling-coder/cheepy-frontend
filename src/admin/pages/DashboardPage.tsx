@@ -343,7 +343,12 @@ export default function DashboardPage() {
             <Brain className="h-5 w-5 text-primary" />
             <div>
               <p className="text-sm text-muted-foreground">Категории</p>
-              <p className="font-medium">{d.categories.total} (включено: {d.categories.enabled})</p>
+              <p
+                className="font-medium"
+                title="Каталог: всего категорий донора. Парсятся: реально выбраны в настройках парсера (фильтр «Категории для полного режима»). Если фильтр пуст — берутся все включённые."
+              >
+                Каталог: {d.categories.total} · Парсятся: {d.categories.selected_for_parser ?? d.categories.enabled}
+              </p>
             </div>
           </CardContent>
         </Card>

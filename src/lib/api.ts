@@ -465,7 +465,13 @@ export interface DashboardData {
     errors_all_time_products?: number;
     with_photos: number; pending_photos: number;
   };
-  categories: { total: number; enabled: number; linked_to_parser: number };
+  categories: {
+    total: number;
+    enabled: number;
+    linked_to_parser: number;
+    /** Сколько категорий реально пойдёт в полный прогон парсера (учитывает фильтр default_category_ids). */
+    selected_for_parser?: number;
+  };
   sellers: { total: number; active: number };
   parser: {
     is_running: boolean;
