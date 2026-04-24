@@ -328,9 +328,22 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-muted-foreground">Блокировка</p>
-                <Badge variant={diagnostics.parser_lock_status === "held" ? "destructive" : "secondary"}>
-                  {diagnostics.parser_lock_status === "held" ? "Удерживается" : "Свободна"}
-                </Badge>
+                {/* Пока парсер реально бежит (parser_running), «held» — это штатное
+                    состояние прогона (ParserJob захватил parser_lock). Показываем
+                    нейтральным бейджем, чтобы не пугать оператора красным. Красный
+                    variant остаётся только если lock есть, а прогон не запущен —
+                    такой stale lock действительно требует вмешательства. */}
+                {(() => {
+                  const held = diagnostics.parser_lock_status === "held";
+                  const running = !!diagnostics.parser_running;
+                  if (held && running) {
+                    return <Badge variant="default" title="Парсер работает, блокировка удерживается штатно">Активна</Badge>;
+                  }
+                  if (held && !running) {
+                    return <Badge variant="destructive" title="Блокировка удерживается, но прогон не запущен — возможно зависший lock. Нажмите «Освободить блокировку».">Stale</Badge>;
+                  }
+                  return <Badge variant="secondary">Свободна</Badge>;
+                })()}
               </div>
             </div>
           </CardContent>

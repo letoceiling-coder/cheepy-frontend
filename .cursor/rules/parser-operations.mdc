@@ -1,0 +1,98 @@
+---
+description: Operations guide по парсеру sadovodbaza (демон, режимы, диагностика, UI). Применять при любом вопросе о парсере — статус/ошибки/оптимизация/UI.
+globs:
+alwaysApply: false
+---
+# Парсер — operations guide
+
+Полная документация: `sadavod-laravel/docs/PARSER.md`. Здесь — краткие правила для агента.
+
+## Два репозитория
+
+| Что | Репо | Путь |
+|---|---|---|
+| Логика парсера, БД, jobs, HTTP | **sadavod-laravel** | `C:\OSPanel\domains\sadavod-laravel` |
+| UI админки парсера | **cheepy** | `C:\OSPanel\domains\cheepy` (страница `/admin/parser`) |
+
+Никогда не править логику парсинга во фронте.
+
+## 3 режима парсера (определяются двумя флажками)
+
+| Режим | `update_existing` | `update_availability_only` | Когда использовать |
+|---|---|---|---|
+| **Только новые** | OFF | не важно | Постоянная фоновая работа |
+| **Availability-only** | ON | ON | Еженедельная синхронизация доступности |
+| **Полный апдейт** | ON | OFF | Редко: re-extract характеристик |
+
+В режиме «только новые» управляется глубина `incremental_tail_pages` (1..10, default 3).
+В режиме «availability-only» товары, не увиденные при полном обходе категории →
+`is_relevant=false`.
+
+## Ключевые классы
+
+- `App\Jobs\ParserDaemonJob` — петля демона. Интервал — `parser_settings.daemon_interval_seconds` (default 180).
+- `App\Jobs\RunParserJob` — запуск одного прогона. Диспатчит `ParseCategoryJob` × число категорий.
+- `App\Jobs\ParseCategoryJob` — обход одной категории.
+- `App\Services\DatabaseParserService::parseCategoryPages` — сердце обхода листинга.
+- `App\Jobs\CleanupUnavailableProductsJob` — hourly HEAD-проверка `/odejda/{id}`.
+- `App\Models\ParserSetting` — все настройки. НЕ хранить настройки в .env.
+
+## Что делает демон (упрощённо)
+
+```
+каждые $interval секунд:
+  если state!=running          → return
+  если есть running ParserJob  → reschedule($interval), return
+  если LLEN queues:parser > 0  → reschedule($interval), return
+  иначе:
+    SET parser_lock EX=1200 NX
+    ParserJob::create + RunParserJob::dispatch
+    reschedule($interval)
+```
+
+**ВАЖНО**: для проверки очереди использовать `Redis::llen('queues:parser')`, НЕ
+`Queue::size()`. Последний считает LLEN + delayed + reserved — ломает логику
+(демон видит сам себя в delayed/reserved, бесконечно откладывается).
+
+## UX правила dashboard
+
+- **Бейдж «Блокировка»**:
+  - `parser_running=true` + `lock=held` → нейтральный «Активна» (не красный!)
+  - `parser_running=false` + `lock=held` → красный «Stale»
+  - `lock=free` → серый «Свободна»
+- **События «Категория X: …»**:
+  - `savedCount > 0` → «добавлено новых — N»
+  - `savedCount=0` + «только новые» → «новых нет»
+  - `savedCount=0` + availability-only → «доступность обновлена»
+- **Метрика «Новые сегодня»** на dashboard: считается по `products.created_at`
+  (реально новые товары), НЕ по `parsed_at` (обновления).
+
+## Как проверить «парсер сломан»
+
+Перед кодом — **всегда аудит сервера**:
+
+```bash
+ssh root@85.117.235.93 'cd /var/www/online-parser.siteaacess.store && \
+  supervisorctl status && \
+  redis-cli LLEN queues:parser && \
+  redis-cli GET parser_lock && \
+  php artisan tinker --execute="\$j=App\Models\ParserJob::whereIn(\"status\",[\"running\",\"pending\"])->latest()->first(); echo \$j ? \"#{\$j->id} {\$j->status} cat={\$j->parsed_categories}/{\$j->total_categories}\n\" : \"idle\n\";"'
+```
+
+Если парсер реально работает — проблема в UX. Если нет — смотри PARSER.md §«Диагностика».
+
+## Границы
+
+- **CRM** не редактирует `products`, `donor_categories` — только читает (см.
+  `.cursor/rules/repository-boundaries.mdc`).
+- **Парсер** не знает про CRM (`system_products`, `catalog_categories`,
+  `category_mapping`) — инжест в CRM идёт через отдельный job из донорских таблиц.
+
+## Никогда
+
+- Не захардкоживать интервалы/пороги — выносить в `parser_settings`.
+- Не менять `products.status` из `CleanupUnavailableProductsJob` — только `is_relevant`.
+- Не деплоить изменения парсера без подтверждения (`.cursor/rules/workflow-deploy.mdc`).
+- Не использовать `Queue::size('parser')` в условиях демона — только `Redis::llen`.
+- Не писать новые `PARSER_*.md` в `sadavod-laravel/docs` — вместо этого
+  обновлять мастер-документ `docs/PARSER.md`.

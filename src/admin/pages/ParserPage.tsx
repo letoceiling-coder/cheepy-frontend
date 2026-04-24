@@ -111,6 +111,9 @@ export default function ParserPage() {
     store_photo_links: true,
     download_medium: false,
     update_existing: true,
+    incremental_tail_pages: 3,
+    update_availability_only: true,
+    daemon_interval_seconds: 180,
     max_workers: 3,
     request_delay_min: 1500,
     request_delay_max: 3000,
@@ -136,6 +139,8 @@ export default function ParserPage() {
       store_photo_links: parserSettings.store_photo_links,
       download_medium: parserSettings.download_medium ?? false,
       update_existing: parserSettings.update_existing ?? true,
+      incremental_tail_pages: parserSettings.incremental_tail_pages ?? 3,
+      update_availability_only: parserSettings.update_availability_only ?? true,
       max_workers: parserSettings.max_workers,
       request_delay_min: parserSettings.request_delay_min,
       request_delay_max: parserSettings.request_delay_max,
@@ -465,6 +470,9 @@ export default function ParserPage() {
           store_photo_links: d.store_photo_links,
           download_medium: d.download_medium ?? false,
           update_existing: d.update_existing ?? true,
+          incremental_tail_pages: d.incremental_tail_pages ?? 3,
+          update_availability_only: d.update_availability_only ?? true,
+          daemon_interval_seconds: d.daemon_interval_seconds ?? 180,
           max_workers: d.max_workers,
           request_delay_min: d.request_delay_min,
           request_delay_max: d.request_delay_max,
@@ -715,9 +723,17 @@ export default function ParserPage() {
               </div>
               <div>
                 <p className="text-muted-foreground">Блокировка</p>
-                <Badge variant={diagnostics.parser_lock_status === "held" ? "destructive" : "secondary"}>
-                  {diagnostics.parser_lock_status === "held" ? "Удерживается" : "Свободна"}
-                </Badge>
+                {(() => {
+                  const held = diagnostics.parser_lock_status === "held";
+                  const running = !!diagnostics.parser_running;
+                  if (held && running) {
+                    return <Badge variant="default" title="Парсер работает, блокировка удерживается штатно">Активна</Badge>;
+                  }
+                  if (held && !running) {
+                    return <Badge variant="destructive" title="Блокировка удерживается, но прогон не запущен — возможно зависший lock">Stale</Badge>;
+                  }
+                  return <Badge variant="secondary">Свободна</Badge>;
+                })()}
               </div>
               <div>
                 <p className="text-muted-foreground">Прокси</p>
@@ -919,6 +935,53 @@ export default function ParserPage() {
               <Switch
                 checked={settingsForm.update_existing}
                 onCheckedChange={(v) => setSettingsForm({ ...settingsForm, update_existing: v })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label
+                title="Когда «Обновлять существующие» ВКЛ: ВКЛ здесь = быстрый режим — для существующих товаров обновляется только доступность (is_relevant, relevance_checked_at) и цена из листинга, БЕЗ HTTP-запроса к странице товара. Пропавшие из категории помечаются как недоступные. ВЫКЛ = старое полное обновление с подтягиванием деталей (медленно, нужно редко). Неактивно, если «Обновлять существующие» ВЫКЛ."
+              >
+                Обновление: только доступность
+              </Label>
+              <Switch
+                checked={settingsForm.update_availability_only}
+                disabled={!settingsForm.update_existing}
+                onCheckedChange={(v) => setSettingsForm({ ...settingsForm, update_availability_only: v })}
+              />
+            </div>
+            <div>
+              <Label title="Для режима «Только новые»: сколько страниц подряд, на которых ВСЕ товары уже в БД, нужно встретить, чтобы выйти из категории. Меньше = быстрее прогон, больше = ловим новые, которые проскочили глубже. Рекомендуется 3.">
+                Глубина early-exit (страниц подряд all-skip)
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                max={10}
+                value={settingsForm.incremental_tail_pages}
+                onChange={(e) =>
+                  setSettingsForm({
+                    ...settingsForm,
+                    incremental_tail_pages: Math.min(10, Math.max(1, Number(e.target.value) || 3)),
+                  })
+                }
+              />
+            </div>
+            <div>
+              <Label title="Пауза между итерациями демона парсера (ParserDaemonJob). Меньше = чаще прогоны, больше нагрузка на донор. Больше = реже прогоны, экономия. Рекомендуется 180 (6 прогонов/час). Диапазон 30–600 сек.">
+                Интервал демона (сек)
+              </Label>
+              <Input
+                type="number"
+                min={30}
+                max={600}
+                step={30}
+                value={settingsForm.daemon_interval_seconds}
+                onChange={(e) =>
+                  setSettingsForm({
+                    ...settingsForm,
+                    daemon_interval_seconds: Math.min(600, Math.max(30, Number(e.target.value) || 180)),
+                  })
+                }
               />
             </div>
             <div>

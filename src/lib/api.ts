@@ -704,6 +704,9 @@ export interface ParserSettings {
   store_photo_links: boolean;
   download_medium: boolean;
   update_existing: boolean;
+  incremental_tail_pages: number;
+  update_availability_only: boolean;
+  daemon_interval_seconds: number;
   max_workers: number;
   request_delay_min: number;
   request_delay_max: number;
