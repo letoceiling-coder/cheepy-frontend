@@ -34,7 +34,15 @@ export function useConstructorStore() {
 
   const addBlock = useCallback(
     (type: string, label: string, category: BlockConfig['category'], settings: BlockConfig['settings'], index?: number) => {
-      const block: BlockConfig = { id: generateId(), type, label, category, settings: { ...settings } };
+      // Важно для сложных defaults (Header/Footer): нужен deep copy, иначе массивы
+      // ссылок/соцсетей будут делиться между экземплярами блока.
+      const block: BlockConfig = {
+        id: generateId(),
+        type,
+        label,
+        category,
+        settings: JSON.parse(JSON.stringify(settings ?? {})),
+      };
       setBlocks((prev) => {
         const next = [...prev];
         if (index !== undefined) next.splice(index, 0, block);

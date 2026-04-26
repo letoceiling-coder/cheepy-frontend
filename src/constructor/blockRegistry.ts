@@ -1,4 +1,5 @@
 import { BlockCategory } from './types';
+import { FOOTER_DEFAULT_SETTINGS, HEADER_DEFAULT_SETTINGS } from '@/shared/layoutDefaults';
 
 export interface BlockDefinition {
   type: string;
@@ -7,6 +8,7 @@ export interface BlockDefinition {
   icon: string; // lucide icon name
   defaultSettings: Record<string, any>;
 }
+
 
 export const blockRegistry: BlockDefinition[] = [
   // Hero
@@ -149,8 +151,8 @@ export const blockRegistry: BlockDefinition[] = [
   { type: 'BrandsListInfoSection', label: 'Бренды: текст', category: 'text', icon: 'Info', defaultSettings: {} },
 
   // Navigation
-  { type: 'Header', label: 'Header', category: 'navigation', icon: 'Menu', defaultSettings: {} },
-  { type: 'Footer', label: 'Footer', category: 'footer', icon: 'PanelBottom', defaultSettings: {} },
+  { type: 'Header', label: 'Header', category: 'navigation', icon: 'Menu', defaultSettings: HEADER_DEFAULT_SETTINGS },
+  { type: 'Footer', label: 'Footer', category: 'footer', icon: 'PanelBottom', defaultSettings: FOOTER_DEFAULT_SETTINGS },
   { type: 'MobileBottomNav', label: 'Mobile bottom nav', category: 'navigation', icon: 'Smartphone', defaultSettings: {} },
   {
     type: 'LivePageEmbed',

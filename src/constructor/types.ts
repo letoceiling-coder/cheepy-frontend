@@ -4,6 +4,68 @@
  */
 export type BlockSettings = Record<string, unknown>;
 
+export type HeaderLinkTarget = '_self' | '_blank';
+
+export interface NavLinkItem {
+  id: string;
+  label: string;
+  url: string;
+  enabled: boolean;
+  target?: HeaderLinkTarget;
+}
+
+export interface SocialLinkItem {
+  id: string;
+  network: 'youtube' | 'vk' | 'ok' | 'telegram' | 'custom';
+  label: string;
+  url: string;
+  enabled: boolean;
+}
+
+export interface HeaderSettings {
+  brandText: string;
+  searchPlaceholder: string;
+  deliveryCtaText: string;
+  sellerCtaText: string;
+  wholesaleText: string;
+  rulesText: string;
+  deliveryText: string;
+  supportText: string;
+  showTopBar: boolean;
+  showMainNav: boolean;
+  showSocialLinks: boolean;
+  showFavorites: boolean;
+  showCart: boolean;
+  showAccount: boolean;
+  topLinks: NavLinkItem[];
+  mainNavLinks: NavLinkItem[];
+  socialLinks: SocialLinkItem[];
+}
+
+export interface FooterColumnSettings {
+  id: string;
+  title: string;
+  enabled: boolean;
+  links: NavLinkItem[];
+}
+
+export interface FooterContactSettings {
+  city: string;
+  phone: string;
+  email: string;
+}
+
+export interface FooterSettings {
+  brandText: string;
+  description: string;
+  copyrightText: string;
+  showContacts: boolean;
+  showBottomLegal: boolean;
+  contacts: FooterContactSettings;
+  columns: FooterColumnSettings[];
+  legalLinks: NavLinkItem[];
+}
+
 export interface BlockConfig {
   id: string;
   type: string;

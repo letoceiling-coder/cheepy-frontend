@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, ChevronRight, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
-import { categories, type Category } from "@/data/categories";
+import { publicApi } from "@/lib/api";
 import CategoryIcon from "./CategoryIcon";
 
 interface MobileCatalogMenuProps {
@@ -9,8 +9,35 @@ interface MobileCatalogMenuProps {
   onClose: () => void;
 }
 
+type MenuCategory = {
+  id: number;
+  name: string;
+  slug: string;
+  icon?: string | null;
+  children?: MenuCategory[];
+};
+
 const MobileCatalogMenu = ({ open, onClose }: MobileCatalogMenuProps) => {
-  const [activeCategory, setActiveCategory] = useState<Category | null>(null);
+  const [activeCategory, setActiveCategory] = useState<MenuCategory | null>(null);
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    let mounted = true;
+    publicApi
+      .menu()
+      .then((res) => {
+        if (!mounted) return;
+        setCategories(Array.isArray(res.categories) ? (res.categories as MenuCategory[]) : []);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setCategories([]);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [open]);
 
   const handleBack = () => setActiveCategory(null);
 
@@ -51,7 +78,7 @@ const MobileCatalogMenu = ({ open, onClose }: MobileCatalogMenuProps) => {
                 <button
                   key={cat.id}
                   onClick={() => {
-                    if (cat.subcategories.length > 0) {
+                    if ((cat.children ?? []).length > 0) {
                       setActiveCategory(cat);
                     }
                   }}
@@ -59,7 +86,7 @@ const MobileCatalogMenu = ({ open, onClose }: MobileCatalogMenuProps) => {
                 >
                   <CategoryIcon icon={cat.icon || "grid"} className="w-5 h-5 shrink-0 text-muted-foreground" />
                   <span className="flex-1 text-left">{cat.name}</span>
-                  {cat.subcategories.length > 0 && (
+                  {(cat.children ?? []).length > 0 && (
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   )}
                 </button>
@@ -75,7 +102,7 @@ const MobileCatalogMenu = ({ open, onClose }: MobileCatalogMenuProps) => {
                 <CategoryIcon icon={activeCategory.icon || "grid"} className="w-5 h-5" />
                 Все в "{activeCategory.name}"
               </Link>
-              {activeCategory.subcategories.map((sub) => (
+              {(activeCategory.children ?? []).map((sub) => (
                 <Link
                   key={sub.slug}
                   to={`/category/${sub.slug}`}

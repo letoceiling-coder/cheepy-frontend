@@ -9,7 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Trash2, Copy, Eye, EyeOff } from 'lucide-react';
-import { BlockConfig, type BlockSettings } from '../types';
+import {
+  BlockConfig,
+  type BlockSettings,
+  type FooterColumnSettings,
+  type FooterSettings,
+  type HeaderLinkTarget,
+  type HeaderSettings,
+  type NavLinkItem,
+  type SocialLinkItem,
+} from '../types';
 
 interface SettingsPanelProps {
   block: BlockConfig | null;
@@ -34,6 +43,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       </div>
     );
   }
+
+  const isHeader = block.type === 'Header';
+  const isFooter = block.type === 'Footer';
+  const supportsJsonDataTab = !isHeader && !isFooter;
 
   return (
     <div className="flex flex-col h-full">
@@ -60,15 +73,22 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
       <ScrollArea className="flex-1">
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4 h-auto gap-1 mx-3 mt-2" style={{ width: 'calc(100% - 24px)' }}>
+          <TabsList
+            className={`w-full grid ${supportsJsonDataTab ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'} h-auto gap-1 mx-3 mt-2`}
+            style={{ width: 'calc(100% - 24px)' }}
+          >
             <TabsTrigger value="general" className="text-xs h-7">General</TabsTrigger>
             <TabsTrigger value="layout" className="text-xs h-7">Layout</TabsTrigger>
             <TabsTrigger value="style" className="text-xs h-7">Style</TabsTrigger>
-            <TabsTrigger value="data" className="text-xs h-7">Data (JSON)</TabsTrigger>
+            {supportsJsonDataTab ? <TabsTrigger value="data" className="text-xs h-7">Data (JSON)</TabsTrigger> : null}
           </TabsList>
 
           <TabsContent value="general" className="p-3 space-y-4">
-            {block.type === 'LivePageEmbed' ? (
+            {isHeader ? (
+              <HeaderSettingsForm block={block} onUpdateSettings={onUpdateSettings} />
+            ) : isFooter ? (
+              <FooterSettingsForm block={block} onUpdateSettings={onUpdateSettings} />
+            ) : block.type === 'LivePageEmbed' ? (
               <>
                 <p className="text-[11px] text-muted-foreground leading-snug">
                   Один блок = целая страница витрины в iframe (тот же URL, что в браузере). Все секции страницы на месте, без упрощения.
@@ -261,18 +281,401 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             )}
           </TabsContent>
 
-          <TabsContent value="data" className="p-3 space-y-2">
-            <BlockSettingsJsonMerge
-              blockId={block.id}
-              settings={block.settings}
-              onMerge={onUpdateSettings}
-            />
-          </TabsContent>
+          {supportsJsonDataTab ? (
+            <TabsContent value="data" className="p-3 space-y-2">
+              <BlockSettingsJsonMerge
+                blockId={block.id}
+                settings={block.settings}
+                onMerge={onUpdateSettings}
+              />
+            </TabsContent>
+          ) : null}
         </Tabs>
       </ScrollArea>
     </div>
   );
 };
+
+function createEditorId(prefix: string): string {
+  return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function asHeaderSettings(settings: BlockSettings): HeaderSettings {
+  return settings as unknown as HeaderSettings;
+}
+
+function asFooterSettings(settings: BlockSettings): FooterSettings {
+  return settings as unknown as FooterSettings;
+}
+
+function HeaderSettingsForm({
+  block,
+  onUpdateSettings,
+}: {
+  block: BlockConfig;
+  onUpdateSettings: (id: string, patch: Partial<BlockSettings>) => void;
+}) {
+  const s = asHeaderSettings(block.settings);
+  const update = (patch: Partial<HeaderSettings>) => onUpdateSettings(block.id, patch as Partial<BlockSettings>);
+
+  const patchLinkList = (key: 'topLinks' | 'mainNavLinks', links: NavLinkItem[]) => update({ [key]: links } as Partial<HeaderSettings>);
+  const patchSocialList = (links: SocialLinkItem[]) => update({ socialLinks: links });
+
+  return (
+    <div className="space-y-4">
+      <SettingField label="Бренд (логотип-текст)">
+        <Input value={String(s.brandText ?? '')} onChange={(e) => update({ brandText: e.target.value })} className="h-8 text-xs" />
+      </SettingField>
+      <SettingField label="Плейсхолдер поиска">
+        <Input value={String(s.searchPlaceholder ?? '')} onChange={(e) => update({ searchPlaceholder: e.target.value })} className="h-8 text-xs" />
+      </SettingField>
+      <div className="grid grid-cols-2 gap-3">
+        <SettingField label="Показать верхнюю строку">
+          <Switch checked={Boolean(s.showTopBar)} onCheckedChange={(v) => update({ showTopBar: v })} />
+        </SettingField>
+        <SettingField label="Показать главное меню">
+          <Switch checked={Boolean(s.showMainNav)} onCheckedChange={(v) => update({ showMainNav: v })} />
+        </SettingField>
+        <SettingField label="Соцсети в меню">
+          <Switch checked={Boolean(s.showSocialLinks)} onCheckedChange={(v) => update({ showSocialLinks: v })} />
+        </SettingField>
+        <SettingField label="Иконка аккаунта">
+          <Switch checked={Boolean(s.showAccount)} onCheckedChange={(v) => update({ showAccount: v })} />
+        </SettingField>
+        <SettingField label="Иконка избранного">
+          <Switch checked={Boolean(s.showFavorites)} onCheckedChange={(v) => update({ showFavorites: v })} />
+        </SettingField>
+        <SettingField label="Иконка корзины">
+          <Switch checked={Boolean(s.showCart)} onCheckedChange={(v) => update({ showCart: v })} />
+        </SettingField>
+      </div>
+
+      <SettingField label="Текст ссылки доставки (верхняя строка)">
+        <Input value={String(s.deliveryCtaText ?? '')} onChange={(e) => update({ deliveryCtaText: e.target.value })} className="h-8 text-xs" />
+      </SettingField>
+      <SettingField label="Текст кнопки продавца (верхняя строка)">
+        <Input value={String(s.sellerCtaText ?? '')} onChange={(e) => update({ sellerCtaText: e.target.value })} className="h-8 text-xs" />
+      </SettingField>
+      <SettingField label="Текст «Оптовым покупателям»">
+        <Input value={String(s.wholesaleText ?? '')} onChange={(e) => update({ wholesaleText: e.target.value })} className="h-8 text-xs" />
+      </SettingField>
+      <SettingField label="Текст «Правила площадки»">
+        <Input value={String(s.rulesText ?? '')} onChange={(e) => update({ rulesText: e.target.value })} className="h-8 text-xs" />
+      </SettingField>
+      <SettingField label="Текст «Доставка»">
+        <Input value={String(s.deliveryText ?? '')} onChange={(e) => update({ deliveryText: e.target.value })} className="h-8 text-xs" />
+      </SettingField>
+      <SettingField label="Текст «Поддержка»">
+        <Input value={String(s.supportText ?? '')} onChange={(e) => update({ supportText: e.target.value })} className="h-8 text-xs" />
+      </SettingField>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Ссылки верхней строки</Label>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() =>
+              patchLinkList('topLinks', [
+                ...(s.topLinks ?? []),
+                { id: createEditorId('top-link'), label: 'Новая ссылка', url: '/', enabled: true, target: '_self' },
+              ])
+            }
+          >
+            Добавить ссылку
+          </Button>
+        </div>
+        <NavLinksEditor links={s.topLinks ?? []} onChange={(v) => patchLinkList('topLinks', v)} />
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Ссылки основного меню</Label>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() =>
+              patchLinkList('mainNavLinks', [
+                ...(s.mainNavLinks ?? []),
+                { id: createEditorId('main-link'), label: 'Новая ссылка', url: '/', enabled: true, target: '_self' },
+              ])
+            }
+          >
+            Добавить ссылку
+          </Button>
+        </div>
+        <NavLinksEditor links={s.mainNavLinks ?? []} onChange={(v) => patchLinkList('mainNavLinks', v)} />
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Социальные ссылки</Label>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() =>
+              patchSocialList([
+                ...(s.socialLinks ?? []),
+                { id: createEditorId('social-link'), network: 'custom', label: 'Соцсеть', url: '#', enabled: true },
+              ])
+            }
+          >
+            Добавить соцсеть
+          </Button>
+        </div>
+        <SocialLinksEditor links={s.socialLinks ?? []} onChange={patchSocialList} />
+      </div>
+    </div>
+  );
+}
+
+function FooterSettingsForm({
+  block,
+  onUpdateSettings,
+}: {
+  block: BlockConfig;
+  onUpdateSettings: (id: string, patch: Partial<BlockSettings>) => void;
+}) {
+  const s = asFooterSettings(block.settings);
+  const update = (patch: Partial<FooterSettings>) => onUpdateSettings(block.id, patch as Partial<BlockSettings>);
+
+  const patchColumn = (idx: number, col: FooterColumnSettings) => {
+    const next = [...(s.columns ?? [])];
+    next[idx] = col;
+    update({ columns: next });
+  };
+
+  return (
+    <div className="space-y-4">
+      <SettingField label="Бренд (логотип-текст)">
+        <Input value={String(s.brandText ?? '')} onChange={(e) => update({ brandText: e.target.value })} className="h-8 text-xs" />
+      </SettingField>
+      <SettingField label="Описание компании">
+        <Textarea value={String(s.description ?? '')} onChange={(e) => update({ description: e.target.value })} className="text-xs min-h-[70px]" />
+      </SettingField>
+      <SettingField label="Текст copyright">
+        <Input value={String(s.copyrightText ?? '')} onChange={(e) => update({ copyrightText: e.target.value })} className="h-8 text-xs" />
+      </SettingField>
+      <div className="grid grid-cols-2 gap-3">
+        <SettingField label="Показывать контакты">
+          <Switch checked={Boolean(s.showContacts)} onCheckedChange={(v) => update({ showContacts: v })} />
+        </SettingField>
+        <SettingField label="Показывать legal-ссылки">
+          <Switch checked={Boolean(s.showBottomLegal)} onCheckedChange={(v) => update({ showBottomLegal: v })} />
+        </SettingField>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-xs text-muted-foreground">Контакты</Label>
+        <Input value={String(s.contacts?.city ?? '')} onChange={(e) => update({ contacts: { ...s.contacts, city: e.target.value } })} className="h-8 text-xs" placeholder="Город" />
+        <Input value={String(s.contacts?.phone ?? '')} onChange={(e) => update({ contacts: { ...s.contacts, phone: e.target.value } })} className="h-8 text-xs" placeholder="Телефон" />
+        <Input value={String(s.contacts?.email ?? '')} onChange={(e) => update({ contacts: { ...s.contacts, email: e.target.value } })} className="h-8 text-xs" placeholder="Email" />
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Колонки футера</Label>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() =>
+              update({
+                columns: [
+                  ...(s.columns ?? []),
+                  { id: createEditorId('footer-col'), title: 'Новая колонка', enabled: true, links: [] },
+                ],
+              })
+            }
+          >
+            Добавить колонку
+          </Button>
+        </div>
+        {(s.columns ?? []).map((col, idx) => (
+          <div key={col.id || idx} className="rounded-md border border-border p-2 space-y-2">
+            <div className="flex items-center gap-2">
+              <Input
+                value={String(col.title ?? '')}
+                onChange={(e) => patchColumn(idx, { ...col, title: e.target.value })}
+                className="h-8 text-xs"
+                placeholder="Заголовок колонки"
+              />
+              <Switch checked={Boolean(col.enabled)} onCheckedChange={(v) => patchColumn(idx, { ...col, enabled: v })} />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs text-destructive"
+                onClick={() => update({ columns: (s.columns ?? []).filter((_, i) => i !== idx) })}
+              >
+                Удалить
+              </Button>
+            </div>
+            <NavLinksEditor
+              links={col.links ?? []}
+              onChange={(links) => patchColumn(idx, { ...col, links })}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={() =>
+                patchColumn(idx, {
+                  ...col,
+                  links: [...(col.links ?? []), { id: createEditorId('footer-link'), label: 'Новая ссылка', url: '/', enabled: true, target: '_self' }],
+                })
+              }
+            >
+              Добавить ссылку в колонку
+            </Button>
+          </div>
+        ))}
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Ссылки в нижней строке</Label>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() =>
+              update({
+                legalLinks: [
+                  ...(s.legalLinks ?? []),
+                  { id: createEditorId('legal-link'), label: 'Новая legal-ссылка', url: '/privacy', enabled: true, target: '_self' },
+                ],
+              })
+            }
+          >
+            Добавить ссылку
+          </Button>
+        </div>
+        <NavLinksEditor links={s.legalLinks ?? []} onChange={(v) => update({ legalLinks: v })} />
+      </div>
+    </div>
+  );
+}
+
+function NavLinksEditor({
+  links,
+  onChange,
+}: {
+  links: NavLinkItem[];
+  onChange: (next: NavLinkItem[]) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      {links.map((link, idx) => (
+        <div key={link.id || idx} className="grid grid-cols-12 gap-2 items-center">
+          <Input
+            value={link.label}
+            onChange={(e) => onChange(links.map((x, i) => (i === idx ? { ...x, label: e.target.value } : x)))}
+            className="col-span-4 h-8 text-xs"
+            placeholder="Текст"
+          />
+          <Input
+            value={link.url}
+            onChange={(e) => onChange(links.map((x, i) => (i === idx ? { ...x, url: e.target.value } : x)))}
+            className="col-span-5 h-8 text-xs"
+            placeholder="/path или https://..."
+          />
+          <Select
+            value={(link.target ?? '_self') as HeaderLinkTarget}
+            onValueChange={(v) => onChange(links.map((x, i) => (i === idx ? { ...x, target: v as HeaderLinkTarget } : x)))}
+          >
+            <SelectTrigger className="col-span-2 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_self">self</SelectItem>
+              <SelectItem value="_blank">blank</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="col-span-1 flex items-center justify-end gap-1">
+            <Switch checked={Boolean(link.enabled)} onCheckedChange={(v) => onChange(links.map((x, i) => (i === idx ? { ...x, enabled: v } : x)))} />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 px-2 text-xs text-destructive"
+              onClick={() => onChange(links.filter((_, i) => i !== idx))}
+            >
+              ×
+            </Button>
+          </div>
+        </div>
+      ))}
+      {links.length === 0 ? <p className="text-[11px] text-muted-foreground">Список пуст.</p> : null}
+    </div>
+  );
+}
+
+function SocialLinksEditor({
+  links,
+  onChange,
+}: {
+  links: SocialLinkItem[];
+  onChange: (next: SocialLinkItem[]) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      {links.map((link, idx) => (
+        <div key={link.id || idx} className="grid grid-cols-12 gap-2 items-center">
+          <Select
+            value={link.network}
+            onValueChange={(v) => onChange(links.map((x, i) => (i === idx ? { ...x, network: v as SocialLinkItem['network'] } : x)))}
+          >
+            <SelectTrigger className="col-span-3 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="youtube">YouTube</SelectItem>
+              <SelectItem value="vk">VK</SelectItem>
+              <SelectItem value="ok">OK</SelectItem>
+              <SelectItem value="telegram">Telegram</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            value={link.label}
+            onChange={(e) => onChange(links.map((x, i) => (i === idx ? { ...x, label: e.target.value } : x)))}
+            className="col-span-3 h-8 text-xs"
+            placeholder="Label"
+          />
+          <Input
+            value={link.url}
+            onChange={(e) => onChange(links.map((x, i) => (i === idx ? { ...x, url: e.target.value } : x)))}
+            className="col-span-5 h-8 text-xs"
+            placeholder="https://..."
+          />
+          <div className="col-span-1 flex items-center justify-end gap-1">
+            <Switch checked={Boolean(link.enabled)} onCheckedChange={(v) => onChange(links.map((x, i) => (i === idx ? { ...x, enabled: v } : x)))} />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 px-2 text-xs text-destructive"
+              onClick={() => onChange(links.filter((_, i) => i !== idx))}
+            >
+              ×
+            </Button>
+          </div>
+        </div>
+      ))}
+      {links.length === 0 ? <p className="text-[11px] text-muted-foreground">Список пуст.</p> : null}
+    </div>
+  );
+}
 
 /** Слияние JSON-объекта в settings — для произвольных ключей (источник данных, categorySlug, лимиты и т.д.) */
 function BlockSettingsJsonMerge({

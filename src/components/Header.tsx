@@ -1,9 +1,13 @@
-import { useState, useEffect, useRef } from "react";
-import { Search, User, Heart, ShoppingCart, Grid2X2, ChevronDown, Send, X } from "lucide-react";
+import { useState, useEffect, useRef, useMemo, type ComponentType } from "react";
+import { Search, User, Heart, ShoppingCart, Grid2X2, ChevronDown, Send, X, Circle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import MegaMenu from "./MegaMenu";
+import type { PublicMenuCategory } from "./MegaMenu";
 import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
+import { publicApi } from "@/lib/api";
+import { HEADER_DEFAULT_SETTINGS } from "@/shared/layoutDefaults";
+import type { HeaderSettings, NavLinkItem, SocialLinkItem } from "@/constructor/types";
 
 const YoutubeIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
@@ -18,12 +22,28 @@ const TgIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0h-.056zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
 );
 
-const Header = () => {
+interface HeaderProps {
+  settings?: Partial<HeaderSettings>;
+}
+
+const Header = ({ settings }: HeaderProps) => {
+  const mergedSettings = useMemo<HeaderSettings>(
+    () => ({
+      ...HEADER_DEFAULT_SETTINGS,
+      ...settings,
+      topLinks: settings?.topLinks ?? HEADER_DEFAULT_SETTINGS.topLinks,
+      mainNavLinks: settings?.mainNavLinks ?? HEADER_DEFAULT_SETTINGS.mainNavLinks,
+      socialLinks: settings?.socialLinks ?? HEADER_DEFAULT_SETTINGS.socialLinks,
+    }),
+    [settings]
+  );
+
   const [isCompact, setIsCompact] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
   const [showCurrency, setShowCurrency] = useState(false);
   const [showCity, setShowCity] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [menuCategories, setMenuCategories] = useState<PublicMenuCategory[]>([]);
   const headerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { totalItems } = useCart();
@@ -54,15 +74,52 @@ const Header = () => {
   const [selectedCurrency, setSelectedCurrency] = useState("RUB");
   const [selectedCity, setSelectedCity] = useState("Москва");
 
-  const navLinks = [
-    { label: "Мужское", to: "/category/мужское" },
-    { label: "Женское", to: "/category/женское" },
-    { label: "Обувь и одежда", to: "/category/обувь" },
-    { label: "Избранное", to: "/favorites" },
-    { label: "Доставка", to: "/delivery" },
-    { label: "Правила площадки", to: "/rules" },
-    { label: "Поддержка", to: "/faq" },
-  ];
+  useEffect(() => {
+    let mounted = true;
+    publicApi
+      .menu()
+      .then((res) => {
+        if (!mounted) return;
+        setMenuCategories(Array.isArray(res.categories) ? (res.categories as PublicMenuCategory[]) : []);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        // CRM-only источник: если API недоступен, меню пустое (без legacy fallback).
+        setMenuCategories([]);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const navLinks = (mergedSettings.mainNavLinks ?? []).filter((x) => x.enabled);
+  const topLinks = (mergedSettings.topLinks ?? []).filter((x) => x.enabled);
+  const socialLinks = (mergedSettings.socialLinks ?? []).filter((x) => x.enabled);
+
+  const socialIconByNetwork: Record<SocialLinkItem["network"], ComponentType> = {
+    youtube: YoutubeIcon,
+    vk: VkIcon,
+    ok: OkIcon,
+    telegram: TgIcon,
+    custom: Circle,
+  };
+
+  const renderNavLink = (link: NavLinkItem, className: string) => {
+    const isExternal = /^https?:\/\//i.test(link.url);
+    const target = link.target ?? "_self";
+    if (isExternal) {
+      return (
+        <a href={link.url} target={target} rel={target === "_blank" ? "noopener noreferrer" : undefined} className={className}>
+          {link.label}
+        </a>
+      );
+    }
+    return (
+      <Link to={link.url || "/"} target={target} className={className}>
+        {link.label}
+      </Link>
+    );
+  };
 
   return (
     <>
@@ -73,7 +130,7 @@ const Header = () => {
         {/* Top bar */}
         <div
           className={`max-w-[1400px] mx-auto px-4 transition-all duration-300 ${
-            isCompact ? "max-h-0 opacity-0 overflow-hidden" : "max-h-12 opacity-100 py-2"
+            isCompact || !mergedSettings.showTopBar ? "max-h-0 opacity-0 overflow-hidden" : "max-h-12 opacity-100 py-2"
           }`}
         >
           <div className="flex items-center justify-between text-sm">
@@ -121,16 +178,23 @@ const Header = () => {
               </div>
 
               <button className="text-primary hover:underline transition-colors">
-                Укажите адрес доставки
+                {mergedSettings.deliveryCtaText}
               </button>
+              {topLinks.map((link) => (
+                <span key={link.id} className="text-foreground/80">
+                  {renderNavLink(link, "hover:text-primary transition-colors")}
+                </span>
+              ))}
             </div>
 
             <div className="hidden lg:flex items-center gap-6 text-muted-foreground">
-              <button className="px-3 py-1 border border-border rounded-full hover:border-primary hover:text-foreground transition-colors">Стать продавцом</button>
-              <span className="hover:text-foreground transition-colors cursor-pointer">Оптовым покупателям</span>
-              <span className="hover:text-foreground transition-colors cursor-pointer">Правила площадки</span>
-              <span className="hover:text-foreground transition-colors cursor-pointer">Доставка</span>
-              <span className="hover:text-foreground transition-colors cursor-pointer">Поддержка</span>
+              <button className="px-3 py-1 border border-border rounded-full hover:border-primary hover:text-foreground transition-colors">
+                {mergedSettings.sellerCtaText}
+              </button>
+              <span className="hover:text-foreground transition-colors cursor-pointer">{mergedSettings.wholesaleText}</span>
+              <span className="hover:text-foreground transition-colors cursor-pointer">{mergedSettings.rulesText}</span>
+              <span className="hover:text-foreground transition-colors cursor-pointer">{mergedSettings.deliveryText}</span>
+              <span className="hover:text-foreground transition-colors cursor-pointer">{mergedSettings.supportText}</span>
             </div>
           </div>
         </div>
@@ -139,7 +203,7 @@ const Header = () => {
         <div className={`max-w-[1400px] mx-auto px-4 transition-all duration-300 ${isCompact ? "py-1.5" : "py-3"}`}>
           <div className="flex items-center gap-4">
             {/* Logo */}
-            <Link to="/" className="text-2xl font-extrabold text-foreground shrink-0">Cheepy</Link>
+            <Link to="/" className="text-2xl font-extrabold text-foreground shrink-0">{mergedSettings.brandText}</Link>
 
             {/* Categories button */}
             <button
@@ -180,7 +244,7 @@ const Header = () => {
             <div className="hidden md:block flex-1 relative">
               <input
                 type="text"
-                placeholder="Искать на Cheepy"
+                placeholder={mergedSettings.searchPlaceholder}
                 className="w-full border-2 border-primary/30 rounded-full py-2.5 pl-5 pr-12 text-sm focus:outline-none focus:border-primary transition-colors bg-background text-foreground placeholder:text-muted-foreground"
               />
               <button className="absolute right-1 top-1/2 -translate-y-1/2 gradient-primary p-2 rounded-full text-primary-foreground">
@@ -195,7 +259,7 @@ const Header = () => {
                   <div className="flex-1 relative">
                     <input
                       type="text"
-                      placeholder="Искать на Cheepy"
+                      placeholder={mergedSettings.searchPlaceholder}
                       autoFocus
                       className="w-full border-2 border-primary/30 rounded-full py-2 pl-4 pr-10 text-sm focus:outline-none focus:border-primary transition-colors bg-background text-foreground placeholder:text-muted-foreground"
                     />
@@ -216,20 +280,26 @@ const Header = () => {
 
             {/* Icons */}
             <div className="hidden md:flex items-center gap-5 shrink-0">
-              <button onClick={() => navigate("/account")} className="flex flex-col items-center gap-0.5 text-foreground hover:text-primary transition-colors">
-                <User className="w-5 h-5" />
-                <span className="text-xs">Кабинет</span>
-              </button>
-              <Link to="/favorites" className="flex flex-col items-center gap-0.5 text-primary hover:opacity-80 transition-opacity relative">
-                <Heart className="w-5 h-5" />
-                <span className="text-xs">Избранное</span>
-                {favCount > 0 && <span className="absolute -top-1 -right-2 w-4 h-4 rounded-full gradient-hero text-primary-foreground text-[10px] font-bold flex items-center justify-center">{favCount}</span>}
-              </Link>
-              <Link to="/cart" className="flex flex-col items-center gap-0.5 text-foreground hover:text-primary transition-colors relative">
-                <ShoppingCart className="w-5 h-5" />
-                <span className="text-xs">Корзина</span>
-                {totalItems > 0 && <span className="absolute -top-1 -right-2 w-4 h-4 rounded-full gradient-hero text-primary-foreground text-[10px] font-bold flex items-center justify-center">{totalItems}</span>}
-              </Link>
+              {mergedSettings.showAccount ? (
+                <button onClick={() => navigate("/account")} className="flex flex-col items-center gap-0.5 text-foreground hover:text-primary transition-colors">
+                  <User className="w-5 h-5" />
+                  <span className="text-xs">Кабинет</span>
+                </button>
+              ) : null}
+              {mergedSettings.showFavorites ? (
+                <Link to="/favorites" className="flex flex-col items-center gap-0.5 text-primary hover:opacity-80 transition-opacity relative">
+                  <Heart className="w-5 h-5" />
+                  <span className="text-xs">Избранное</span>
+                  {favCount > 0 && <span className="absolute -top-1 -right-2 w-4 h-4 rounded-full gradient-hero text-primary-foreground text-[10px] font-bold flex items-center justify-center">{favCount}</span>}
+                </Link>
+              ) : null}
+              {mergedSettings.showCart ? (
+                <Link to="/cart" className="flex flex-col items-center gap-0.5 text-foreground hover:text-primary transition-colors relative">
+                  <ShoppingCart className="w-5 h-5" />
+                  <span className="text-xs">Корзина</span>
+                  {totalItems > 0 && <span className="absolute -top-1 -right-2 w-4 h-4 rounded-full gradient-hero text-primary-foreground text-[10px] font-bold flex items-center justify-center">{totalItems}</span>}
+                </Link>
+              ) : null}
             </div>
           </div>
         </div>
@@ -237,35 +307,34 @@ const Header = () => {
         {/* Nav links */}
         <div
           className={`max-w-[1400px] mx-auto px-4 transition-all duration-300 hidden lg:block ${
-            isCompact ? "max-h-0 opacity-0 overflow-hidden" : "max-h-12 opacity-100"
+            isCompact || !mergedSettings.showMainNav ? "max-h-0 opacity-0 overflow-hidden" : "max-h-12 opacity-100"
           }`}
         >
           <div className="flex items-center justify-between py-2 border-t border-border">
             <div className="flex items-center gap-1">
               {navLinks.map(link => (
-                <Link key={link.label} to={link.to} className="px-3 py-1.5 text-sm rounded-full hover:bg-secondary text-foreground transition-colors">
-                  {link.label}
-                </Link>
+                <span key={link.id}>{renderNavLink(link, "px-3 py-1.5 text-sm rounded-full hover:bg-secondary text-foreground transition-colors")}</span>
               ))}
             </div>
-            <div className="flex items-center gap-3 text-muted-foreground">
-              {[
-                { icon: YoutubeIcon, label: "YouTube" },
-                { icon: VkIcon, label: "VK" },
-                { icon: OkIcon, label: "OK" },
-                { icon: TgIcon, label: "TG" },
-              ].map(s => (
-                <a key={s.label} href="#" className="hover:text-foreground transition-colors" aria-label={s.label}>
-                  <s.icon />
-                </a>
-              ))}
+            <div className={`items-center gap-3 text-muted-foreground ${mergedSettings.showSocialLinks ? "flex" : "hidden"}`}>
+              {socialLinks.map((s) => {
+                const Icon = socialIconByNetwork[s.network] ?? Circle;
+                return (
+                  <a key={s.id} href={s.url || "#"} className="hover:text-foreground transition-colors" aria-label={s.label}>
+                    <Icon />
+                  </a>
+                );
+              })}
             </div>
           </div>
         </div>
 
         {/* Mega menu */}
         {showCategories && (
-          <MegaMenu onClose={() => setShowCategories(false)} />
+          <MegaMenu
+            categories={menuCategories}
+            onClose={() => setShowCategories(false)}
+          />
         )}
       </header>
 
