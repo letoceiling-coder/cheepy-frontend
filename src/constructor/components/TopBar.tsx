@@ -55,9 +55,18 @@ export const TopBar: React.FC<TopBarProps> = ({
           size="sm"
           onClick={onClick}
           disabled={disabled}
-          className={`h-8 w-8 p-0 ${active ? 'bg-accent text-primary' : ''}`}
+          className={[
+            "h-8 w-8 p-0 rounded-md transition-colors",
+            // Базовая видимость: иконка должна быть читаема без hover.
+            "text-foreground/80 hover:text-foreground",
+            "hover:bg-accent/80",
+            // Активное состояние (включенный режим/панель).
+            active ? "bg-accent text-primary hover:bg-accent" : "",
+            // Disabled оставляем видимым, но спокойным.
+            disabled ? "opacity-50 text-muted-foreground" : "",
+          ].join(" ")}
         >
-          <Icon className="h-4 w-4" />
+          <Icon className="h-4 w-4 shrink-0" />
         </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="text-xs">{label}</TooltipContent>
