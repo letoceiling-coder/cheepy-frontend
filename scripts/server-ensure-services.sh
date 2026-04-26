@@ -42,9 +42,10 @@ fi
 
 supervisorctl reread
 supervisorctl update
-# Один перезапуск. Ненулевой код бывает при частичном ERROR у дочерних программ — не рвём деплой.
-if ! supervisorctl restart all; then
-  echo "⚠️ supervisorctl restart all вернул ошибку — смотрите status ниже и логи программ"
+# Безопасный режим деплоя: мягкий перезапуск очередей Laravel без "restart all",
+# чтобы не блокироваться на долгих STOPPING у photo-worker.
+if ! sudo -u www-data php /var/www/online-parser.siteaacess.store/artisan queue:restart; then
+  echo "⚠️ queue:restart вернул ошибку — проверяйте backend логи"
 fi
 sleep 3
 
