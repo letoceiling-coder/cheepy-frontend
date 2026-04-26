@@ -28,6 +28,31 @@ interface HeaderProps {
 }
 
 const Header = ({ settings }: HeaderProps) => {
+  const normalizeMenuCategories = (input: PublicMenuCategory[]): PublicMenuCategory[] => {
+    const normalizeNode = (node: PublicMenuCategory): PublicMenuCategory | null => {
+      const rawChildren = Array.isArray(node.children) ? node.children : [];
+      const children = rawChildren
+        .map(normalizeNode)
+        .filter((x): x is PublicMenuCategory => Boolean(x));
+
+      const productsCount = Number(node.products_count ?? 0);
+      const hasOwnProducts = Number.isFinite(productsCount) && productsCount > 0;
+      const hasChildren = children.length > 0;
+
+      // Hide empty branches: no descendants and no products.
+      if (!hasOwnProducts && !hasChildren) return null;
+
+      return {
+        ...node,
+        children,
+      };
+    };
+
+    return (Array.isArray(input) ? input : [])
+      .map(normalizeNode)
+      .filter((x): x is PublicMenuCategory => Boolean(x));
+  };
+
   const [globalSettings, setGlobalSettings] = useState<Partial<HeaderSettings> | null>(null);
 
   useEffect(() => {
@@ -97,7 +122,8 @@ const Header = ({ settings }: HeaderProps) => {
       .menu()
       .then((res) => {
         if (!mounted) return;
-        setMenuCategories(Array.isArray(res.categories) ? (res.categories as PublicMenuCategory[]) : []);
+        const raw = Array.isArray(res.categories) ? (res.categories as PublicMenuCategory[]) : [];
+        setMenuCategories(normalizeMenuCategories(raw));
       })
       .catch(() => {
         if (!mounted) return;

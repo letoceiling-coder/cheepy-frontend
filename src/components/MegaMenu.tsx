@@ -20,25 +20,49 @@ const categoryIconByIndex = [Shirt, Footprints, Tag];
 
 const MegaMenu = ({ categories, onClose }: MegaMenuProps) => {
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(categories[0]?.id ?? null);
+  const [expandedGroupKeys, setExpandedGroupKeys] = useState<Record<string, boolean>>({});
 
   const activeCategory = useMemo(
     () => categories.find((c) => c.id === activeCategoryId) ?? categories[0] ?? null,
     [activeCategoryId, categories]
   );
   const topTabs = useMemo(() => categories.slice(0, 6), [categories]);
+  const hasNestedChildren = useMemo(
+    () => Boolean((activeCategory?.children ?? []).some((child) => (child.children ?? []).length > 0)),
+    [activeCategory]
+  );
+
+  const VISIBLE_ITEMS_LIMIT = 5;
+
   const groupedChildren = useMemo(() => {
     if (!activeCategory) return [];
     const children = activeCategory.children ?? [];
-    const groups: Array<{ title: string; items: PublicMenuCategory[] }> = [];
+    const groups: Array<{ key: string; title: string; items: PublicMenuCategory[] }> = [];
+
+    if (hasNestedChildren) {
+      children.forEach((child) => {
+        const nested = child.children ?? [];
+        if (nested.length === 0) return;
+        groups.push({
+          key: `group-${child.id}`,
+          title: child.name,
+          items: nested,
+        });
+      });
+      return groups;
+    }
+
     for (let i = 0; i < children.length; i += 4) {
       const chunk = children.slice(i, i + 4);
+      if (chunk.length === 0) continue;
       groups.push({
+        key: `chunk-${i}`,
         title: chunk[0]?.name ?? "Категории",
         items: chunk,
       });
     }
     return groups;
-  }, [activeCategory]);
+  }, [activeCategory, hasNestedChildren]);
 
   return (
     <div className="absolute left-0 right-0 top-full bg-popover border-t border-border animate-slide-down z-[1100]">
@@ -91,11 +115,16 @@ const MegaMenu = ({ categories, onClose }: MegaMenuProps) => {
               <span className="text-sm text-primary">● {activeCategory?.products_count ?? 0} товаров</span>
             </div>
             <div className="grid grid-cols-4 gap-6">
-              {groupedChildren.map((sub, i) => (
-                <div key={`${activeCategory?.id ?? "root"}-${i}`} className="animate-fade-in" style={{ animationDelay: `${i * 30}ms` }}>
+              {groupedChildren.map((sub, i) => {
+                const canExpand = hasNestedChildren && sub.items.length > VISIBLE_ITEMS_LIMIT;
+                const expanded = expandedGroupKeys[sub.key] ?? false;
+                const visibleItems = canExpand && !expanded ? sub.items.slice(0, VISIBLE_ITEMS_LIMIT) : sub.items;
+
+                return (
+                <div key={`${activeCategory?.id ?? "root"}-${sub.key}`} className="animate-fade-in" style={{ animationDelay: `${i * 30}ms` }}>
                   <h4 className="font-semibold text-foreground mb-2">{sub.title}</h4>
                   <ul className="space-y-1.5">
-                    {sub.items.map((item) => (
+                    {visibleItems.map((item) => (
                       <li key={item.id}>
                         <Link to={`/category/${item.slug}`} className="text-sm text-muted-foreground hover:text-primary transition-colors" onClick={onClose}>
                           {item.name}
@@ -103,11 +132,23 @@ const MegaMenu = ({ categories, onClose }: MegaMenuProps) => {
                       </li>
                     ))}
                   </ul>
-                  <button className="text-sm text-primary mt-2 flex items-center gap-1 hover:underline" type="button">
-                    Ещё <ChevronDown className="w-3 h-3" />
-                  </button>
+                  {canExpand ? (
+                    <button
+                      className="text-sm text-primary mt-2 flex items-center gap-1 hover:underline"
+                      type="button"
+                      onClick={() =>
+                        setExpandedGroupKeys((prev) => ({
+                          ...prev,
+                          [sub.key]: !expanded,
+                        }))
+                      }
+                    >
+                      {expanded ? "Свернуть" : "Ещё"}{" "}
+                      <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                    </button>
+                  ) : null}
                 </div>
-              ))}
+              )})}
             </div>
           </div>
         </div>
