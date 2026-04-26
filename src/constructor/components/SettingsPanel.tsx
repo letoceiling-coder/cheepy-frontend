@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Copy, Eye, EyeOff } from 'lucide-react';
 import { BlockConfig, type BlockSettings, type FooterSettings, type HeaderSettings } from '../types';
 import { getSettingsProfileForBlockType, normalizeBlockProfileSettings } from '../settingsProfiles';
-import { CategoryTreeField, CtaEditor, LinksEditor, MediaPickerField, ProductFeedField, SettingField } from './settings/SharedProfileFields';
+import { CategoryImageOverridesField, CategoryTreeField, CtaEditor, LinksEditor, MediaPickerField, ProductFeedField, SettingField } from './settings/SharedProfileFields';
 
 interface SettingsPanelProps {
   block: BlockConfig | null;
@@ -234,9 +234,18 @@ function ProfileSettingsForm({
       <SettingField label="Subtitle"><Input className="h-8 text-xs" value={normalized.subtitle ?? ''} onChange={(e) => update({ subtitle: e.target.value })} /></SettingField>
       {profile === 'P-PRODUCT-FEED' ? <ProductFeedField value={normalized.feed} onChange={(feed) => update({ feed })} /> : null}
       {profile === 'P-CATEGORY-FEED' ? (
-        <SettingField label="Категории источника">
-          <CategoryTreeField value={normalized.feed.categoryIds ?? []} onChange={(ids) => update({ feed: { ...normalized.feed, categoryIds: ids } })} />
-        </SettingField>
+        <>
+          <SettingField label="Категории источника">
+            <CategoryTreeField value={normalized.feed.categoryIds ?? []} onChange={(ids) => update({ feed: { ...normalized.feed, categoryIds: ids } })} />
+          </SettingField>
+          <SettingField label="Фото для выбранных категорий">
+            <CategoryImageOverridesField
+              selectedCategoryIds={normalized.feed.categoryIds ?? []}
+              value={normalized.feed.imageOverrides ?? []}
+              onChange={(imageOverrides) => update({ feed: { ...normalized.feed, imageOverrides } })}
+            />
+          </SettingField>
+        </>
       ) : null}
       {profile === 'P-HERO-MEDIA' || profile === 'P-BANNER-MEDIA' || profile === 'P-VIDEO-MEDIA' || profile === 'P-LOOKBOOK-MEDIA' ? (
         <SettingField label="Медиа"><MediaPickerField items={normalized.media} onChange={(media) => update({ media })} /></SettingField>

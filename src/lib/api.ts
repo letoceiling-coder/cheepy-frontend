@@ -1355,6 +1355,18 @@ export const publicApi = {
         sort_order: number;
       }>;
     }>('/public/layout/global', true),
+  pageLayout: (pageKey: string) =>
+    get<{
+      template_key: string | null;
+      updated_at: string | null;
+      blocks: Array<{
+        block_type: string;
+        settings: Record<string, unknown>;
+        is_enabled: boolean;
+        is_visible: boolean;
+        sort_order: number;
+      }>;
+    }>(`/public/layout/page/${encodeURIComponent(pageKey)}`, true),
 
   categoryProducts: (
     slug: string,

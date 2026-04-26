@@ -102,6 +102,92 @@ export function CategoryTreeField({ value, onChange }: { value: number[]; onChan
   );
 }
 
+type CategoryImageOverride = {
+  categoryId: number;
+  mediaFileId: number | null;
+  imageUrl: string;
+};
+
+export function CategoryImageOverridesField({
+  selectedCategoryIds,
+  value,
+  onChange,
+}: {
+  selectedCategoryIds: number[];
+  value: CategoryImageOverride[];
+  onChange: (next: CategoryImageOverride[]) => void;
+}) {
+  const [categories, setCategories] = useState<CatalogCategoryItem[]>([]);
+  const [files, setFiles] = useState<CrmMediaFile[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const first = await adminCatalogApi.catalogCategoriesList({ per_page: 100, page: 1 });
+      const total = first.meta?.total ?? first.data.length;
+      const perPage = first.meta?.per_page ?? 100;
+      const pages = Math.ceil(total / perPage);
+      const rest = pages > 1 ? await Promise.all(Array.from({ length: pages - 1 }, (_, i) => adminCatalogApi.catalogCategoriesList({ per_page: perPage, page: i + 2 }))) : [];
+      if (!mounted) return;
+      setCategories([...first.data, ...rest.flatMap((r) => r.data)]);
+    })().catch(() => setCategories([]));
+    crmMediaApi.files({ folder_id: 1, per_page: 100, page: 1 }).then((r) => setFiles(r.data)).catch(() => setFiles([]));
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const rows = selectedCategoryIds.map((id) => {
+    const existing = value.find((x) => x.categoryId === id);
+    return existing ?? { categoryId: id, mediaFileId: null, imageUrl: '' };
+  });
+
+  const mediaOptions = files.map((f) => ({ id: f.id, label: f.original_name, url: f.url }));
+
+  return (
+    <div className="space-y-2">
+      {rows.length === 0 ? <p className="text-[11px] text-muted-foreground">Сначала выберите категории.</p> : null}
+      {rows.map((row) => {
+        const catName = categories.find((c) => c.id === row.categoryId)?.name ?? `Категория #${row.categoryId}`;
+        return (
+          <div key={row.categoryId} className="rounded-md border border-border p-2 space-y-2">
+            <p className="text-xs font-medium">{catName}</p>
+            <Select
+              value={row.mediaFileId ? String(row.mediaFileId) : 'none'}
+              onValueChange={(v) => {
+                const selected = v === 'none' ? null : mediaOptions.find((m) => String(m.id) === v);
+                onChange(
+                  rows.map((x) =>
+                    x.categoryId === row.categoryId
+                      ? { ...x, mediaFileId: selected ? Number(v) : null, imageUrl: selected?.url ?? '' }
+                      : x
+                  )
+                );
+              }}
+            >
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Файл из Media Library" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Не выбрано</SelectItem>
+                {mediaOptions.map((o) => (
+                  <SelectItem key={o.id} value={String(o.id)}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              className="h-8 text-xs"
+              value={row.imageUrl}
+              placeholder="Или прямой URL картинки"
+              onChange={(e) =>
+                onChange(rows.map((x) => (x.categoryId === row.categoryId ? { ...x, imageUrl: e.target.value } : x)))
+              }
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ProductFeedField({ value, onChange }: { value: ProductFeedSettings; onChange: (next: ProductFeedSettings) => void }) {
   return (
     <div className="space-y-2">

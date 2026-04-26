@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import HeroSlider from "@/components/HeroSlider";
 import ProductGrid from "@/components/ProductGrid";
@@ -20,6 +22,9 @@ import CompactCategories from "@/components/home/CategoryVariants/CompactCategor
 import IconCategories from "@/components/home/CategoryVariants/IconCategories";
 import BrandStrip from "@/components/home/CategoryVariants/BrandStrip";
 import GridCategories from "@/components/home/CategoryVariants/GridCategories";
+import { publicApi } from "@/lib/api";
+import { BlockRenderer } from "@/constructor/blockRenderer";
+import type { BlockConfig } from "@/constructor/types";
 
 // Batch 1
 import FeaturedCategories from "@/components/sections/FeaturedCategories";
@@ -111,11 +116,43 @@ import VideoCarouselBanner from "@/components/banners/VideoCarouselBanner";
 import CinematicVideoBanner from "@/components/banners/CinematicVideoBanner";
 
 const Index = () => {
+  const { data: pageLayout } = useQuery({
+    queryKey: ["public-layout-page", "home"],
+    queryFn: () => publicApi.pageLayout("home"),
+    retry: false,
+  });
+
+  const dynamicBlocks = useMemo(() => {
+    const blocks = Array.isArray(pageLayout?.blocks) ? pageLayout.blocks : [];
+    return blocks
+      .filter((b) => b && b.is_enabled !== false && b.is_visible !== false)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((b, idx): BlockConfig => ({
+        id: `home-${b.block_type}-${idx}`,
+        type: b.block_type,
+        label: b.block_type,
+        category: "hero",
+        settings: (b.settings ?? {}) as BlockConfig["settings"],
+      }));
+  }, [pageLayout?.blocks]);
+
+  const hasDynamicHomeLayout = dynamicBlocks.length > 0;
+
   return (
     <div className="min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
       <Header />
 
       <main className="homepage-flow">
+        {hasDynamicHomeLayout ? (
+          <div className="max-w-[1400px] mx-auto px-4 py-4 space-y-2">
+            {dynamicBlocks.map((cfg) => (
+              <div key={cfg.id} data-block-type={cfg.type}>
+                <BlockRenderer block={cfg} />
+              </div>
+            ))}
+          </div>
+        ) : (
+        <>
         <div className="max-w-[1400px] mx-auto px-4">
           <HeroSlider />
           <CategoryCircleSlider />
@@ -226,6 +263,8 @@ const Index = () => {
           <InformBlock />
           <MapSection />
         </div>
+        </>
+        )}
       </main>
 
       <Footer />

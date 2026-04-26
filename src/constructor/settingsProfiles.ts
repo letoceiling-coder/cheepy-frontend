@@ -66,6 +66,11 @@ export interface CategoryFeedSettings {
   sortBy: 'sort_order' | 'name' | 'products_count';
   sortDir: 'asc' | 'desc';
   limit: number;
+  imageOverrides: Array<{
+    categoryId: number;
+    mediaFileId: number | null;
+    imageUrl: string;
+  }>;
 }
 
 export interface NavGlobalSettings extends ProfileBaseSettings {
@@ -223,7 +228,7 @@ function defaultByProfile(profile: SettingsProfileId): NormalizedProfileSettings
       return {
         ...base, profile, feed: {
           source: 'catalog_categories', rootCategoryId: null, depth: 3, minProducts: 1, hideEmpty: true,
-          sortBy: 'sort_order', sortDir: 'asc', limit: 24,
+          sortBy: 'sort_order', sortDir: 'asc', limit: 24, imageOverrides: [],
         },
       };
     case 'P-BANNER-MEDIA':
