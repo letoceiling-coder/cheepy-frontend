@@ -66,6 +66,22 @@ function buildCategoryTreeOptions(cats: CatalogCategoryItem[]): { id: number; la
   return out;
 }
 
+async function fetchAllCatalogCategoriesForModerationList(): Promise<CatalogCategoryItem[]> {
+  const first = await adminCatalogApi.catalogCategoriesList({ per_page: 100, page: 1 });
+  const total = first.meta?.total ?? first.data.length;
+  const perPage = first.meta?.per_page ?? 100;
+  if (total <= perPage) return first.data;
+
+  const pages = Math.ceil(total / perPage);
+  const rest = await Promise.all(
+    Array.from({ length: pages - 1 }, (_, i) =>
+      adminCatalogApi.catalogCategoriesList({ per_page: perPage, page: i + 2 })
+    )
+  );
+
+  return [...first.data, ...rest.flatMap((r) => r.data)];
+}
+
 const PER_PAGE = 25;
 
 export default function CrmModerationPage() {
@@ -89,11 +105,11 @@ export default function CrmModerationPage() {
 
   const { data: categoriesRes } = useQuery({
     queryKey: ["catalog-categories-flat", "moderation-list"],
-    queryFn: () => adminCatalogApi.catalogCategoriesList({ per_page: 500, page: 1 }),
+    queryFn: fetchAllCatalogCategoriesForModerationList,
   });
   const categoryOptions = useMemo(
-    () => buildCategoryTreeOptions(categoriesRes?.data ?? []),
-    [categoriesRes?.data]
+    () => buildCategoryTreeOptions(categoriesRes ?? []),
+    [categoriesRes]
   );
 
   const { data: sellersRes } = useQuery({

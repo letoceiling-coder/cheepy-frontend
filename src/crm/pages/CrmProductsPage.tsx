@@ -156,8 +156,8 @@ export default function CrmProductsPage() {
     queryFn: fetchAllCatalogCategoriesForProducts,
   });
   const categoryOptions = useMemo(
-    () => buildCategoryTreeOptions(categoriesRes?.data ?? []),
-    [categoriesRes?.data]
+    () => buildCategoryTreeOptions(categoriesRes ?? []),
+    [categoriesRes]
   );
 
   const { data: sellersRes } = useQuery({
