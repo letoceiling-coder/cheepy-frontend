@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { adminCatalogApi, crmMediaApi, type CatalogCategoryItem, type CrmMediaFile } from '@/lib/api';
+import { adminCatalogApi, crmMediaApi, type CatalogCategoryItem, type CrmMediaFile, type CrmMediaFolder } from '@/lib/api';
 import type { CtaSetting, LinkItemSetting, MediaItemSetting, ProductFeedSettings } from '@/constructor/settingsProfiles';
 
 export const SettingField: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
@@ -17,6 +17,59 @@ export const SettingField: React.FC<{ label: string; children: React.ReactNode }
 
 function uid(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function useMediaLibrarySource() {
+  const [folders, setFolders] = useState<CrmMediaFolder[]>([]);
+  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
+  const [files, setFiles] = useState<CrmMediaFile[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    crmMediaApi
+      .folders()
+      .then((res) => {
+        if (!mounted) return;
+        const next = Array.isArray(res.data) ? res.data : [];
+        setFolders(next);
+        if (!selectedFolderId && next.length > 0) setSelectedFolderId(next[0].id);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setFolders([]);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [selectedFolderId]);
+
+  useEffect(() => {
+    if (!selectedFolderId) {
+      setFiles([]);
+      return;
+    }
+    let mounted = true;
+    crmMediaApi
+      .files({ folder_id: selectedFolderId, per_page: 200, page: 1 })
+      .then((res) => {
+        if (!mounted) return;
+        setFiles(Array.isArray(res.data) ? res.data : []);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setFiles([]);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [selectedFolderId]);
+
+  const refresh = () => {
+    if (!selectedFolderId) return;
+    crmMediaApi.files({ folder_id: selectedFolderId, per_page: 200, page: 1 }).then((res) => setFiles(Array.isArray(res.data) ? res.data : [])).catch(() => setFiles([]));
+  };
+
+  return { folders, selectedFolderId, setSelectedFolderId, files, refresh };
 }
 
 export function CtaEditor({ value, onChange }: { value: CtaSetting; onChange: (next: CtaSetting) => void }) {
@@ -118,7 +171,7 @@ export function CategoryImageOverridesField({
   onChange: (next: CategoryImageOverride[]) => void;
 }) {
   const [categories, setCategories] = useState<CatalogCategoryItem[]>([]);
-  const [files, setFiles] = useState<CrmMediaFile[]>([]);
+  const { folders, selectedFolderId, setSelectedFolderId, files, refresh } = useMediaLibrarySource();
 
   useEffect(() => {
     let mounted = true;
@@ -131,7 +184,6 @@ export function CategoryImageOverridesField({
       if (!mounted) return;
       setCategories([...first.data, ...rest.flatMap((r) => r.data)]);
     })().catch(() => setCategories([]));
-    crmMediaApi.files({ folder_id: 1, per_page: 100, page: 1 }).then((r) => setFiles(r.data)).catch(() => setFiles([]));
     return () => {
       mounted = false;
     };
@@ -147,6 +199,26 @@ export function CategoryImageOverridesField({
   return (
     <div className="space-y-2">
       {rows.length === 0 ? <p className="text-[11px] text-muted-foreground">Сначала выберите категории.</p> : null}
+      <div className="rounded-md border border-border p-2 space-y-2">
+        <div className="flex items-center gap-2">
+          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => window.open('/crm/media', '_blank')}>
+            Открыть медиаменеджер
+          </Button>
+          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={refresh}>
+            Обновить файлы
+          </Button>
+        </div>
+        <Select
+          value={selectedFolderId ? String(selectedFolderId) : 'none'}
+          onValueChange={(v) => setSelectedFolderId(v === 'none' ? null : Number(v))}
+        >
+          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Папка медиаменеджера" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Папка не выбрана</SelectItem>
+            {folders.map((f) => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
       {rows.map((row) => {
         const catName = categories.find((c) => c.id === row.categoryId)?.name ?? `Категория #${row.categoryId}`;
         return (
@@ -199,14 +271,31 @@ export function ProductFeedField({ value, onChange }: { value: ProductFeedSettin
 }
 
 export function MediaPickerField({ items, onChange }: { items: MediaItemSetting[]; onChange: (next: MediaItemSetting[]) => void }) {
-  const [files, setFiles] = useState<CrmMediaFile[]>([]);
-  useEffect(() => {
-    crmMediaApi.files({ folder_id: 1, per_page: 100, page: 1 }).then((r) => setFiles(r.data)).catch(() => setFiles([]));
-  }, []);
+  const { folders, selectedFolderId, setSelectedFolderId, files, refresh } = useMediaLibrarySource();
   const options = useMemo(() => files.map((f) => ({ id: f.id, label: f.original_name, url: f.url })), [files]);
 
   return (
     <div className="space-y-2">
+      <div className="rounded-md border border-border p-2 space-y-2">
+        <div className="flex items-center gap-2">
+          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => window.open('/crm/media', '_blank')}>
+            Открыть медиаменеджер
+          </Button>
+          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={refresh}>
+            Обновить файлы
+          </Button>
+        </div>
+        <Select
+          value={selectedFolderId ? String(selectedFolderId) : 'none'}
+          onValueChange={(v) => setSelectedFolderId(v === 'none' ? null : Number(v))}
+        >
+          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Папка медиаменеджера" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Папка не выбрана</SelectItem>
+            {folders.map((f) => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
       <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => onChange([...(items ?? []), { id: uid('media'), mediaFileId: null, url: '', title: '', subtitle: '', caption: '', alt: '' }])}>
         Добавить медиа
       </Button>
