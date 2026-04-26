@@ -1,6 +1,7 @@
 import type { CmsPageBlockPayload } from '@/lib/api';
 import { blockRegistry } from './blockRegistry';
 import type { BlockCategory, BlockConfig } from './types';
+import { normalizeBlockProfileSettings } from './settingsProfiles';
 
 function genId(): string {
   return Math.random().toString(36).slice(2, 11);
@@ -31,7 +32,7 @@ export function mapCmsApiBlocksToBlockConfigs(
       type: row.block_type,
       label: def?.label ?? row.block_type,
       category: (def?.category ?? 'hero') as BlockCategory,
-      settings: { ...defaults, ...saved },
+      settings: normalizeBlockProfileSettings(row.block_type, { ...defaults, ...saved }),
       hidden: row.is_enabled === false || row.is_visible === false,
     };
   });

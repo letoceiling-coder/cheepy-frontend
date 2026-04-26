@@ -1811,6 +1811,27 @@ export const adminConstructorLayoutApi = {
   remove: (id: number) => del<{ ok: boolean }>(`/admin/constructor/layout-templates/${id}`),
 };
 
+// Constructor dynamic data contracts (forms + preview)
+export const constructorDataApi = {
+  categories: (params?: { per_page?: number; page?: number }) =>
+    adminCatalogApi.catalogCategoriesList(params),
+  products: (params?: {
+    status?: string;
+    search?: string;
+    page?: number;
+    per_page?: number;
+    category_id?: number;
+    seller_id?: number;
+    sort_by?: 'created_at' | 'updated_at' | 'name' | 'status' | 'price_raw' | 'list_position';
+    sort_dir?: 'asc' | 'desc';
+  }) => adminSystemProductsApi.list(params),
+  sellers: (params?: { search?: string; status?: string; page?: number; per_page?: number }) =>
+    sellersApi.list(params),
+  brands: (params?: { search?: string; status?: string; page?: number }) =>
+    brandsApi.list(params),
+  reviews: (limit = 20) => get<{ data: LogEntry[] }>(`/logs?module=reviews&per_page=${limit}`),
+};
+
 // Payment status — public, for return pages
 export interface PaymentStatus {
   id: number;
@@ -1852,6 +1873,7 @@ export default {
   publicCms: publicCmsApi,
   adminCms: adminCmsApi,
   adminConstructorLayout: adminConstructorLayoutApi,
+  constructorData: constructorDataApi,
   attributeRules: attributeRulesApi,
   attributeDictionary: attributeRulesApi.dictionary,
   attributeCanonical: attributeRulesApi.canonical,

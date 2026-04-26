@@ -1,8 +1,9 @@
+import type { NormalizedProfileSettings } from './settingsProfiles';
 /**
  * Настройки блока — произвольный объект: один и тот же block_type на разных страницах
  * может задавать title, categorySlug, dataSource, limits и т.д. (см. blockRegistry defaultSettings + CMS page_blocks.settings).
  */
-export type BlockSettings = Record<string, unknown>;
+export type BlockSettings = Record<string, unknown> | NormalizedProfileSettings;
 
 export type HeaderLinkTarget = '_self' | '_blank';
 

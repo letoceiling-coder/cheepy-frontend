@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { BlockConfig, DeviceMode, HistoryEntry, type BlockSettings } from './types';
+import { normalizeBlockProfileSettings } from './settingsProfiles';
 
 const MAX_HISTORY = 50;
 
@@ -41,7 +42,7 @@ export function useConstructorStore() {
         type,
         label,
         category,
-        settings: JSON.parse(JSON.stringify(settings ?? {})),
+        settings: normalizeBlockProfileSettings(type, JSON.parse(JSON.stringify(settings ?? {}))),
       };
       setBlocks((prev) => {
         const next = [...prev];
@@ -113,7 +114,11 @@ export function useConstructorStore() {
   const updateBlockSettings = useCallback(
     (id: string, settings: Partial<BlockSettings>) => {
       setBlocks((prev) => {
-        const next = prev.map((b) => (b.id === id ? { ...b, settings: { ...b.settings, ...settings } } : b));
+        const next = prev.map((b) =>
+          b.id === id
+            ? { ...b, settings: normalizeBlockProfileSettings(b.type, { ...(b.settings as Record<string, unknown>), ...settings }) }
+            : b
+        );
         pushHistory(next);
         return next;
       });
