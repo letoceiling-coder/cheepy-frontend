@@ -73,6 +73,22 @@ const QUICK_STATUSES: { value: SystemProductStatus; label: string }[] = [
   { value: "draft", label: "Черновик" },
 ];
 
+async function fetchAllCatalogCategoriesForProducts(): Promise<CatalogCategoryItem[]> {
+  const first = await adminCatalogApi.catalogCategoriesList({ per_page: 100, page: 1 });
+  const total = first.meta?.total ?? first.data.length;
+  const perPage = first.meta?.per_page ?? 100;
+  if (total <= perPage) return first.data;
+
+  const pages = Math.ceil(total / perPage);
+  const rest = await Promise.all(
+    Array.from({ length: pages - 1 }, (_, i) =>
+      adminCatalogApi.catalogCategoriesList({ per_page: perPage, page: i + 2 })
+    )
+  );
+
+  return [...first.data, ...rest.flatMap((r) => r.data)];
+}
+
 function buildCategoryTreeOptions(cats: CatalogCategoryItem[]): { id: number; label: string }[] {
   const byParent = new Map<number | null, CatalogCategoryItem[]>();
   cats.forEach((c) => {
@@ -137,7 +153,7 @@ export default function CrmProductsPage() {
 
   const { data: categoriesRes } = useQuery({
     queryKey: ["catalog-categories-flat", "products-list"],
-    queryFn: () => adminCatalogApi.catalogCategoriesList({ per_page: 500, page: 1 }),
+    queryFn: fetchAllCatalogCategoriesForProducts,
   });
   const categoryOptions = useMemo(
     () => buildCategoryTreeOptions(categoriesRes?.data ?? []),
