@@ -1343,6 +1343,18 @@ export const settingsApi = {
 
 export const publicApi = {
   menu: () => get<{ categories: Category[] }>('/public/menu', true),
+  globalLayout: () =>
+    get<{
+      template_key: string | null;
+      updated_at: string | null;
+      blocks: Array<{
+        block_type: string;
+        settings: Record<string, unknown>;
+        is_enabled: boolean;
+        is_visible: boolean;
+        sort_order: number;
+      }>;
+    }>('/public/layout/global', true),
 
   categoryProducts: (
     slug: string,

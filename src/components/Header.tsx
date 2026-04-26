@@ -8,6 +8,7 @@ import { useFavorites } from "@/contexts/FavoritesContext";
 import { publicApi } from "@/lib/api";
 import { HEADER_DEFAULT_SETTINGS } from "@/shared/layoutDefaults";
 import type { HeaderSettings, NavLinkItem, SocialLinkItem } from "@/constructor/types";
+import { loadGlobalLayoutSettings } from "@/shared/globalLayout";
 
 const YoutubeIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
@@ -27,15 +28,31 @@ interface HeaderProps {
 }
 
 const Header = ({ settings }: HeaderProps) => {
+  const [globalSettings, setGlobalSettings] = useState<Partial<HeaderSettings> | null>(null);
+
+  useEffect(() => {
+    // Если settings пришли явным пропсом (конструктор/preview), приоритет у них.
+    if (settings) return;
+    let mounted = true;
+    loadGlobalLayoutSettings().then((data) => {
+      if (!mounted) return;
+      setGlobalSettings(data.header ?? null);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [settings]);
+
+  const effectiveSettings = settings ?? globalSettings ?? {};
   const mergedSettings = useMemo<HeaderSettings>(
     () => ({
       ...HEADER_DEFAULT_SETTINGS,
-      ...settings,
-      topLinks: settings?.topLinks ?? HEADER_DEFAULT_SETTINGS.topLinks,
-      mainNavLinks: settings?.mainNavLinks ?? HEADER_DEFAULT_SETTINGS.mainNavLinks,
-      socialLinks: settings?.socialLinks ?? HEADER_DEFAULT_SETTINGS.socialLinks,
+      ...effectiveSettings,
+      topLinks: effectiveSettings?.topLinks ?? HEADER_DEFAULT_SETTINGS.topLinks,
+      mainNavLinks: effectiveSettings?.mainNavLinks ?? HEADER_DEFAULT_SETTINGS.mainNavLinks,
+      socialLinks: effectiveSettings?.socialLinks ?? HEADER_DEFAULT_SETTINGS.socialLinks,
     }),
-    [settings]
+    [effectiveSettings]
   );
 
   const [isCompact, setIsCompact] = useState(false);

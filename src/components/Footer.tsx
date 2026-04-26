@@ -1,7 +1,9 @@
 import { MapPin, Phone, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import type { FooterSettings, NavLinkItem } from "@/constructor/types";
 import { FOOTER_DEFAULT_SETTINGS } from "@/shared/layoutDefaults";
+import { loadGlobalLayoutSettings } from "@/shared/globalLayout";
 
 interface FooterProps {
   settings?: Partial<FooterSettings>;
@@ -25,12 +27,28 @@ function renderLink(link: NavLinkItem, className: string) {
 }
 
 const Footer = ({ settings }: FooterProps) => {
+  const [globalSettings, setGlobalSettings] = useState<Partial<FooterSettings> | null>(null);
+
+  useEffect(() => {
+    // Для витрины берём global layout конструктора; в preview/settings пропс имеет приоритет.
+    if (settings) return;
+    let mounted = true;
+    loadGlobalLayoutSettings().then((data) => {
+      if (!mounted) return;
+      setGlobalSettings(data.footer ?? null);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [settings]);
+
+  const effectiveSettings = settings ?? globalSettings ?? {};
   const merged: FooterSettings = {
     ...FOOTER_DEFAULT_SETTINGS,
-    ...settings,
-    contacts: { ...FOOTER_DEFAULT_SETTINGS.contacts, ...(settings?.contacts ?? {}) },
-    columns: settings?.columns ?? FOOTER_DEFAULT_SETTINGS.columns,
-    legalLinks: settings?.legalLinks ?? FOOTER_DEFAULT_SETTINGS.legalLinks,
+    ...effectiveSettings,
+    contacts: { ...FOOTER_DEFAULT_SETTINGS.contacts, ...(effectiveSettings?.contacts ?? {}) },
+    columns: effectiveSettings?.columns ?? FOOTER_DEFAULT_SETTINGS.columns,
+    legalLinks: effectiveSettings?.legalLinks ?? FOOTER_DEFAULT_SETTINGS.legalLinks,
   };
 
   const columns = (merged.columns ?? []).filter((c) => c.enabled);
