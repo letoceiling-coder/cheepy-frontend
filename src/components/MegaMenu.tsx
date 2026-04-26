@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Shirt, Footprints, Tag, Grid2X2, ChevronDown } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 interface MegaMenuProps {
   categories: PublicMenuCategory[];
@@ -19,6 +19,7 @@ export type PublicMenuCategory = {
 const categoryIconByIndex = [Shirt, Footprints, Tag];
 
 const MegaMenu = ({ categories, onClose }: MegaMenuProps) => {
+  const navigate = useNavigate();
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(categories[0]?.id ?? null);
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<Record<string, boolean>>({});
 
@@ -95,6 +96,10 @@ const MegaMenu = ({ categories, onClose }: MegaMenuProps) => {
                   <button
                     key={cat.id}
                     onMouseEnter={() => setActiveCategoryId(cat.id)}
+                    onClick={() => {
+                      navigate(`/category/${cat.slug}`);
+                      onClose();
+                    }}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm rounded-lg transition-colors ${
                       activeCategory?.id === cat.id ? "bg-secondary text-primary font-medium" : "text-foreground hover:bg-secondary"
                     }`}
