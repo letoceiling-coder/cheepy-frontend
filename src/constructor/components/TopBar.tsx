@@ -61,7 +61,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             "text-foreground/80 hover:text-foreground",
             "hover:bg-accent/80",
             // Активное состояние (включенный режим/панель).
-            active ? "bg-accent text-primary hover:bg-accent" : "",
+            active ? "bg-accent text-accent-foreground hover:bg-accent" : "",
             // Disabled оставляем видимым, но спокойным.
             disabled ? "opacity-50 text-muted-foreground" : "",
           ].join(" ")}
