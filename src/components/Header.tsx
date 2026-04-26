@@ -29,11 +29,30 @@ interface HeaderProps {
 
 const Header = ({ settings }: HeaderProps) => {
   const normalizeMenuCategories = (input: PublicMenuCategory[]): PublicMenuCategory[] => {
+    const hasAnyProductsCount = (nodes: PublicMenuCategory[]): boolean =>
+      nodes.some((node) => {
+        const productsCount = Number(node.products_count ?? 0);
+        if (Number.isFinite(productsCount) && productsCount > 0) return true;
+        const children = Array.isArray(node.children) ? node.children : [];
+        return hasAnyProductsCount(children);
+      });
+
+    const shouldFilterByProducts = hasAnyProductsCount(Array.isArray(input) ? input : []);
+
     const normalizeNode = (node: PublicMenuCategory): PublicMenuCategory | null => {
       const rawChildren = Array.isArray(node.children) ? node.children : [];
       const children = rawChildren
         .map(normalizeNode)
         .filter((x): x is PublicMenuCategory => Boolean(x));
+
+      if (!shouldFilterByProducts) {
+        // API can temporarily return products_count=0 for all nodes.
+        // In that case we keep the category tree visible instead of hiding the whole menu.
+        return {
+          ...node,
+          children,
+        };
+      }
 
       const productsCount = Number(node.products_count ?? 0);
       const hasOwnProducts = Number.isFinite(productsCount) && productsCount > 0;
