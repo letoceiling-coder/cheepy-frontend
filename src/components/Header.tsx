@@ -28,11 +28,13 @@ interface HeaderProps {
 }
 
 const Header = ({ settings }: HeaderProps) => {
+  const MIN_PRODUCTS_IN_MENU = 1;
+
   const normalizeMenuCategories = (input: PublicMenuCategory[]): PublicMenuCategory[] => {
     const hasAnyProductsCount = (nodes: PublicMenuCategory[]): boolean =>
       nodes.some((node) => {
         const productsCount = Number(node.products_count ?? 0);
-        if (Number.isFinite(productsCount) && productsCount > 0) return true;
+        if (Number.isFinite(productsCount) && productsCount > MIN_PRODUCTS_IN_MENU) return true;
         const children = Array.isArray(node.children) ? node.children : [];
         return hasAnyProductsCount(children);
       });
@@ -55,7 +57,7 @@ const Header = ({ settings }: HeaderProps) => {
       }
 
       const productsCount = Number(node.products_count ?? 0);
-      const hasOwnProducts = Number.isFinite(productsCount) && productsCount > 0;
+      const hasOwnProducts = Number.isFinite(productsCount) && productsCount > MIN_PRODUCTS_IN_MENU;
       const hasChildren = children.length > 0;
 
       // Hide empty branches: no descendants and no products.
