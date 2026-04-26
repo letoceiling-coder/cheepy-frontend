@@ -265,10 +265,18 @@ const ConstructorPage: React.FC = () => {
       if (e.key === 'Delete' && store.selectedBlockId) {
         store.removeBlock(store.selectedBlockId);
       }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (cmsMode) {
+          if (!cmsSaving) void handleSaveToCms();
+        } else {
+          void handleSaveLayoutTemplate();
+        }
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [store]);
+  }, [cmsMode, cmsSaving, handleSaveLayoutTemplate, handleSaveToCms, store]);
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">

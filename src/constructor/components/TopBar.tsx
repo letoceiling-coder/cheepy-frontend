@@ -116,17 +116,24 @@ export const TopBar: React.FC<TopBarProps> = ({
 
       {onSaveToCms && (
         <>
-          <ToolbarBtn
-            icon={CloudUpload}
-            label="Сохранить в CMS"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onSaveToCms}
             disabled={cmsSaving}
-          />
+            className="h-8 gap-1.5"
+          >
+            <CloudUpload className="h-4 w-4" />
+            <span className="text-xs">Сохранить в CMS</span>
+          </Button>
           <Separator orientation="vertical" className="h-6 mx-1" />
         </>
       )}
 
-      <ToolbarBtn icon={Save} label="Save template" onClick={onSave} />
+      <Button variant="default" size="sm" onClick={onSave} className="h-8 gap-1.5">
+        <Save className="h-4 w-4" />
+        <span className="text-xs">Сохранить шаблон</span>
+      </Button>
       <ToolbarBtn icon={Trash2} label="Clear canvas" onClick={onClear} />
 
       <Separator orientation="vertical" className="h-6 mx-1" />
