@@ -173,14 +173,6 @@ export function CategoryImageOverridesField({
                 ))}
               </SelectContent>
             </Select>
-            <Input
-              className="h-8 text-xs"
-              value={row.imageUrl}
-              placeholder="Или прямой URL картинки"
-              onChange={(e) =>
-                onChange(rows.map((x) => (x.categoryId === row.categoryId ? { ...x, imageUrl: e.target.value } : x)))
-              }
-            />
           </div>
         );
       })}
