@@ -138,6 +138,7 @@ export default function CrmDashboardPage() {
   const [processed, setProcessed] = useState(0);
   const [success, setSuccess] = useState(0);
   const [failed, setFailed] = useState(0);
+  const [skipped, setSkipped] = useState(0);
   const [total, setTotal] = useState<number | null>(null);
   const [currentItem, setCurrentItem] = useState<{ id: number; name: string } | null>(null);
   const [logs, setLogs] = useState<LogRow[]>([]);
@@ -209,6 +210,7 @@ export default function CrmDashboardPage() {
     setProcessed(0);
     setSuccess(0);
     setFailed(0);
+    setSkipped(0);
     setTotal(null);
     setCurrentItem(null);
     setLogs([]);
@@ -250,6 +252,7 @@ export default function CrmDashboardPage() {
     setProcessed(0);
     setSuccess(0);
     setFailed(0);
+    setSkipped(0);
     setLogs([]);
     setCurrentItem(null);
     setState("running");
@@ -293,12 +296,15 @@ export default function CrmDashboardPage() {
               const full = await retry(() => adminSystemProductsApi.get(row.id), 3);
               const currentDesc = String(full.description ?? "").trim();
 
-              if (onlyEmptyDescription && currentDesc) {
-                setProcessed((x) => x + 1);
-                continue;
-              }
-              if (!overwriteExisting && currentDesc) {
-                setProcessed((x) => x + 1);
+              // Skip logic:
+              // - if overwriteExisting=true -> always process (even if description exists)
+              // - else if onlyEmptyDescription=true -> process only when description is empty
+              // - else -> process all items (even if description exists)
+              const shouldSkip =
+                !overwriteExisting && onlyEmptyDescription && !!currentDesc;
+              if (shouldSkip) {
+                setSkipped((x) => x + 1);
+                pushLog("info", `SKIP #${row.id}: описание уже заполнено`);
                 continue;
               }
 
@@ -391,7 +397,7 @@ export default function CrmDashboardPage() {
               </Button>
             ) : null}
           </div>
-        </div>
+      </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-1 space-y-2">
@@ -448,7 +454,11 @@ export default function CrmDashboardPage() {
                 <p className="text-[11px] text-muted-foreground">Ошибки</p>
                 <p className="text-sm font-medium tabular-nums text-destructive">{failed}</p>
               </div>
-            </div>
+              <div className="rounded-md border border-border p-3">
+                <p className="text-[11px] text-muted-foreground">Пропущено</p>
+                <p className="text-sm font-medium tabular-nums">{skipped}</p>
+              </div>
+        </div>
 
             <div className="rounded-md border border-border p-3 space-y-2">
               <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -462,8 +472,8 @@ export default function CrmDashboardPage() {
               </div>
               <div className="h-2 rounded bg-muted overflow-hidden">
                 <div className="h-2 bg-primary" style={{ width: `${progressPct}%` }} />
-              </div>
-            </div>
+        </div>
+      </div>
 
             <div className="rounded-md border border-border p-3 space-y-2">
               <Label className="text-xs text-muted-foreground">Промпт генерации</Label>
@@ -491,7 +501,7 @@ export default function CrmDashboardPage() {
                 )}
               </div>
             </div>
-          </div>
+        </div>
         </div>
       </div>
     </div>
