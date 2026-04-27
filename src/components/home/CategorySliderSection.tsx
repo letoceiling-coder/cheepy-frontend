@@ -74,8 +74,6 @@ const CategorySliderSection = ({ feed }: Props) => {
   }, [fallbackById, limit, menuCategories, overrides, selectedIds]);
 
   const total = sliderCategories.length;
-  const scrollRef = useDragScroll<HTMLDivElement>();
-  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
