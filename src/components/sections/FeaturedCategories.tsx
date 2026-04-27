@@ -1,29 +1,116 @@
-import { useState } from "react";
-import { ChevronLeft, ChevronRight, Shirt, Footprints, Watch, Gem, ShoppingBag, Glasses } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
 import { useDragScroll } from "@/hooks/useDragScroll";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { publicApi, publicCrmMediaFileUrl, resolveCrmMediaAssetUrl } from "@/lib/api";
 import product1 from "@/assets/product-1.jpg";
-import product2 from "@/assets/product-2.jpg";
-import product3 from "@/assets/product-3.jpg";
-import product4 from "@/assets/product-4.jpg";
-import product5 from "@/assets/product-5.jpg";
-import product6 from "@/assets/product-6.jpg";
 
-const categories = [
-  { name: "Верхняя одежда", count: 1240, image: product1, icon: Shirt },
-  { name: "Обувь", count: 890, image: product2, icon: Footprints },
-  { name: "Аксессуары", count: 980, image: product3, icon: Watch },
-  { name: "Украшения", count: 450, image: product4, icon: Gem },
-  { name: "Сумки", count: 560, image: product5, icon: ShoppingBag },
-  { name: "Очки", count: 320, image: product6, icon: Glasses },
-  { name: "Спорт", count: 730, image: product1, icon: Shirt },
-  { name: "Премиум", count: 210, image: product2, icon: Gem },
-];
+type FeedSettings = {
+  categoryIds?: number[];
+  limit?: number;
+  imageOverrides?: Array<{ categoryId: number; mediaFileId?: number | null; imageUrl?: string | null }>;
+};
 
-const FeaturedCategories = () => {
+type Props = {
+  title?: string | null;
+  subtitle?: string | null;
+  feed?: FeedSettings;
+};
+
+type MenuCategory = {
+  id: number;
+  name: string;
+  slug: string;
+  icon?: string | null;
+  products_count?: number;
+  children?: MenuCategory[];
+};
+
+function flatten(nodes: MenuCategory[]): MenuCategory[] {
+  return nodes.flatMap((node) => [node, ...(Array.isArray(node.children) ? flatten(node.children) : [])]);
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
   const scrollRef = useDragScroll<HTMLDivElement>();
   const { ref, isVisible } = useScrollAnimation();
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
+  const [fallbackById, setFallbackById] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    let mounted = true;
+    publicApi
+      .menu()
+      .then((res) => {
+        if (!mounted) return;
+        const raw = Array.isArray(res.categories) ? (res.categories as MenuCategory[]) : [];
+        setMenuCategories(flatten(raw));
+      })
+      .catch(() => setMenuCategories([]));
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const selectedIds = feed?.categoryIds ?? [];
+  const overrides = feed?.imageOverrides ?? [];
+  const limit = feed?.limit ?? 24;
+
+  const categories = useMemo(() => {
+    const base = selectedIds.length > 0 ? menuCategories.filter((x) => selectedIds.includes(Number(x.id))) : menuCategories;
+    const sliced = base.slice(0, Math.max(1, Number(limit) || 24));
+    return sliced.map((cat) => {
+      const override = overrides.find((x) => Number(x.categoryId) === Number(cat.id));
+      const image =
+        override?.mediaFileId
+          ? publicCrmMediaFileUrl(Number(override.mediaFileId))
+          : override?.imageUrl
+            ? resolveCrmMediaAssetUrl(String(override.imageUrl))
+            : cat.icon || fallbackById[cat.id] || product1;
+      return {
+        id: cat.id,
+        slug: cat.slug,
+        name: cat.name,
+        count: Number(cat.products_count ?? 0),
+        image,
+      };
+    });
+  }, [fallbackById, limit, menuCategories, overrides, selectedIds]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const need = categories.filter((c) => !c.image || c.image === product1);
+    if (need.length === 0) return;
+    void (async () => {
+      await sleep(30);
+      const entries = await Promise.all(
+        need.map(async (c) => {
+          try {
+            const res = await publicApi.categoryProducts(c.slug, { page: 1, per_page: 1 });
+            const thumb = res.data?.[0]?.thumbnail ? resolveCrmMediaAssetUrl(res.data[0].thumbnail) : "";
+            return [c.id, thumb] as const;
+          } catch {
+            return [c.id, ""] as const;
+          }
+        })
+      );
+      if (cancelled) return;
+      setFallbackById((prev) => {
+        const next = { ...prev };
+        for (const [id, url] of entries) {
+          if (url) next[id] = url;
+        }
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [categories]);
 
   const scroll = (dir: number) => {
     scrollRef.current?.scrollBy({ left: dir * 320, behavior: "smooth" });
@@ -36,8 +123,8 @@ const FeaturedCategories = () => {
     >
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-lg font-bold text-foreground">Популярные категории</h2>
-          <p className="text-muted-foreground text-sm mt-1">Исследуйте лучшие категории маркетплейса</p>
+          <h2 className="text-lg font-bold text-foreground">{String(title || "Популярные категории")}</h2>
+          <p className="text-muted-foreground text-sm mt-1">{String(subtitle || "Исследуйте лучшие категории маркетплейса")}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => scroll(-1)} className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors">
@@ -50,10 +137,10 @@ const FeaturedCategories = () => {
       </div>
       <div ref={scrollRef} className="flex gap-5 overflow-x-auto no-scrollbar pb-2 cursor-grab active:cursor-grabbing">
         {categories.map((cat, i) => {
-          const Icon = cat.icon;
           return (
-            <div
-              key={i}
+            <Link
+              key={`${cat.slug}-${i}`}
+              to={`/category/${cat.slug}`}
               className="min-w-[240px] md:min-w-[260px] max-h-[340px] rounded-xl overflow-hidden relative cursor-pointer group flex-shrink-0"
               onMouseEnter={() => setHoveredIdx(i)}
               onMouseLeave={() => setHoveredIdx(null)}
@@ -70,7 +157,7 @@ const FeaturedCategories = () => {
               <div className="absolute bottom-0 left-0 right-0 p-5">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg gradient-primary flex items-center justify-center transition-transform duration-300 ${hoveredIdx === i ? "scale-110" : ""}`}>
-                    <Icon size={20} className="text-primary-foreground" />
+                    <ShoppingBag size={20} className="text-primary-foreground" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-primary-foreground">{cat.name}</h3>
@@ -78,7 +165,7 @@ const FeaturedCategories = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>
