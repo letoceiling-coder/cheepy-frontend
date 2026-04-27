@@ -39,7 +39,7 @@ function resolveApiBaseUrl(): string {
 
 const BASE_URL = resolveApiBaseUrl();
 
-/** Публичные URL из API (`/storage/...`) без домена — браузер резолвит от витрины; подставляем origin бэкенда. */
+/** Публичные URL из API (`/storage/...`) без домена — подставляем origin API (Laravel). */
 export function resolveCrmMediaAssetUrl(url: string): string {
   const u = String(url || '').trim();
   if (!u) return '';
@@ -48,13 +48,9 @@ export function resolveCrmMediaAssetUrl(url: string): string {
     out = u;
   } else {
     try {
-      const apiOrigin = new URL(BASE_URL).origin;
-      const appOrigin = typeof window !== 'undefined' ? window.location.origin : apiOrigin;
-      const rawPath = u.startsWith('/') ? u : `/${u.replace(/^\/+/, '')}`;
-      // Media files are stored under /storage and are typically served by the same host as the SPA.
-      // Using API host here breaks storefront when API is on a separate subdomain.
-      const origin = rawPath.startsWith('/storage/') ? appOrigin : apiOrigin;
-      out = `${origin}${rawPath}`;
+      const origin = new URL(BASE_URL).origin;
+      if (u.startsWith('/')) out = `${origin}${u}`;
+      else out = `${origin}/${u.replace(/^\/+/, '')}`;
     } catch {
       return u;
     }
