@@ -48,7 +48,13 @@ git push origin main
 # STEP 2 — SERVER (SSH от root: единый сценарий с prod)
 ########################################
 
-ssh root@85.117.235.93 << 'EOF'
+ssh \
+  -o BatchMode=yes \
+  -o ConnectTimeout=15 \
+  -o ServerAliveInterval=15 \
+  -o ServerAliveCountMax=3 \
+  -o StrictHostKeyChecking=accept-new \
+  root@85.117.235.93 << 'EOF'
 
 set -euo pipefail
 
