@@ -211,6 +211,16 @@ export async function fetchCrmMediaBlobUrl(fileId: number): Promise<string> {
   return URL.createObjectURL(blob);
 }
 
+/** Публичная отдача файла по id (для витрины), без JWT. */
+export function publicCrmMediaFileUrl(fileId: number): string {
+  try {
+    const origin = new URL(BASE_URL).origin;
+    return `${origin}/api/v1/public/media/files/${fileId}/content`;
+  } catch {
+    return `/api/v1/public/media/files/${fileId}/content`;
+  }
+}
+
 const get = <T>(path: string, isPublic = false) => request<T>('GET', path, undefined, isPublic);
 const post = <T>(path: string, body?: unknown, isPublic = false) => request<T>('POST', path, body, isPublic);
 const put = <T>(path: string, body?: unknown) => request<T>('PUT', path, body);

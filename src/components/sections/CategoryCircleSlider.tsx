@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useDragScroll } from "@/hooks/useDragScroll";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
-import { publicApi, resolveCrmMediaAssetUrl } from "@/lib/api";
+import { publicApi, publicCrmMediaFileUrl, resolveCrmMediaAssetUrl } from "@/lib/api";
 import product1 from "@/assets/product-1.jpg";
 import product2 from "@/assets/product-2.jpg";
 import product3 from "@/assets/product-3.jpg";
@@ -76,7 +76,11 @@ const CategoryCircleSlider = ({ title = "Каталог", feed }: CategoryCircle
     const base = selectedIds.length > 0 ? menuCategories.filter((x) => selectedIds.includes(Number(x.id))) : menuCategories;
     const withImages = base.map((cat) => {
       const override = overrides.find((x) => Number(x.categoryId) === Number(cat.id));
-      const image = override?.imageUrl ? resolveCrmMediaAssetUrl(override.imageUrl) : cat.icon || product1;
+      const image = override?.mediaFileId
+        ? publicCrmMediaFileUrl(Number(override.mediaFileId))
+        : override?.imageUrl
+          ? resolveCrmMediaAssetUrl(override.imageUrl)
+          : cat.icon || product1;
       return { ...cat, image };
     });
     return withImages.length > 0 ? withImages : categories;
