@@ -1,22 +1,79 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDragScroll } from "@/hooks/useDragScroll";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import { popularCategories } from "@/data/marketplaceData";
+import { publicApi, resolveCrmMediaAssetUrl } from "@/lib/api";
+import product1 from "@/assets/product-1.jpg";
 
-const sliderCategories = [
-  ...popularCategories,
-  { slug: "dzhinsy", name: "Джинсы", count: 340, image: popularCategories[1].image },
-  { slug: "kostyumy", name: "Костюмы", count: 215, image: popularCategories[3].image },
-  { slug: "futbolki", name: "Футболки", count: 1890, image: popularCategories[4].image },
-  { slug: "shorty", name: "Шорты", count: 420, image: popularCategories[2].image },
-];
+type FeedSettings = {
+  categoryIds?: number[];
+  limit?: number;
+  imageOverrides?: Array<{ categoryId: number; mediaFileId?: number | null; imageUrl?: string | null }>;
+};
 
-const LightCategoryNav = () => {
+type Props = {
+  title?: string;
+  subtitle?: string;
+  feed?: FeedSettings;
+};
+
+type MenuCategory = {
+  id: number;
+  name: string;
+  slug: string;
+  icon?: string | null;
+  products_count?: number;
+  children?: MenuCategory[];
+};
+
+function flatten(nodes: MenuCategory[]): MenuCategory[] {
+  return nodes.flatMap((node) => [node, ...(Array.isArray(node.children) ? flatten(node.children) : [])]);
+}
+
+const LightCategoryNav = ({ feed }: Props) => {
   const [current, setCurrent] = useState(0);
-  const total = sliderCategories.length;
   const scrollRef = useDragScroll<HTMLDivElement>();
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
+  const [fallbackById, setFallbackById] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    let mounted = true;
+    publicApi
+      .menu()
+      .then((res) => {
+        if (!mounted) return;
+        const raw = Array.isArray(res.categories) ? (res.categories as MenuCategory[]) : [];
+        setMenuCategories(flatten(raw));
+      })
+      .catch(() => setMenuCategories([]));
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const selectedIds = feed?.categoryIds ?? [];
+  const overrides = feed?.imageOverrides ?? [];
+  const limit = feed?.limit ?? 24;
+
+  const sliderCategories = useMemo(() => {
+    const base = selectedIds.length > 0 ? menuCategories.filter((x) => selectedIds.includes(Number(x.id))) : menuCategories;
+    const sliced = base.slice(0, Math.max(1, Number(limit) || 24));
+    return sliced.map((cat) => {
+      const override = overrides.find((x) => Number(x.categoryId) === Number(cat.id));
+      const overrideUrl = override?.imageUrl ? resolveCrmMediaAssetUrl(String(override.imageUrl)) : '';
+      const image = overrideUrl || cat.icon || fallbackById[cat.id] || product1;
+      return {
+        id: cat.id,
+        slug: cat.slug,
+        name: cat.name,
+        count: Number(cat.products_count ?? 0),
+        image,
+      };
+    });
+  }, [fallbackById, limit, menuCategories, overrides, selectedIds]);
+
+  const total = sliderCategories.length;
 
   const scrollToIndex = useCallback((index: number) => {
     itemRefs.current[index]?.scrollIntoView({
@@ -26,11 +83,45 @@ const LightCategoryNav = () => {
     });
   }, []);
 
+  useEffect(() => {
+    setCurrent(0);
+  }, [total]);
+
   // Keep a tiny delay so layout is ready before the first scrollIntoView
   useEffect(() => {
     const t = window.setTimeout(() => scrollToIndex(current), 0);
     return () => window.clearTimeout(t);
   }, [current, scrollToIndex]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const need = sliderCategories.filter((c) => !c.image || c.image === product1);
+    if (need.length === 0) return;
+    void (async () => {
+      const entries = await Promise.all(
+        need.map(async (c) => {
+          try {
+            const res = await publicApi.categoryProducts(c.slug, { page: 1, per_page: 1 });
+            const thumb = res.data?.[0]?.thumbnail ? resolveCrmMediaAssetUrl(res.data[0].thumbnail) : '';
+            return [c.id, thumb] as const;
+          } catch {
+            return [c.id, ''] as const;
+          }
+        })
+      );
+      if (cancelled) return;
+      setFallbackById((prev) => {
+        const next = { ...prev };
+        for (const [id, url] of entries) {
+          if (url) next[id] = url;
+        }
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sliderCategories]);
 
   const next = useCallback(() => {
     setCurrent((prev) => (prev + 1) % total);
