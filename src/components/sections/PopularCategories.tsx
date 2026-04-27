@@ -37,6 +37,7 @@ function sleep(ms: number) {
 const PopularCategories = ({ title, subtitle, feed }: Props) => {
   const scrollRef = useDragScroll<HTMLDivElement>();
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
+  const [pickedCategories, setPickedCategories] = useState<MenuCategory[]>([]);
   const [fallbackById, setFallbackById] = useState<Record<number, string>>({});
 
   useEffect(() => {
@@ -58,8 +59,29 @@ const PopularCategories = ({ title, subtitle, feed }: Props) => {
   const overrides = feed?.imageOverrides ?? [];
   const limit = feed?.limit ?? 24;
 
+  useEffect(() => {
+    let mounted = true;
+    if (selectedIds.length === 0) {
+      setPickedCategories([]);
+      return () => {
+        mounted = false;
+      };
+    }
+    publicApi
+      .categoriesByIds(selectedIds)
+      .then((res) => {
+        if (!mounted) return;
+        const rows = Array.isArray(res.data) ? (res.data as MenuCategory[]) : [];
+        setPickedCategories(rows);
+      })
+      .catch(() => setPickedCategories([]));
+    return () => {
+      mounted = false;
+    };
+  }, [selectedIds.join(",")]);
+
   const cats = useMemo(() => {
-    const base = selectedIds.length > 0 ? menuCategories.filter((x) => selectedIds.includes(Number(x.id))) : menuCategories;
+    const base = selectedIds.length > 0 ? pickedCategories : menuCategories;
     const sliced = base.slice(0, Math.max(1, Number(limit) || 24));
     return sliced.map((cat) => {
       const override = overrides.find((x) => Number(x.categoryId) === Number(cat.id));
@@ -77,7 +99,7 @@ const PopularCategories = ({ title, subtitle, feed }: Props) => {
         image,
       };
     });
-  }, [fallbackById, limit, menuCategories, overrides, selectedIds]);
+  }, [fallbackById, limit, menuCategories, overrides, pickedCategories, selectedIds.length]);
 
   useEffect(() => {
     let cancelled = false;

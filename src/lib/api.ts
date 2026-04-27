@@ -1353,6 +1353,23 @@ export const settingsApi = {
 
 export const publicApi = {
   menu: () => get<{ categories: Category[] }>('/public/menu', true),
+  categoriesByIds: (ids: number[]) => {
+    const list = Array.isArray(ids) ? ids.map((x) => Number(x)).filter((x) => Number.isFinite(x) && x > 0) : [];
+    const q = new URLSearchParams();
+    if (list.length > 0) q.set('ids', list.join(','));
+    return get<{
+      data: Array<{
+        id: number;
+        name: string;
+        slug: string;
+        icon?: string | null;
+        parent_id?: number | null;
+        sort_order?: number;
+        is_active?: boolean;
+        products_count?: number;
+      }>;
+    }>(`/public/categories/by-ids?${q}`, true);
+  },
   globalLayout: () =>
     get<{
       template_key: string | null;
