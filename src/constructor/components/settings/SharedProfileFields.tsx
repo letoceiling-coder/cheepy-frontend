@@ -5,7 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { adminCatalogApi, crmMediaApi, type CatalogCategoryItem, type CrmMediaFile, type CrmMediaFolder } from '@/lib/api';
+import { adminCatalogApi, crmMediaApi, resolveCrmMediaAssetUrl, type CatalogCategoryItem, type CrmMediaFile, type CrmMediaFolder } from '@/lib/api';
+import { CrmMediaPickerDialog } from '@/crm/components/CrmMediaPickerDialog';
 import type { CtaSetting, LinkItemSetting, MediaItemSetting, ProductFeedSettings } from '@/constructor/settingsProfiles';
 
 export const SettingField: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
@@ -171,7 +172,8 @@ export function CategoryImageOverridesField({
   onChange: (next: CategoryImageOverride[]) => void;
 }) {
   const [categories, setCategories] = useState<CatalogCategoryItem[]>([]);
-  const { folders, selectedFolderId, setSelectedFolderId, files, refresh } = useMediaLibrarySource();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerCategoryId, setPickerCategoryId] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -194,57 +196,53 @@ export function CategoryImageOverridesField({
     return existing ?? { categoryId: id, mediaFileId: null, imageUrl: '' };
   });
 
-  const mediaOptions = files.map((f) => ({ id: f.id, label: f.original_name, url: f.url }));
+  const openCategoryMediaPicker = (categoryId: number) => {
+    setPickerCategoryId(categoryId);
+    setPickerOpen(true);
+  };
+
+  const clearCategoryMedia = (categoryId: number) => {
+    onChange(rows.map((x) => (x.categoryId === categoryId ? { ...x, mediaFileId: null, imageUrl: '' } : x)));
+  };
+
+  const handlePickCategoryMedia = (file: CrmMediaFile) => {
+    if (!pickerCategoryId) return;
+    onChange(
+      rows.map((x) =>
+        x.categoryId === pickerCategoryId
+          ? { ...x, mediaFileId: file.id, imageUrl: file.url ?? '' }
+          : x
+      )
+    );
+  };
 
   return (
     <div className="space-y-2">
+      <CrmMediaPickerDialog open={pickerOpen} onOpenChange={setPickerOpen} onPick={handlePickCategoryMedia} />
       {rows.length === 0 ? <p className="text-[11px] text-muted-foreground">Сначала выберите категории.</p> : null}
-      <div className="rounded-md border border-border p-2 space-y-2">
-        <div className="flex items-center gap-2">
-          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => window.open('/crm/media', '_blank')}>
-            Открыть медиаменеджер
-          </Button>
-          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={refresh}>
-            Обновить файлы
-          </Button>
-        </div>
-        <Select
-          value={selectedFolderId ? String(selectedFolderId) : 'none'}
-          onValueChange={(v) => setSelectedFolderId(v === 'none' ? null : Number(v))}
-        >
-          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Папка медиаменеджера" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Папка не выбрана</SelectItem>
-            {folders.map((f) => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
       {rows.map((row) => {
         const catName = categories.find((c) => c.id === row.categoryId)?.name ?? `Категория #${row.categoryId}`;
+        const previewUrl = row.imageUrl ? resolveCrmMediaAssetUrl(row.imageUrl) : '';
         return (
           <div key={row.categoryId} className="rounded-md border border-border p-2 space-y-2">
             <p className="text-xs font-medium">{catName}</p>
-            <Select
-              value={row.mediaFileId ? String(row.mediaFileId) : 'none'}
-              onValueChange={(v) => {
-                const selected = v === 'none' ? null : mediaOptions.find((m) => String(m.id) === v);
-                onChange(
-                  rows.map((x) =>
-                    x.categoryId === row.categoryId
-                      ? { ...x, mediaFileId: selected ? Number(v) : null, imageUrl: selected?.url ?? '' }
-                      : x
-                  )
-                );
-              }}
-            >
-              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Файл из Media Library" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Не выбрано</SelectItem>
-                {mediaOptions.map((o) => (
-                  <SelectItem key={o.id} value={String(o.id)}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => openCategoryMediaPicker(row.categoryId)}>
+                {row.mediaFileId ? 'Изменить фото' : 'Выбрать фото'}
+              </Button>
+              {row.mediaFileId ? (
+                <Button type="button" size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={() => clearCategoryMedia(row.categoryId)}>
+                  Очистить
+                </Button>
+              ) : null}
+            </div>
+            <div className="rounded-md border border-dashed border-border p-2">
+              {previewUrl ? (
+                <img src={previewUrl} alt={catName} className="h-24 w-full rounded object-cover" loading="lazy" />
+              ) : (
+                <p className="text-[11px] text-muted-foreground">Фото не выбрано</p>
+              )}
+            </div>
           </div>
         );
       })}
@@ -273,14 +271,24 @@ export function ProductFeedField({ value, onChange }: { value: ProductFeedSettin
 export function MediaPickerField({ items, onChange }: { items: MediaItemSetting[]; onChange: (next: MediaItemSetting[]) => void }) {
   const { folders, selectedFolderId, setSelectedFolderId, files, refresh } = useMediaLibrarySource();
   const options = useMemo(() => files.map((f) => ({ id: f.id, label: f.original_name, url: f.url })), [files]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerItemIndex, setPickerItemIndex] = useState<number | null>(null);
+
+  const openItemMediaPicker = (index: number) => {
+    setPickerItemIndex(index);
+    setPickerOpen(true);
+  };
+
+  const handlePickItemMedia = (file: CrmMediaFile) => {
+    if (pickerItemIndex === null) return;
+    onChange(items.map((x, i) => (i === pickerItemIndex ? { ...x, mediaFileId: file.id, url: file.url ?? '' } : x)));
+  };
 
   return (
     <div className="space-y-2">
+      <CrmMediaPickerDialog open={pickerOpen} onOpenChange={setPickerOpen} onPick={handlePickItemMedia} />
       <div className="rounded-md border border-border p-2 space-y-2">
         <div className="flex items-center gap-2">
-          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => window.open('/crm/media', '_blank')}>
-            Открыть медиаменеджер
-          </Button>
           <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={refresh}>
             Обновить файлы
           </Button>
@@ -301,6 +309,22 @@ export function MediaPickerField({ items, onChange }: { items: MediaItemSetting[
       </Button>
       {(items ?? []).map((item, idx) => (
         <div key={item.id || idx} className="rounded-md border border-border p-2 space-y-2">
+          <div className="flex items-center gap-2">
+            <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => openItemMediaPicker(idx)}>
+              {item.mediaFileId ? 'Изменить файл' : 'Выбрать файл'}
+            </Button>
+            {item.mediaFileId ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs text-destructive"
+                onClick={() => onChange(items.map((x, i) => (i === idx ? { ...x, mediaFileId: null, url: '' } : x)))}
+              >
+                Очистить
+              </Button>
+            ) : null}
+          </div>
           <Select
             value={item.mediaFileId ? String(item.mediaFileId) : 'none'}
             onValueChange={(v) => {
