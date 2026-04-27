@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { adminCatalogApi, crmMediaApi, resolveCrmMediaAssetUrl, type CatalogCategoryItem, type CrmMediaFile, type CrmMediaFolder } from '@/lib/api';
+import { adminCatalogApi, crmMediaApi, fetchCrmMediaBlobUrl, resolveCrmMediaAssetUrl, type CatalogCategoryItem, type CrmMediaFile, type CrmMediaFolder } from '@/lib/api';
 import { CrmMediaPickerDialog } from '@/crm/components/CrmMediaPickerDialog';
 import type { CtaSetting, LinkItemSetting, MediaItemSetting, ProductFeedSettings } from '@/constructor/settingsProfiles';
 
@@ -71,6 +71,63 @@ function useMediaLibrarySource() {
   };
 
   return { folders, selectedFolderId, setSelectedFolderId, files, refresh };
+}
+
+function MediaThumb({
+  mediaFileId,
+  url,
+  alt,
+  className,
+}: {
+  mediaFileId: number | null;
+  url: string;
+  alt: string;
+  className?: string;
+}) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    setBlobUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  }, [mediaFileId, url]);
+
+  useEffect(() => {
+    return () => {
+      setBlobUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    };
+  }, []);
+
+  const src = blobUrl ?? resolveCrmMediaAssetUrl(url);
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      loading="lazy"
+      decoding="async"
+      onError={() => {
+        if (!mediaFileId) return;
+        if (blobUrl) return;
+        void (async () => {
+          try {
+            const u = await fetchCrmMediaBlobUrl(mediaFileId);
+            setBlobUrl((prev) => {
+              if (prev) URL.revokeObjectURL(prev);
+              return u;
+            });
+          } catch {
+            // ignore: keep broken image state
+          }
+        })();
+      }}
+    />
+  );
 }
 
 export function CtaEditor({ value, onChange }: { value: CtaSetting; onChange: (next: CtaSetting) => void }) {
@@ -222,7 +279,6 @@ export function CategoryImageOverridesField({
       {rows.length === 0 ? <p className="text-[11px] text-muted-foreground">Сначала выберите категории.</p> : null}
       {rows.map((row) => {
         const catName = categories.find((c) => c.id === row.categoryId)?.name ?? `Категория #${row.categoryId}`;
-        const previewUrl = row.imageUrl ? resolveCrmMediaAssetUrl(row.imageUrl) : '';
         return (
           <div key={row.categoryId} className="rounded-md border border-border p-2 space-y-2">
             <p className="text-xs font-medium">{catName}</p>
@@ -237,8 +293,13 @@ export function CategoryImageOverridesField({
               ) : null}
             </div>
             <div className="rounded-md border border-dashed border-border p-2">
-              {previewUrl ? (
-                <img src={previewUrl} alt={catName} className="h-24 w-full rounded object-cover" loading="lazy" />
+              {row.imageUrl ? (
+                <MediaThumb
+                  mediaFileId={row.mediaFileId}
+                  url={row.imageUrl}
+                  alt={catName}
+                  className="h-24 w-full rounded object-cover"
+                />
               ) : (
                 <p className="text-[11px] text-muted-foreground">Фото не выбрано</p>
               )}
