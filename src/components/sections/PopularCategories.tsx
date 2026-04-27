@@ -38,6 +38,8 @@ const PopularCategories = ({ title, subtitle, feed }: Props) => {
   const scrollRef = useDragScroll<HTMLDivElement>();
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
   const [pickedCategories, setPickedCategories] = useState<MenuCategory[]>([]);
+  const [pickedLoading, setPickedLoading] = useState(() => Boolean(feed?.categoryIds?.length));
+  const [menuReady, setMenuReady] = useState(false);
   const [fallbackById, setFallbackById] = useState<Record<number, string>>({});
 
   useEffect(() => {
@@ -49,7 +51,10 @@ const PopularCategories = ({ title, subtitle, feed }: Props) => {
         const raw = Array.isArray(res.categories) ? (res.categories as MenuCategory[]) : [];
         setMenuCategories(flatten(raw));
       })
-      .catch(() => setMenuCategories([]));
+      .catch(() => setMenuCategories([]))
+      .finally(() => {
+        if (mounted) setMenuReady(true);
+      });
     return () => {
       mounted = false;
     };
@@ -63,10 +68,12 @@ const PopularCategories = ({ title, subtitle, feed }: Props) => {
     let mounted = true;
     if (selectedIds.length === 0) {
       setPickedCategories([]);
+      setPickedLoading(false);
       return () => {
         mounted = false;
       };
     }
+    setPickedLoading(true);
     publicApi
       .categoriesByIds(selectedIds)
       .then((res) => {
@@ -74,14 +81,18 @@ const PopularCategories = ({ title, subtitle, feed }: Props) => {
         const rows = Array.isArray(res.data) ? (res.data as MenuCategory[]) : [];
         setPickedCategories(rows);
       })
-      .catch(() => setPickedCategories([]));
+      .catch(() => setPickedCategories([]))
+      .finally(() => {
+        if (mounted) setPickedLoading(false);
+      });
     return () => {
       mounted = false;
     };
   }, [selectedIds.join(",")]);
 
   const cats = useMemo(() => {
-    const base = selectedIds.length > 0 ? pickedCategories : menuCategories;
+    const baseRaw = selectedIds.length > 0 ? pickedCategories : menuCategories;
+    const base = baseRaw.filter((c) => Number(c.products_count ?? 0) > 0);
     const sliced = base.slice(0, Math.max(1, Number(limit) || 24));
     return sliced.map((cat) => {
       const override = overrides.find((x) => Number(x.categoryId) === Number(cat.id));
@@ -90,7 +101,7 @@ const PopularCategories = ({ title, subtitle, feed }: Props) => {
           ? publicCrmMediaFileUrl(Number(override.mediaFileId))
           : override?.imageUrl
             ? resolveCrmMediaAssetUrl(String(override.imageUrl))
-            : cat.icon || fallbackById[cat.id] || product1;
+            : fallbackById[cat.id] || product1;
       return {
         id: cat.id,
         slug: cat.slug,
@@ -103,7 +114,12 @@ const PopularCategories = ({ title, subtitle, feed }: Props) => {
 
   useEffect(() => {
     let cancelled = false;
-    const need = cats.filter((c) => !c.image || c.image === product1);
+    const need = cats.filter((c) => {
+      const override = overrides.find((x) => Number(x.categoryId) === Number(c.id));
+      if (override?.mediaFileId || override?.imageUrl) return false;
+      if (c.count <= 0) return false;
+      return !fallbackById[c.id];
+    });
     if (need.length === 0) return;
     void (async () => {
       // small throttle to avoid burst when blocks mount together
@@ -131,7 +147,12 @@ const PopularCategories = ({ title, subtitle, feed }: Props) => {
     return () => {
       cancelled = true;
     };
-  }, [cats]);
+  }, [cats, fallbackById, overrides]);
+
+  const showCards = !(pickedLoading && selectedIds.length > 0) && cats.length > 0;
+
+  const ready = selectedIds.length > 0 ? !pickedLoading : menuReady;
+  if (ready && cats.length === 0) return null;
 
   return (
     <section className="mb-6">
@@ -143,9 +164,9 @@ const PopularCategories = ({ title, subtitle, feed }: Props) => {
         <Link to="/category/all" className="text-sm text-primary hover:underline ml-auto">Все категории</Link>
       </div>
 
-      {/* Desktop: 2x3 grid */}
-      <div className="hidden md:grid grid-cols-3 grid-rows-2 gap-4">
-        {cats.map((cat) => (
+      {/* Desktop: responsive grid (no fixed row count — supports 6/9/… cards) */}
+      <div className="hidden md:grid md:grid-cols-3 gap-4">
+        {showCards ? cats.map((cat) => (
           <Link
             key={cat.slug}
             to={`/category/${cat.slug}`}
@@ -166,7 +187,7 @@ const PopularCategories = ({ title, subtitle, feed }: Props) => {
               </span>
             </div>
           </Link>
-        ))}
+        )) : null}
       </div>
 
       {/* Mobile: horizontal slider */}
@@ -180,7 +201,7 @@ const PopularCategories = ({ title, subtitle, feed }: Props) => {
             <ChevronLeft className="w-4 h-4" />
           </button>
           <div ref={scrollRef} className="flex-1 overflow-x-auto flex gap-3 no-scrollbar snap-x snap-mandatory py-1 cursor-grab active:cursor-grabbing">
-            {cats.map((cat) => (
+            {showCards ? cats.map((cat) => (
               <Link
                 key={cat.slug}
                 to={`/category/${cat.slug}`}
@@ -193,7 +214,7 @@ const PopularCategories = ({ title, subtitle, feed }: Props) => {
                   <p className="text-xs text-primary-foreground/70">{cat.count.toLocaleString()} товаров</p>
                 </div>
               </Link>
-            ))}
+            )) : null}
           </div>
           <button
             onClick={() => scrollRef.current?.scrollBy({ left: 260, behavior: "smooth" })}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDragScroll } from "@/hooks/useDragScroll";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import { publicApi, resolveCrmMediaAssetUrl } from "@/lib/api";
+import { publicApi, publicCrmMediaFileUrl, resolveCrmMediaAssetUrl } from "@/lib/api";
 import product1 from "@/assets/product-1.jpg";
 
 type FeedSettings = {
@@ -35,6 +35,9 @@ const LightCategoryNav = ({ feed }: Props) => {
   const scrollRef = useDragScroll<HTMLDivElement>();
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
+  const [pickedCategories, setPickedCategories] = useState<MenuCategory[]>([]);
+  const [pickedLoading, setPickedLoading] = useState(() => Boolean(feed?.categoryIds?.length));
+  const [menuReady, setMenuReady] = useState(false);
   const [fallbackById, setFallbackById] = useState<Record<number, string>>({});
 
   useEffect(() => {
@@ -46,7 +49,10 @@ const LightCategoryNav = ({ feed }: Props) => {
         const raw = Array.isArray(res.categories) ? (res.categories as MenuCategory[]) : [];
         setMenuCategories(flatten(raw));
       })
-      .catch(() => setMenuCategories([]));
+      .catch(() => setMenuCategories([]))
+      .finally(() => {
+        if (mounted) setMenuReady(true);
+      });
     return () => {
       mounted = false;
     };
@@ -56,13 +62,44 @@ const LightCategoryNav = ({ feed }: Props) => {
   const overrides = feed?.imageOverrides ?? [];
   const limit = feed?.limit ?? 24;
 
+  useEffect(() => {
+    let mounted = true;
+    if (selectedIds.length === 0) {
+      setPickedCategories([]);
+      setPickedLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+    setPickedLoading(true);
+    publicApi
+      .categoriesByIds(selectedIds)
+      .then((res) => {
+        if (!mounted) return;
+        const rows = Array.isArray(res.data) ? (res.data as MenuCategory[]) : [];
+        setPickedCategories(rows);
+      })
+      .catch(() => setPickedCategories([]))
+      .finally(() => {
+        if (mounted) setPickedLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [selectedIds.join(",")]);
+
   const sliderCategories = useMemo(() => {
-    const base = selectedIds.length > 0 ? menuCategories.filter((x) => selectedIds.includes(Number(x.id))) : menuCategories;
+    const baseRaw = selectedIds.length > 0 ? pickedCategories : menuCategories;
+    const base = baseRaw.filter((c) => Number(c.products_count ?? 0) > 0);
     const sliced = base.slice(0, Math.max(1, Number(limit) || 24));
     return sliced.map((cat) => {
       const override = overrides.find((x) => Number(x.categoryId) === Number(cat.id));
-      const overrideUrl = override?.imageUrl ? resolveCrmMediaAssetUrl(String(override.imageUrl)) : '';
-      const image = overrideUrl || cat.icon || fallbackById[cat.id] || product1;
+      const image =
+        override?.mediaFileId
+          ? publicCrmMediaFileUrl(Number(override.mediaFileId))
+          : override?.imageUrl
+            ? resolveCrmMediaAssetUrl(String(override.imageUrl))
+            : fallbackById[cat.id] || product1;
       return {
         id: cat.id,
         slug: cat.slug,
@@ -71,7 +108,7 @@ const LightCategoryNav = ({ feed }: Props) => {
         image,
       };
     });
-  }, [fallbackById, limit, menuCategories, overrides, selectedIds]);
+  }, [fallbackById, limit, menuCategories, overrides, pickedCategories, selectedIds]);
 
   const total = sliderCategories.length;
 
@@ -95,7 +132,12 @@ const LightCategoryNav = ({ feed }: Props) => {
 
   useEffect(() => {
     let cancelled = false;
-    const need = sliderCategories.filter((c) => !c.image || c.image === product1);
+    const need = sliderCategories.filter((c) => {
+      const override = overrides.find((x) => Number(x.categoryId) === Number(c.id));
+      if (override?.mediaFileId || override?.imageUrl) return false;
+      if (c.count <= 0) return false;
+      return !fallbackById[c.id];
+    });
     if (need.length === 0) return;
     void (async () => {
       const entries = await Promise.all(
@@ -121,17 +163,22 @@ const LightCategoryNav = ({ feed }: Props) => {
     return () => {
       cancelled = true;
     };
-  }, [sliderCategories]);
+  }, [sliderCategories, fallbackById, overrides]);
+
+  const ready = selectedIds.length > 0 ? !pickedLoading : menuReady;
 
   const next = useCallback(() => {
-    setCurrent((prev) => (prev + 1) % total);
+    setCurrent((prev) => (total <= 0 ? 0 : (prev + 1) % total));
   }, [total]);
 
   const prev = useCallback(() => {
-    setCurrent((prev) => (prev - 1 + total) % total);
+    setCurrent((prev) => (total <= 0 ? 0 : (prev - 1 + total) % total));
   }, [total]);
 
-  const progress = ((current + 1) / total) * 100;
+  const progress = total > 0 ? ((current + 1) / total) * 100 : 0;
+
+  if (pickedLoading && selectedIds.length > 0) return null;
+  if (ready && total === 0) return null;
 
   return (
     <section className="mb-8 w-full">

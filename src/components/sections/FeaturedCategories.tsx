@@ -41,6 +41,8 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
   const [pickedCategories, setPickedCategories] = useState<MenuCategory[]>([]);
+  const [pickedLoading, setPickedLoading] = useState(() => Boolean(feed?.categoryIds?.length));
+  const [menuReady, setMenuReady] = useState(false);
   const [fallbackById, setFallbackById] = useState<Record<number, string>>({});
 
   useEffect(() => {
@@ -52,7 +54,10 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
         const raw = Array.isArray(res.categories) ? (res.categories as MenuCategory[]) : [];
         setMenuCategories(flatten(raw));
       })
-      .catch(() => setMenuCategories([]));
+      .catch(() => setMenuCategories([]))
+      .finally(() => {
+        if (mounted) setMenuReady(true);
+      });
     return () => {
       mounted = false;
     };
@@ -66,10 +71,12 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
     let mounted = true;
     if (selectedIds.length === 0) {
       setPickedCategories([]);
+      setPickedLoading(false);
       return () => {
         mounted = false;
       };
     }
+    setPickedLoading(true);
     publicApi
       .categoriesByIds(selectedIds)
       .then((res) => {
@@ -77,14 +84,18 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
         const rows = Array.isArray(res.data) ? (res.data as MenuCategory[]) : [];
         setPickedCategories(rows);
       })
-      .catch(() => setPickedCategories([]));
+      .catch(() => setPickedCategories([]))
+      .finally(() => {
+        if (mounted) setPickedLoading(false);
+      });
     return () => {
       mounted = false;
     };
   }, [selectedIds.join(",")]);
 
   const categories = useMemo(() => {
-    const base = selectedIds.length > 0 ? pickedCategories : menuCategories;
+    const baseRaw = selectedIds.length > 0 ? pickedCategories : menuCategories;
+    const base = baseRaw.filter((c) => Number(c.products_count ?? 0) > 0);
     const sliced = base.slice(0, Math.max(1, Number(limit) || 24));
     return sliced.map((cat) => {
       const override = overrides.find((x) => Number(x.categoryId) === Number(cat.id));
@@ -93,7 +104,7 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
           ? publicCrmMediaFileUrl(Number(override.mediaFileId))
           : override?.imageUrl
             ? resolveCrmMediaAssetUrl(String(override.imageUrl))
-            : cat.icon || fallbackById[cat.id] || product1;
+            : fallbackById[cat.id] || product1;
       return {
         id: cat.id,
         slug: cat.slug,
@@ -106,7 +117,12 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
 
   useEffect(() => {
     let cancelled = false;
-    const need = categories.filter((c) => !c.image || c.image === product1);
+    const need = categories.filter((c) => {
+      const override = overrides.find((x) => Number(x.categoryId) === Number(c.id));
+      if (override?.mediaFileId || override?.imageUrl) return false;
+      if (c.count <= 0) return false;
+      return !fallbackById[c.id];
+    });
     if (need.length === 0) return;
     void (async () => {
       await sleep(30);
@@ -133,11 +149,16 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
     return () => {
       cancelled = true;
     };
-  }, [categories]);
+  }, [categories, fallbackById, overrides]);
 
   const scroll = (dir: number) => {
     scrollRef.current?.scrollBy({ left: dir * 320, behavior: "smooth" });
   };
+
+  const ready = selectedIds.length > 0 ? !pickedLoading : menuReady;
+  if (ready && categories.length === 0) return null;
+
+  const showStrip = !(pickedLoading && selectedIds.length > 0) && categories.length > 0;
 
   return (
     <section
@@ -159,7 +180,7 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
         </div>
       </div>
       <div ref={scrollRef} className="flex gap-5 overflow-x-auto no-scrollbar pb-2 cursor-grab active:cursor-grabbing">
-        {categories.map((cat, i) => {
+        {showStrip ? categories.map((cat, i) => {
           return (
             <Link
               key={`${cat.slug}-${i}`}
@@ -190,7 +211,7 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
               </div>
             </Link>
           );
-        })}
+        }) : null}
       </div>
     </section>
   );
