@@ -310,14 +310,36 @@ export default function CrmDashboardPage() {
 
               const message = `${prompt.trim()}\n\n---\n\nТекущее описание товара для правки:\n\n${currentDesc || "(пусто)"}\n\n---\nФинальное требование: выведи только русское описание для покупателя; без иероглифов и без просьб сменить язык.`;
 
-              const chatRes = await retry(() => adminSiteAlApi.chat({ message }), 3);
-              const reply = typeof chatRes.reply === "string" ? chatRes.reply.trim() : "";
-              if (!reply) throw new Error("Агент не вернул текст");
-              if (siteAlDescriptionReplyViolatesRussianOnly(reply)) {
-                throw new Error("Агент вернул недопустимый (не русский) текст");
+              // Retry *generation quality* up to 3 times (not only network errors).
+              let normalized = "";
+              let lastGenErr: Error | null = null;
+              for (let attempt = 1; attempt <= 3; attempt++) {
+                const attemptMsg =
+                  attempt === 1
+                    ? message
+                    : `${message}\n\n---\n\nПовторная попытка №${attempt}:\n— Ответ строго на русском.\n— Если предыдущая попытка дала не-русский текст или пустоту, переформулируй заново по фактам.\n— Не вставляй цену, ссылки, мусор, и не используй Markdown.\n`;
+                try {
+                  const chatRes = await retry(() => adminSiteAlApi.chat({ message: attemptMsg }), 3);
+                  const reply = typeof chatRes.reply === "string" ? chatRes.reply.trim() : "";
+                  if (!reply) throw new Error("Агент не вернул текст");
+                  if (siteAlDescriptionReplyViolatesRussianOnly(reply)) {
+                    throw new Error("Агент вернул недопустимый (не русский) текст");
+                  }
+                  const n = normalizeAgentDescription(reply);
+                  if (!n) throw new Error("Нормализованный текст пустой");
+                  normalized = n;
+                  lastGenErr = null;
+                  break;
+                } catch (e: unknown) {
+                  const msg = e instanceof Error ? e.message : "Ошибка генерации";
+                  lastGenErr = new Error(msg);
+                  pushLog("warn", `RETRY #${row.id}: попытка ${attempt}/3 неудачна — ${msg}`);
+                  await sleep(250 + attempt * 250);
+                }
               }
-              const normalized = normalizeAgentDescription(reply);
-              if (!normalized) throw new Error("Нормализованный текст пустой");
+              if (!normalized) {
+                throw lastGenErr ?? new Error("Не удалось сгенерировать описание");
+              }
 
               await retry(() => adminSystemProductsApi.update(row.id, { description: normalized }), 3);
               await retry(() => adminSystemProductsApi.moderate(row.id, { status: "approved" }), 3);

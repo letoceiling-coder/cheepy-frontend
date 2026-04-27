@@ -328,12 +328,21 @@ export default function CrmModerationDetailPage() {
   });
 
   const descriptionAgentMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const message = `${descriptionAgentPrompt.trim()}\n\n---\n\nТекущее описание товара для правки:\n\n${description.trim() || "(пусто)"}\n\n---\nФинальное требование: выведи только русское описание для покупателя; без иероглифов и без просьб сменить язык.`;
-      return adminSiteAlApi.chat({
-        message,
-        conversationId: siteAlConversationId || undefined,
-      });
+      let lastErr: unknown = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          return await adminSiteAlApi.chat({
+            message,
+            conversationId: siteAlConversationId || undefined,
+          });
+        } catch (e) {
+          lastErr = e;
+          await new Promise((r) => setTimeout(r, 400 * attempt));
+        }
+      }
+      throw lastErr instanceof Error ? lastErr : new Error("Не удалось получить ответ агента");
     },
     onSuccess: (data) => {
       if (data.conversationId) setSiteAlConversationId(data.conversationId);
@@ -348,7 +357,42 @@ export default function CrmModerationDetailPage() {
         }
         const normalized = normalizeAgentDescription(reply);
         setDescription(normalized);
-        toast.success("Описание подставлено из ответа агента");
+        // Автосохранение + авто-одобрение, чтобы товар сразу появился на витрине.
+        void (async () => {
+          try {
+            // 1) сохранить описание
+            let lastErr: unknown = null;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              try {
+                await adminSystemProductsApi.update(id, { description: normalized || null });
+                lastErr = null;
+                break;
+              } catch (e) {
+                lastErr = e;
+                await new Promise((r) => setTimeout(r, 400 * attempt));
+              }
+            }
+            if (lastErr) throw lastErr;
+
+            // 2) одобрить модерацию
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              try {
+                await adminSystemProductsApi.moderate(id, { status: "approved" });
+                break;
+              } catch (e) {
+                lastErr = e;
+                await new Promise((r) => setTimeout(r, 400 * attempt));
+              }
+            }
+            if (lastErr) throw lastErr;
+
+            queryClient.invalidateQueries({ queryKey: productQueryKey(id) });
+            queryClient.invalidateQueries({ queryKey: QK_LIST });
+            toast.success("Описание сохранено и товар одобрен");
+          } catch (e: unknown) {
+            toast.error(e instanceof Error ? e.message : "Не удалось сохранить/одобрить");
+          }
+        })();
       } else {
         toast.warning("Агент не вернул текст — проверьте настройки SITE_AL в .env на сервере API");
       }
