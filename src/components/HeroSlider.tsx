@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { publicCrmMediaFileUrl, resolveCrmMediaAssetUrl } from "@/lib/api";
 import hero1 from "@/assets/hero-1.jpg";
 import hero2 from "@/assets/hero-2.jpg";
 import hero3 from "@/assets/hero-3.jpg";
@@ -38,7 +39,12 @@ const HeroSlider = ({ media, overlayOpacity, cta, className }: HeroSliderProps) 
     const items = Array.isArray(media) ? media : [];
     const normalized = items
       .map((x) => {
-        const imageUrl = typeof x?.url === "string" ? x.url : "";
+        const imageUrl =
+          typeof x?.mediaFileId === "number" && x.mediaFileId
+            ? publicCrmMediaFileUrl(Number(x.mediaFileId))
+            : typeof x?.url === "string"
+              ? resolveCrmMediaAssetUrl(x.url)
+              : "";
         const title = typeof x?.title === "string" ? x.title : "";
         const subtitle = typeof x?.subtitle === "string" ? x.subtitle : "";
         const fallbackCtaText = typeof cta?.text === "string" ? cta.text : "";
