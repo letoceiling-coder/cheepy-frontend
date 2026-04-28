@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { adminCatalogApi, crmMediaApi, fetchCrmMediaBlobUrl, resolveCrmMediaAssetUrl, type CatalogCategoryItem, type CrmMediaFile, type CrmMediaFolder } from '@/lib/api';
 import { CrmMediaPickerDialog } from '@/crm/components/CrmMediaPickerDialog';
 import type { CtaSetting, LinkItemSetting, MediaItemSetting, ProductFeedSettings } from '@/constructor/settingsProfiles';
+import { IconPickerDialog } from '@/constructor/components/settings/IconPickerDialog';
+import * as LucideIcons from 'lucide-react';
 
 export const SettingField: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="space-y-1.5">
@@ -458,6 +460,107 @@ export function MediaPickerField({ items, onChange }: { items: MediaItemSetting[
           </details>
         </div>
       ))}
+    </div>
+  );
+}
+
+type AdvantageItemSetting = {
+  id: string;
+  icon: string;
+  title: string;
+  text: string;
+};
+
+export function AdvantagesItemsField({
+  items,
+  onChange,
+}: {
+  items: AdvantageItemSetting[];
+  onChange: (next: AdvantageItemSetting[]) => void;
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerIndex, setPickerIndex] = useState<number | null>(null);
+
+  const safe = Array.isArray(items) ? items : [];
+
+  const addItem = () => {
+    onChange([...(safe ?? []), { id: uid('adv'), icon: 'Shield', title: 'Преимущество', text: 'Описание преимущества' }]);
+  };
+
+  const updateItem = (idx: number, patch: Partial<AdvantageItemSetting>) => {
+    onChange(safe.map((x, i) => (i === idx ? { ...x, ...patch } : x)));
+  };
+
+  const removeItem = (idx: number) => {
+    onChange(safe.filter((_, i) => i !== idx));
+  };
+
+  const openPicker = (idx: number) => {
+    setPickerIndex(idx);
+    setPickerOpen(true);
+  };
+
+  const handlePick = (iconName: string) => {
+    if (pickerIndex === null) return;
+    updateItem(pickerIndex, { icon: iconName });
+  };
+
+  return (
+    <div className="space-y-2">
+      <IconPickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        value={pickerIndex !== null ? safe[pickerIndex]?.icon : undefined}
+        onPick={handlePick}
+        title="Выбор иконки для преимущества"
+      />
+
+      <Button type="button" size="sm" variant="outline" className="h-7 text-xs w-full" onClick={addItem}>
+        + Добавить преимущество
+      </Button>
+
+      {safe.length === 0 ? <p className="text-[11px] text-muted-foreground">Добавьте хотя бы одно преимущество.</p> : null}
+
+      {safe.map((it, idx) => {
+        const Icon = (LucideIcons as any)[it.icon] as React.ComponentType<any> | undefined;
+        return (
+          <div key={it.id || idx} className="rounded-md border border-border p-2 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted shrink-0">
+                  {Icon ? <Icon className="h-4 w-4" /> : <span className="text-[10px] text-muted-foreground">?</span>}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium truncate">Преимущество {idx + 1}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{it.icon || '—'}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => openPicker(idx)}>
+                  Иконка
+                </Button>
+                <Button type="button" size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={() => removeItem(idx)}>
+                  Удалить
+                </Button>
+              </div>
+            </div>
+
+            <Input
+              className="h-8 text-xs"
+              placeholder="Заголовок"
+              value={it.title ?? ''}
+              onChange={(e) => updateItem(idx, { title: e.target.value })}
+            />
+            <Textarea
+              className="text-xs min-h-[54px]"
+              placeholder="Описание"
+              value={it.text ?? ''}
+              onChange={(e) => updateItem(idx, { text: e.target.value })}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }

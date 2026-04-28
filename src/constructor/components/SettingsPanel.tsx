@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Copy, Eye, EyeOff } from 'lucide-react';
 import { BlockConfig, type BlockSettings, type FooterSettings, type HeaderSettings } from '../types';
 import { getSettingsProfileForBlockType, normalizeBlockProfileSettings } from '../settingsProfiles';
-import { CategoryImageOverridesField, CategoryTreeField, CtaEditor, LinksEditor, MediaPickerField, ProductFeedField, SettingField } from './settings/SharedProfileFields';
+import { AdvantagesItemsField, CategoryImageOverridesField, CategoryTreeField, CtaEditor, LinksEditor, MediaPickerField, ProductFeedField, SettingField } from './settings/SharedProfileFields';
 
 interface SettingsPanelProps {
   block: BlockConfig | null;
@@ -232,6 +232,14 @@ function ProfileSettingsForm({
     <div className="space-y-3">
       <SettingField label="Title"><Input className="h-8 text-xs" value={normalized.title ?? ''} onChange={(e) => update({ title: e.target.value })} /></SettingField>
       <SettingField label="Subtitle"><Input className="h-8 text-xs" value={normalized.subtitle ?? ''} onChange={(e) => update({ subtitle: e.target.value })} /></SettingField>
+      {block.type === 'MarketplaceAdvantages' ? (
+        <SettingField label="Преимущества">
+          <AdvantagesItemsField
+            items={Array.isArray((normalized as any).items) ? (normalized as any).items : []}
+            onChange={(items) => update({ items })}
+          />
+        </SettingField>
+      ) : null}
       {profile === 'P-PRODUCT-FEED' ? <ProductFeedField value={normalized.feed} onChange={(feed) => update({ feed })} /> : null}
       {profile === 'P-CATEGORY-FEED' ? (
         <>
