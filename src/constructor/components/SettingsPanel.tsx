@@ -20,10 +20,14 @@ interface SettingsPanelProps {
   onRemove: (id: string) => void;
   onDuplicate: (id: string) => void;
   onToggleVisibility: (id: string) => void;
+  /** Опционально: пресеты ширины панели (S/M/L) от родителя. */
+  onSetWidth?: (preset: 's' | 'm' | 'l') => void;
+  /** Текущая ширина панели в px (для подсветки активного пресета). */
+  currentWidth?: number;
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
-  block, onUpdateSettings, onRemove, onDuplicate, onToggleVisibility,
+  block, onUpdateSettings, onRemove, onDuplicate, onToggleVisibility, onSetWidth, currentWidth,
 }) => {
   if (!block) {
     return (
@@ -63,6 +67,33 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <Trash2 className="h-3 w-3" />
           </Button>
         </div>
+
+        {onSetWidth ? (
+          <div className="flex items-center gap-1 mt-2">
+            <span className="text-[10px] text-muted-foreground">Ширина:</span>
+            {([
+              { id: 's', label: 'S', px: 320 },
+              { id: 'm', label: 'M', px: 440 },
+              { id: 'l', label: 'L', px: 600 },
+            ] as const).map((p) => {
+              const isActive = typeof currentWidth === 'number' && Math.abs(currentWidth - p.px) <= 8;
+              return (
+                <Button
+                  key={p.id}
+                  type="button"
+                  size="sm"
+                  variant={isActive ? 'default' : 'outline'}
+                  className="h-6 px-2 text-[10px]"
+                  onClick={() => onSetWidth(p.id)}
+                  title={`${p.px}px`}
+                >
+                  {p.label}
+                </Button>
+              );
+            })}
+            <span className="text-[10px] text-muted-foreground ml-auto">{currentWidth ?? ''}px</span>
+          </div>
+        ) : null}
       </div>
 
       <ScrollArea className="flex-1">

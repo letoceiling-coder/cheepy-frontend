@@ -19,6 +19,45 @@ const ConstructorPage: React.FC = () => {
   const store = useConstructorStore();
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
+
+  // Изменяемая ширина правой панели настроек (перетаскиванием за левый край).
+  const RIGHT_PANEL_MIN = 288;
+  const RIGHT_PANEL_MAX = 720;
+  const RIGHT_PANEL_KEY = 'constructor.rightPanelWidth';
+  const [rightPanelWidth, setRightPanelWidth] = useState<number>(() => {
+    if (typeof window === 'undefined') return 320;
+    const raw = window.localStorage.getItem(RIGHT_PANEL_KEY);
+    const n = raw ? Number(raw) : NaN;
+    if (!Number.isFinite(n)) return 320;
+    return Math.min(RIGHT_PANEL_MAX, Math.max(RIGHT_PANEL_MIN, Math.round(n)));
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(RIGHT_PANEL_KEY, String(rightPanelWidth));
+    } catch {
+      // ignore
+    }
+  }, [rightPanelWidth]);
+  const startResizeRight = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = rightPanelWidth;
+    const onMove = (ev: MouseEvent) => {
+      const dx = startX - ev.clientX; // тащим влево → ширина увеличивается
+      const next = Math.min(RIGHT_PANEL_MAX, Math.max(RIGHT_PANEL_MIN, startWidth + dx));
+      setRightPanelWidth(next);
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+  }, [rightPanelWidth]);
   const [cmsPageTitle, setCmsPageTitle] = useState<string | null>(null);
   const [cmsSaving, setCmsSaving] = useState(false);
   const [cmsLoading, setCmsLoading] = useState(false);
@@ -358,13 +397,43 @@ const ConstructorPage: React.FC = () => {
         />
 
         {rightPanelOpen && !store.previewMode && (
-          <div className="w-72 border-l border-border bg-card shrink-0 animate-slide-in-right">
+          <div
+            className="relative border-l border-border bg-card shrink-0 animate-slide-in-right"
+            style={{ width: `${rightPanelWidth}px` }}
+          >
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Изменить ширину панели настроек"
+              tabIndex={0}
+              onMouseDown={startResizeRight}
+              onDoubleClick={() => setRightPanelWidth(320)}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  setRightPanelWidth((w) => Math.min(RIGHT_PANEL_MAX, w + 16));
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  setRightPanelWidth((w) => Math.max(RIGHT_PANEL_MIN, w - 16));
+                }
+              }}
+              className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize z-10 group"
+              title="Перетащите, чтобы изменить ширину (двойной клик — сброс)"
+            >
+              <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border group-hover:bg-primary/60 transition-colors" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-1 rounded-full bg-border group-hover:bg-primary transition-colors" />
+            </div>
             <SettingsPanel
               block={store.selectedBlock}
               onUpdateSettings={store.updateBlockSettings}
               onRemove={store.removeBlock}
               onDuplicate={store.duplicateBlock}
               onToggleVisibility={store.toggleBlockVisibility}
+              onSetWidth={(preset) => {
+                const map = { s: 320, m: 440, l: 600 } as const;
+                setRightPanelWidth(map[preset] ?? 320);
+              }}
+              currentWidth={rightPanelWidth}
             />
           </div>
         )}
