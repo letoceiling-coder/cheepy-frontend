@@ -8,7 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 type IconName = string;
 
 function isLucideComponent(x: unknown): x is React.ComponentType<any> {
-  return typeof x === "function";
+  // lucide-react exports icons as React components, often as forwardRef objects (typeof === 'object')
+  if (!x) return false;
+  const t = typeof x;
+  return t === "function" || t === "object";
 }
 
 function getAllLucideIconNames(): IconName[] {
