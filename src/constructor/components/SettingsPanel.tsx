@@ -250,6 +250,18 @@ function ProfileSettingsForm({
       {profile === 'P-HERO-MEDIA' || profile === 'P-BANNER-MEDIA' || profile === 'P-VIDEO-MEDIA' || profile === 'P-LOOKBOOK-MEDIA' ? (
         <SettingField label="Медиа"><MediaPickerField items={normalized.media} onChange={(media) => update({ media })} /></SettingField>
       ) : null}
+      {profile === 'P-HERO-MEDIA' ? (
+        <SettingField label="Затемнение/оверлей (%)">
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            className="h-8 text-xs"
+            value={Number((normalized as any).overlayOpacity ?? 30)}
+            onChange={(e) => update({ overlayOpacity: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })}
+          />
+        </SettingField>
+      ) : null}
       {profile === 'P-HERO-MEDIA' ? <SettingField label="CTA"><CtaEditor value={normalized.cta} onChange={(cta) => update({ cta })} /></SettingField> : null}
       {profile === 'P-NAV-GLOBAL' ? <SettingField label="Ссылки"><LinksEditor links={(normalized as any).links ?? []} onChange={(links) => update({ links })} /></SettingField> : null}
       {profile === 'P-UTILITY' ? (
