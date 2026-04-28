@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -330,8 +330,6 @@ export function ProductFeedField({ value, onChange }: { value: ProductFeedSettin
 }
 
 export function MediaPickerField({ items, onChange }: { items: MediaItemSetting[]; onChange: (next: MediaItemSetting[]) => void }) {
-  const { folders, selectedFolderId, setSelectedFolderId, files, refresh } = useMediaLibrarySource();
-  const options = useMemo(() => files.map((f) => ({ id: f.id, label: f.original_name, url: f.url })), [files]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerItemIndex, setPickerItemIndex] = useState<number | null>(null);
 
@@ -360,28 +358,11 @@ export function MediaPickerField({ items, onChange }: { items: MediaItemSetting[
   return (
     <div className="space-y-2">
       <CrmMediaPickerDialog open={pickerOpen} onOpenChange={setPickerOpen} onPick={handlePickItemMedia} />
-      <div className="rounded-md border border-border p-2 space-y-2">
-        <div className="flex items-center gap-2">
-          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={refresh}>
-            Обновить файлы
-          </Button>
-        </div>
-        <Select
-          value={selectedFolderId ? String(selectedFolderId) : 'none'}
-          onValueChange={(v) => setSelectedFolderId(v === 'none' ? null : Number(v))}
-        >
-          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Папка медиаменеджера" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Папка не выбрана</SelectItem>
-            {folders.map((f) => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
       <Button
         type="button"
         size="sm"
         variant="outline"
-        className="h-7 text-xs"
+        className="h-7 text-xs w-full"
         onClick={() =>
           onChange([
             ...(items ?? []),
@@ -389,103 +370,92 @@ export function MediaPickerField({ items, onChange }: { items: MediaItemSetting[
           ])
         }
       >
-        Добавить слайд
+        + Добавить слайд
       </Button>
       {(items ?? []).map((item, idx) => (
         <div key={item.id || idx} className="rounded-md border border-border p-2 space-y-2">
-          <div className="flex items-center gap-2 justify-between">
-            <p className="text-[11px] text-muted-foreground">Слайд {idx + 1}</p>
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-medium text-muted-foreground">Слайд {idx + 1}</p>
             <div className="flex items-center gap-1">
               <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-7 px-2 text-xs"
-                disabled={idx === 0}
-                onClick={() => moveItem(idx, idx - 1)}
-                title="Вверх"
-              >
-                ↑
-              </Button>
+                type="button" size="sm" variant="ghost" className="h-6 w-6 p-0 text-xs"
+                disabled={idx === 0} onClick={() => moveItem(idx, idx - 1)} title="Переместить вверх"
+              >↑</Button>
               <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-7 px-2 text-xs"
-                disabled={idx === (items?.length ?? 0) - 1}
-                onClick={() => moveItem(idx, idx + 1)}
-                title="Вниз"
-              >
-                ↓
-              </Button>
+                type="button" size="sm" variant="ghost" className="h-6 w-6 p-0 text-xs"
+                disabled={idx === (items?.length ?? 0) - 1} onClick={() => moveItem(idx, idx + 1)} title="Переместить вниз"
+              >↓</Button>
               <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-7 px-2 text-xs"
+                type="button" size="sm" variant="ghost" className="h-6 w-6 p-0 text-xs"
                 onClick={() => onChange([...items.slice(0, idx + 1), { ...item, id: uid('media') }, ...items.slice(idx + 1)])}
                 title="Дублировать"
-              >
-                ⧉
-              </Button>
+              >⧉</Button>
+              <Button
+                type="button" size="sm" variant="ghost" className="h-6 w-6 p-0 text-xs text-destructive"
+                onClick={() => onChange(items.filter((_, i) => i !== idx))} title="Удалить слайд"
+              >✕</Button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => openItemMediaPicker(idx)}>
-              {item.mediaFileId ? 'Изменить файл' : 'Выбрать файл'}
-            </Button>
-            {item.mediaFileId ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs text-destructive"
-                onClick={() => onChange(items.map((x, i) => (i === idx ? { ...x, mediaFileId: null, url: '' } : x)))}
-              >
-                Очистить
-              </Button>
-            ) : null}
-          </div>
-          <div className="rounded-md border border-dashed border-border p-2">
+
+          <div className="rounded-md border border-dashed border-border overflow-hidden">
             {item.url ? (
-              <MediaThumb mediaFileId={item.mediaFileId ?? null} url={item.url} alt={item.alt || item.title || `Slide ${idx + 1}`} className="h-24 w-full rounded object-cover" />
+              <div className="relative group">
+                <MediaThumb
+                  mediaFileId={item.mediaFileId ?? null}
+                  url={item.url}
+                  alt={item.alt || item.title || `Слайд ${idx + 1}`}
+                  className="h-28 w-full object-cover"
+                />
+                <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
+                  <Button type="button" size="sm" className="h-7 text-xs" onClick={() => openItemMediaPicker(idx)}>
+                    Заменить
+                  </Button>
+                  <Button
+                    type="button" size="sm" variant="outline" className="h-7 text-xs text-destructive"
+                    onClick={() => onChange(items.map((x, i) => (i === idx ? { ...x, mediaFileId: null, url: '' } : x)))}
+                  >
+                    Убрать
+                  </Button>
+                </div>
+              </div>
             ) : (
-              <p className="text-[11px] text-muted-foreground">Файл не выбран</p>
+              <button
+                type="button"
+                className="w-full h-20 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:bg-accent/50 transition-colors text-xs"
+                onClick={() => openItemMediaPicker(idx)}
+              >
+                <span className="text-lg">🖼</span>
+                <span>Нажмите, чтобы выбрать фото</span>
+              </button>
             )}
           </div>
-          <Select
-            value={item.mediaFileId ? String(item.mediaFileId) : 'none'}
-            onValueChange={(v) => {
-              if (v === 'none') {
-                onChange(items.map((x, i) => (i === idx ? { ...x, mediaFileId: null, url: '' } : x)));
-                return;
-              }
-              const selected = options.find((o) => String(o.id) === v);
-              onChange(items.map((x, i) => (i === idx ? { ...x, mediaFileId: Number(v), url: selected?.url ?? '' } : x)));
-            }}
-          >
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Выбрать файл из Media Library" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Не выбрано</SelectItem>
-              {options.map((o) => <SelectItem key={o.id} value={String(o.id)}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Input className="h-8 text-xs" placeholder="Заголовок" value={item.title} onChange={(e) => updateItem(idx, { title: e.target.value })} />
-          <Input className="h-8 text-xs" placeholder="Подзаголовок" value={item.subtitle ?? ''} onChange={(e) => updateItem(idx, { subtitle: e.target.value })} />
-          <Input className="h-8 text-xs" placeholder="Alt (для изображения)" value={item.alt ?? ''} onChange={(e) => updateItem(idx, { alt: e.target.value })} />
-          <Textarea className="text-xs min-h-[54px]" placeholder="Подпись (опционально)" value={item.caption} onChange={(e) => updateItem(idx, { caption: e.target.value })} />
 
-          <div className="rounded-md border border-border p-2 space-y-2">
-            <p className="text-[11px] font-medium">Кнопка (CTA) для этого слайда</p>
-            <CtaEditor
-              value={item.cta ?? { text: '', url: '', target: '_self' }}
-              onChange={(next) => updateItem(idx, { cta: next })}
-            />
+          <Input className="h-8 text-xs" placeholder="Заголовок слайда" value={item.title} onChange={(e) => updateItem(idx, { title: e.target.value })} />
+          <Input className="h-8 text-xs" placeholder="Подзаголовок" value={item.subtitle ?? ''} onChange={(e) => updateItem(idx, { subtitle: e.target.value })} />
+
+          <div className="rounded-md border border-border p-2 space-y-1.5">
+            <p className="text-[11px] font-medium text-muted-foreground">Кнопка на слайде</p>
+            <Input className="h-8 text-xs" placeholder="Текст кнопки (например: Смотреть)" value={item.cta?.text ?? ''} onChange={(e) => updateItem(idx, { cta: { ...(item.cta ?? { url: '', target: '_self' }), text: e.target.value } })} />
+            <Input className="h-8 text-xs" placeholder="Ссылка (/catalog или https://...)" value={item.cta?.url ?? ''} onChange={(e) => updateItem(idx, { cta: { ...(item.cta ?? { text: '', target: '_self' }), url: e.target.value } })} />
+            <Select
+              value={item.cta?.target ?? '_self'}
+              onValueChange={(v) => updateItem(idx, { cta: { ...(item.cta ?? { text: '', url: '' }), target: v as '_self' | '_blank' } })}
+            >
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_self">Открыть на этой странице</SelectItem>
+                <SelectItem value="_blank">Открыть в новой вкладке</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <Button type="button" size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={() => onChange(items.filter((_, i) => i !== idx))}>
-            Удалить слайд
-          </Button>
+          <details className="text-xs">
+            <summary className="cursor-pointer text-muted-foreground select-none">Дополнительно (alt, подпись)</summary>
+            <div className="mt-2 space-y-2">
+              <Input className="h-8 text-xs" placeholder="Alt (описание изображения для SEO)" value={item.alt ?? ''} onChange={(e) => updateItem(idx, { alt: e.target.value })} />
+              <Textarea className="text-xs min-h-[48px]" placeholder="Подпись (опционально)" value={item.caption} onChange={(e) => updateItem(idx, { caption: e.target.value })} />
+            </div>
+          </details>
         </div>
       ))}
     </div>
