@@ -93,7 +93,9 @@ const PopularCategories = ({ title, subtitle, feed }: Props) => {
   const cats = useMemo(() => {
     const baseRaw = selectedIds.length > 0 ? pickedCategories : menuCategories;
     const base = baseRaw.filter((c) => Number(c.products_count ?? 0) > 0);
-    const sliced = base.slice(0, Math.max(1, Number(limit) || 24));
+    // If admin explicitly picked categories, show all non-empty picked categories.
+    // For auto mode (menu), apply limit.
+    const sliced = selectedIds.length > 0 ? base : base.slice(0, Math.max(1, Number(limit) || 24));
     return sliced.map((cat) => {
       const override = overrides.find((x) => Number(x.categoryId) === Number(cat.id));
       const image =
