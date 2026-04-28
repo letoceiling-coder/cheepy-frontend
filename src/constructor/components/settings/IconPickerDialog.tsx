@@ -24,10 +24,15 @@ function getAllLucideIconNames(): IconName[] {
     "DynamicIcon",
     "DynamicIconProps",
   ]);
-  return Object.keys(LucideIcons)
+  const source: Record<string, unknown> =
+    typeof (LucideIcons as any).icons === "object" && (LucideIcons as any).icons
+      ? (LucideIcons as any).icons
+      : (LucideIcons as any);
+
+  return Object.keys(source)
     .filter((k) => !blacklist.has(k))
     .filter((k) => k[0] === k[0]?.toUpperCase())
-    .filter((k) => isLucideComponent((LucideIcons as any)[k]))
+    .filter((k) => isLucideComponent((source as any)[k]))
     .sort((a, b) => a.localeCompare(b));
 }
 
@@ -45,14 +50,26 @@ export function IconPickerDialog({
   title?: string;
 }) {
   const [q, setQ] = useState("");
-  const all = useMemo(() => getAllLucideIconNames(), []);
+  const all = useMemo(() => {
+    try {
+      const names = getAllLucideIconNames();
+      return Array.isArray(names) ? names : [];
+    } catch {
+      return [];
+    }
+  }, []);
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
-    if (!query) return all;
-    return all.filter((n) => n.toLowerCase().includes(query));
+    const base = Array.isArray(all) ? all : [];
+    if (!query) return base;
+    return base.filter((n) => n.toLowerCase().includes(query));
   }, [all, q]);
 
-  const Current = value ? (LucideIcons as any)[value] : null;
+  const Current = useMemo(() => {
+    if (!value) return null;
+    const icons = (LucideIcons as any).icons;
+    return (icons && icons[value]) || (LucideIcons as any)[value] || null;
+  }, [value]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -86,7 +103,8 @@ export function IconPickerDialog({
           <ScrollArea className="h-[420px] rounded-md border border-border">
             <div className="p-3 grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
               {filtered.map((name) => {
-                const Icon = (LucideIcons as any)[name] as React.ComponentType<any>;
+                const icons = (LucideIcons as any).icons;
+                const Icon = ((icons && icons[name]) || (LucideIcons as any)[name]) as React.ComponentType<any>;
                 const active = value === name;
                 return (
                   <Button

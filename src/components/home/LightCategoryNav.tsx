@@ -113,12 +113,13 @@ const LightCategoryNav = ({ feed }: Props) => {
   const total = sliderCategories.length;
 
   const scrollToIndex = useCallback((index: number) => {
-    itemRefs.current[index]?.scrollIntoView({
-      behavior: "smooth",
-      inline: "start",
-      block: "nearest",
-    });
-  }, []);
+    const scroller = scrollRef.current;
+    const el = itemRefs.current[index];
+    if (!scroller || !el) return;
+    // Only horizontal scroll. scrollIntoView can cause page (vertical) scroll jumps.
+    const left = el.offsetLeft - scroller.offsetLeft;
+    scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+  }, [scrollRef]);
 
   useEffect(() => {
     setCurrent(0);
