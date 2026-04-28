@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Copy, Eye, EyeOff } from 'lucide-react';
 import { BlockConfig, type BlockSettings, type FooterSettings, type HeaderSettings } from '../types';
 import { getSettingsProfileForBlockType, normalizeBlockProfileSettings } from '../settingsProfiles';
-import { AdvantagesItemsField, CategoryImageOverridesField, CategoryTreeField, CtaEditor, LinksEditor, MediaPickerField, ProductFeedField, SettingField } from './settings/SharedProfileFields';
+import { AdvantagesItemsField, CategoryImageOverridesField, CategoryTreeField, CtaEditor, LinksEditor, MediaPickerField, ProductFeedField, ProductPickerField, SettingField } from './settings/SharedProfileFields';
+import { CrmMediaPickerDialog } from '@/crm/components/CrmMediaPickerDialog';
+import { resolveCrmMediaAssetUrl, type CrmMediaFile, type SystemProductItem } from '@/lib/api';
 
 interface SettingsPanelProps {
   block: BlockConfig | null;
@@ -228,6 +230,10 @@ function ProfileSettingsForm({
   if (!normalized) return null;
   const update = (patch: Record<string, unknown>) => onUpdateSettings(block.id, patch);
 
+  if (profile === 'P-HERO-PRODUCT') {
+    return <HeroProductSettingsForm block={block} normalized={normalized as any} update={update} />;
+  }
+
   return (
     <div className="space-y-3">
       <SettingField label="Title"><Input className="h-8 text-xs" value={normalized.title ?? ''} onChange={(e) => update({ title: e.target.value })} /></SettingField>
@@ -278,6 +284,196 @@ function ProfileSettingsForm({
           <SettingField label="Caption"><Input className="h-8 text-xs" value={String((normalized as any).caption ?? '')} onChange={(e) => update({ caption: e.target.value })} /></SettingField>
         </>
       ) : null}
+    </div>
+  );
+}
+
+function HeroProductSettingsForm({
+  block,
+  normalized,
+  update,
+}: {
+  block: BlockConfig;
+  normalized: {
+    productId: number | null;
+    label: string;
+    productTitle: string;
+    productDescription: string;
+    mediaFileId: number | null;
+    imageUrl: string;
+    priceText: string;
+    oldPriceText: string;
+    discountText: string;
+    cta: { text: string; url: string; target: '_self' | '_blank' };
+  };
+  update: (patch: Record<string, unknown>) => void;
+}) {
+  const [pickerOpen, setPickerOpen] = React.useState(false);
+  const [productSnapshot, setProductSnapshot] = React.useState<SystemProductItem | null>(null);
+
+  // Когда settings.productId есть, но снимок ещё не загружен — подгружаем для отображения карточки.
+  React.useEffect(() => {
+    let cancelled = false;
+    const id = normalized.productId;
+    if (!id) {
+      setProductSnapshot(null);
+      return;
+    }
+    if (productSnapshot && productSnapshot.id === id) return;
+    void (async () => {
+      try {
+        const { adminSystemProductsApi } = await import('@/lib/api');
+        const p = await adminSystemProductsApi.get(id);
+        if (!cancelled) setProductSnapshot(p);
+      } catch {
+        if (!cancelled) setProductSnapshot(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [normalized.productId, productSnapshot]);
+
+  const applyProduct = (p: SystemProductItem) => {
+    setProductSnapshot(p);
+    const primaryPhoto = (p.photos ?? []).find((x) => x.is_primary && x.is_enabled !== false) ?? (p.photos ?? [])[0];
+    update({
+      productId: p.id,
+      productTitle: p.name ?? '',
+      productDescription: p.description ?? '',
+      mediaFileId: primaryPhoto?.media_file_id ?? null,
+      imageUrl: primaryPhoto?.url ?? p.thumbnail_url ?? '',
+      priceText: p.price ?? '',
+      oldPriceText: '',
+      discountText: '',
+      cta: { ...normalized.cta, url: `/product/${p.id}` },
+    });
+  };
+
+  const handlePickMedia = (file: CrmMediaFile) => {
+    update({ mediaFileId: file.id, imageUrl: file.url ?? '' });
+  };
+
+  return (
+    <div className="space-y-3">
+      <CrmMediaPickerDialog open={pickerOpen} onOpenChange={setPickerOpen} onPick={handlePickMedia} />
+
+      <SettingField label="Метка-плашка над заголовком">
+        <Input
+          className="h-8 text-xs"
+          value={normalized.label ?? ''}
+          placeholder="Например: Товар недели"
+          onChange={(e) => update({ label: e.target.value })}
+        />
+      </SettingField>
+
+      <SettingField label="Товар (поиск по ID, названию, артикулу)">
+        <ProductPickerField
+          value={productSnapshot}
+          onPick={applyProduct}
+          onClear={() => {
+            setProductSnapshot(null);
+            update({
+              productId: null,
+              productTitle: '',
+              productDescription: '',
+              mediaFileId: null,
+              imageUrl: '',
+              priceText: '',
+              oldPriceText: '',
+              discountText: '',
+              cta: { ...normalized.cta, url: '' },
+            });
+          }}
+        />
+      </SettingField>
+
+      <SettingField label="Заголовок (override)">
+        <Input
+          className="h-8 text-xs"
+          value={normalized.productTitle ?? ''}
+          placeholder={productSnapshot?.name ?? 'Введите заголовок'}
+          onChange={(e) => update({ productTitle: e.target.value })}
+        />
+      </SettingField>
+
+      <SettingField label="Описание (override)">
+        <Textarea
+          className="text-xs min-h-[60px]"
+          value={normalized.productDescription ?? ''}
+          placeholder={productSnapshot?.description ?? 'Введите описание'}
+          onChange={(e) => update({ productDescription: e.target.value })}
+        />
+      </SettingField>
+
+      <SettingField label="Изображение">
+        <div className="rounded-md border border-dashed border-border overflow-hidden">
+          {normalized.imageUrl || normalized.mediaFileId ? (
+            <div className="relative group">
+              <img
+                src={resolveCrmMediaAssetUrl(normalized.imageUrl)}
+                alt={normalized.productTitle || 'preview'}
+                className="h-32 w-full object-cover"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
+                <Button type="button" size="sm" className="h-7 text-xs" onClick={() => setPickerOpen(true)}>
+                  Заменить
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs text-destructive"
+                  onClick={() => update({ mediaFileId: null, imageUrl: '' })}
+                >
+                  Убрать
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="w-full h-24 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:bg-accent/50 transition-colors text-xs"
+              onClick={() => setPickerOpen(true)}
+            >
+              <span className="text-lg">🖼</span>
+              <span>Выбрать фото из медиатеки</span>
+            </button>
+          )}
+        </div>
+      </SettingField>
+
+      <div className="grid grid-cols-3 gap-2">
+        <SettingField label="Цена">
+          <Input
+            className="h-8 text-xs"
+            value={normalized.priceText ?? ''}
+            placeholder="4 990 ₽"
+            onChange={(e) => update({ priceText: e.target.value })}
+          />
+        </SettingField>
+        <SettingField label="Старая цена">
+          <Input
+            className="h-8 text-xs"
+            value={normalized.oldPriceText ?? ''}
+            placeholder="6 990 ₽"
+            onChange={(e) => update({ oldPriceText: e.target.value })}
+          />
+        </SettingField>
+        <SettingField label="Скидка">
+          <Input
+            className="h-8 text-xs"
+            value={normalized.discountText ?? ''}
+            placeholder="-28%"
+            onChange={(e) => update({ discountText: e.target.value })}
+          />
+        </SettingField>
+      </div>
+
+      <SettingField label="Кнопка-CTA">
+        <CtaEditor value={normalized.cta} onChange={(cta) => update({ cta })} />
+      </SettingField>
     </div>
   );
 }

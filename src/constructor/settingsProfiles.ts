@@ -1,6 +1,7 @@
 export type SettingsProfileId =
   | 'P-NAV-GLOBAL'
   | 'P-HERO-MEDIA'
+  | 'P-HERO-PRODUCT'
   | 'P-PRODUCT-FEED'
   | 'P-CATEGORY-FEED'
   | 'P-BANNER-MEDIA'
@@ -85,6 +86,26 @@ export interface HeroMediaSettings extends ProfileBaseSettings {
   cta: CtaSetting;
 }
 
+export interface HeroProductSettings extends ProfileBaseSettings {
+  profile: 'P-HERO-PRODUCT';
+  /** id системного товара (system_products.id), выбранного в каталоге CRM. */
+  productId: number | null;
+  /** Метка-плашка над заголовком («Товар недели», «Скидка дня», ...). */
+  label: string;
+  /** Заголовок и описание (если пусто — берётся из товара). */
+  productTitle: string;
+  productDescription: string;
+  /** Картинка: можно выбрать из медиатеки CRM, либо подставится фото товара. */
+  mediaFileId: number | null;
+  imageUrl: string;
+  /** Текстовые цены/скидка (если пусто — берётся из товара). */
+  priceText: string;
+  oldPriceText: string;
+  discountText: string;
+  /** Кнопка-CTA. Если url пуст — используется ссылка на товар. */
+  cta: CtaSetting;
+}
+
 export interface ProductFeedProfileSettings extends ProfileBaseSettings {
   profile: 'P-PRODUCT-FEED';
   feed: ProductFeedSettings;
@@ -139,6 +160,7 @@ export interface UtilitySettings extends ProfileBaseSettings {
 export type NormalizedProfileSettings =
   | NavGlobalSettings
   | HeroMediaSettings
+  | HeroProductSettings
   | ProductFeedProfileSettings
   | CategoryFeedProfileSettings
   | BannerMediaSettings
@@ -148,7 +170,8 @@ export type NormalizedProfileSettings =
   | PageComposedSettings
   | UtilitySettings;
 
-const heroTypes = new Set(['HeroSlider', 'CinematicHero', 'SplitHero', 'HeroProductPromo', 'HeroWithSlider']);
+const heroTypes = new Set(['HeroSlider', 'CinematicHero', 'SplitHero', 'HeroWithSlider']);
+const heroProductTypes = new Set(['HeroProductPromo']);
 const productFeedTypes = new Set([
   'ProductGrid', 'Bestsellers', 'TrendingProducts', 'NewArrivals', 'TopRatedProducts', 'LimitedEdition', 'FeaturedCollection',
   'ProductCollection', 'ProductShowcase', 'ProductDiscovery', 'MinimalProductGrid', 'ProductHoverGrid', 'InteractiveProductCards',
@@ -187,6 +210,7 @@ const navGlobalTypes = new Set(['Header', 'Footer', 'MobileBottomNav']);
 export function getSettingsProfileForBlockType(blockType: string): SettingsProfileId {
   if (navGlobalTypes.has(blockType)) return 'P-NAV-GLOBAL';
   if (heroTypes.has(blockType)) return 'P-HERO-MEDIA';
+  if (heroProductTypes.has(blockType)) return 'P-HERO-PRODUCT';
   if (productFeedTypes.has(blockType)) return 'P-PRODUCT-FEED';
   if (categoryFeedTypes.has(blockType)) return 'P-CATEGORY-FEED';
   if (bannerTypes.has(blockType)) return 'P-BANNER-MEDIA';
@@ -217,6 +241,21 @@ function defaultByProfile(profile: SettingsProfileId): NormalizedProfileSettings
       return { ...base, profile, links: [] };
     case 'P-HERO-MEDIA':
       return { ...base, profile, media: [defaultMediaItem()], overlayOpacity: 30, cta: defaultCta() };
+    case 'P-HERO-PRODUCT':
+      return {
+        ...base,
+        profile,
+        productId: null,
+        label: 'Товар недели',
+        productTitle: '',
+        productDescription: '',
+        mediaFileId: null,
+        imageUrl: '',
+        priceText: '',
+        oldPriceText: '',
+        discountText: '',
+        cta: { text: 'Купить сейчас', url: '', target: '_self' },
+      };
     case 'P-PRODUCT-FEED':
       return {
         ...base, profile, feed: {

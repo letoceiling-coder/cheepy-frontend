@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { adminCatalogApi, crmMediaApi, fetchCrmMediaBlobUrl, resolveCrmMediaAssetUrl, type CatalogCategoryItem, type CrmMediaFile, type CrmMediaFolder } from '@/lib/api';
+import { adminCatalogApi, adminSystemProductsApi, crmMediaApi, fetchCrmMediaBlobUrl, resolveCrmMediaAssetUrl, type CatalogCategoryItem, type CrmMediaFile, type CrmMediaFolder, type SystemProductItem } from '@/lib/api';
 import { CrmMediaPickerDialog } from '@/crm/components/CrmMediaPickerDialog';
 import type { CtaSetting, LinkItemSetting, MediaItemSetting, ProductFeedSettings } from '@/constructor/settingsProfiles';
 import { IconPickerDialog } from '@/constructor/components/settings/IconPickerDialog';
@@ -561,6 +561,169 @@ export function AdvantagesItemsField({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Поиск активного (approved/published) товара из system_products по id, имени или артикулу.
+ * При выборе вызывает onPick с найденным товаром.
+ */
+export function ProductPickerField({
+  value,
+  onPick,
+  onClear,
+}: {
+  value: SystemProductItem | null;
+  onPick: (product: SystemProductItem) => void;
+  onClear: () => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [debounced, setDebounced] = useState('');
+  const [results, setResults] = useState<SystemProductItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [opened, setOpened] = useState(false);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebounced(query.trim()), 300);
+    return () => window.clearTimeout(t);
+  }, [query]);
+
+  useEffect(() => {
+    if (!opened) return;
+    let cancelled = false;
+    void (async () => {
+      setLoading(true);
+      try {
+        const idMaybe = Number(debounced);
+        if (debounced && Number.isFinite(idMaybe) && idMaybe > 0 && /^\d+$/.test(debounced)) {
+          try {
+            const single = await adminSystemProductsApi.get(idMaybe);
+            if (!cancelled && single) {
+              setResults([single]);
+              setLoading(false);
+              return;
+            }
+          } catch {
+            // упадём на список ниже
+          }
+        }
+        const res = await adminSystemProductsApi.list({
+          search: debounced || undefined,
+          per_page: 25,
+          page: 1,
+          sort_by: 'updated_at',
+          sort_dir: 'desc',
+        });
+        if (!cancelled) setResults(Array.isArray(res.data) ? res.data : []);
+      } catch {
+        if (!cancelled) setResults([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [debounced, opened]);
+
+  return (
+    <div className="space-y-2">
+      {value ? (
+        <div className="rounded-md border border-border p-2 flex items-center gap-3">
+          <div className="h-12 w-12 rounded bg-muted overflow-hidden shrink-0">
+            {value.thumbnail_url ? (
+              <img
+                src={resolveCrmMediaAssetUrl(value.thumbnail_url)}
+                alt={value.name}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center text-muted-foreground text-[10px]">—</div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium truncate">{value.name || `Товар #${value.id}`}</p>
+            <p className="text-[10px] text-muted-foreground truncate">
+              ID: {value.id}
+              {value.price ? ` · ${value.price}` : ''}
+              {value.status ? ` · ${value.status}` : ''}
+            </p>
+          </div>
+          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => setOpened((v) => !v)}>
+            {opened ? 'Закрыть' : 'Изменить'}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs text-destructive"
+            onClick={() => {
+              onClear();
+              setOpened(false);
+            }}
+          >
+            Очистить
+          </Button>
+        </div>
+      ) : (
+        <Button type="button" size="sm" variant="outline" className="h-7 text-xs w-full" onClick={() => setOpened(true)}>
+          Выбрать товар
+        </Button>
+      )}
+
+      {opened ? (
+        <div className="rounded-md border border-border p-2 space-y-2">
+          <Input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Поиск по ID, названию или артикулу"
+            className="h-8 text-xs"
+          />
+          <div className="max-h-72 overflow-auto space-y-1">
+            {loading ? (
+              <p className="text-[11px] text-muted-foreground">Загрузка...</p>
+            ) : results.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground">Ничего не найдено.</p>
+            ) : (
+              results.map((p) => (
+                <button
+                  type="button"
+                  key={p.id}
+                  className="w-full flex items-center gap-2 rounded p-1.5 hover:bg-accent text-left"
+                  onClick={() => {
+                    onPick(p);
+                    setOpened(false);
+                  }}
+                >
+                  <div className="h-10 w-10 rounded bg-muted overflow-hidden shrink-0">
+                    {p.thumbnail_url ? (
+                      <img
+                        src={resolveCrmMediaAssetUrl(p.thumbnail_url)}
+                        alt={p.name}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center text-muted-foreground text-[10px]">—</div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium truncate">{p.name || `Товар #${p.id}`}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      ID: {p.id}
+                      {p.price ? ` · ${p.price}` : ''}
+                      {p.status ? ` · ${p.status}` : ''}
+                    </p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
