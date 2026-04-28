@@ -86,24 +86,40 @@ export interface HeroMediaSettings extends ProfileBaseSettings {
   cta: CtaSetting;
 }
 
-export interface HeroProductSettings extends ProfileBaseSettings {
-  profile: 'P-HERO-PRODUCT';
-  /** id системного товара (system_products.id), выбранного в каталоге CRM. */
+export interface HeroProductPhotoSetting {
+  mediaFileId: number | null;
+  url: string;
+}
+
+export interface HeroProductItemSetting {
+  /** Локальный id для ключей в React/слайдере. */
+  id: string;
+  /** id системного товара (system_products.id) из CRM. */
   productId: number | null;
   /** Метка-плашка над заголовком («Товар недели», «Скидка дня», ...). */
   label: string;
   /** Заголовок и описание (если пусто — берётся из товара). */
   productTitle: string;
   productDescription: string;
-  /** Картинка: можно выбрать из медиатеки CRM, либо подставится фото товара. */
+  /** Главная картинка. */
   mediaFileId: number | null;
   imageUrl: string;
+  /** Дополнительные фото для галереи на витрине. */
+  additionalPhotos: HeroProductPhotoSetting[];
   /** Текстовые цены/скидка (если пусто — берётся из товара). */
   priceText: string;
   oldPriceText: string;
   discountText: string;
   /** Кнопка-CTA. Если url пуст — используется ссылка на товар. */
   cta: CtaSetting;
+}
+
+export interface HeroProductSettings extends ProfileBaseSettings {
+  profile: 'P-HERO-PRODUCT';
+  /** Один или несколько товаров. При >1 — слайдер. */
+  items: HeroProductItemSetting[];
+  /** Автослайд: 0 — выкл, 1..30 — секунд между слайдами. */
+  autoplaySeconds: number;
 }
 
 export interface ProductFeedProfileSettings extends ProfileBaseSettings {
@@ -230,6 +246,23 @@ function defaultMediaItem(): MediaItemSetting {
   return { id: `media-${Math.random().toString(36).slice(2, 9)}`, mediaFileId: null, url: '', title: '', subtitle: '', caption: '', alt: '' };
 }
 
+export function defaultHeroProductItem(): HeroProductItemSetting {
+  return {
+    id: `hp-${Math.random().toString(36).slice(2, 9)}`,
+    productId: null,
+    label: 'Товар недели',
+    productTitle: '',
+    productDescription: '',
+    mediaFileId: null,
+    imageUrl: '',
+    additionalPhotos: [],
+    priceText: '',
+    oldPriceText: '',
+    discountText: '',
+    cta: { text: 'Купить сейчас', url: '', target: '_self' },
+  };
+}
+
 function defaultBase(profile: SettingsProfileId): ProfileBaseSettings {
   return { profile, dataMode: 'mixed', title: '', subtitle: '', visible: true };
 }
@@ -245,16 +278,8 @@ function defaultByProfile(profile: SettingsProfileId): NormalizedProfileSettings
       return {
         ...base,
         profile,
-        productId: null,
-        label: 'Товар недели',
-        productTitle: '',
-        productDescription: '',
-        mediaFileId: null,
-        imageUrl: '',
-        priceText: '',
-        oldPriceText: '',
-        discountText: '',
-        cta: { text: 'Купить сейчас', url: '', target: '_self' },
+        items: [defaultHeroProductItem()],
+        autoplaySeconds: 0,
       };
     case 'P-PRODUCT-FEED':
       return {
@@ -296,6 +321,49 @@ export function normalizeBlockProfileSettings(blockType: string, raw: Record<str
   if ((merged.profile === 'P-HERO-MEDIA' || merged.profile === 'P-BANNER-MEDIA' || merged.profile === 'P-VIDEO-MEDIA' || merged.profile === 'P-LOOKBOOK-MEDIA')
     && (!Array.isArray(merged.media) || merged.media.length === 0)) {
     merged.media = [defaultMediaItem()];
+  }
+  if (merged.profile === 'P-HERO-PRODUCT') {
+    if (!Array.isArray(merged.items) || merged.items.length === 0) {
+      // back-compat: старые настройки хранили один товар плоско на уровне блока.
+      const legacy = safeRaw as Record<string, unknown>;
+      const hasLegacy = ['productId', 'label', 'productTitle', 'productDescription', 'mediaFileId', 'imageUrl', 'priceText', 'oldPriceText', 'discountText', 'cta']
+        .some((k) => Object.prototype.hasOwnProperty.call(legacy, k));
+      if (hasLegacy) {
+        merged.items = [
+          {
+            ...defaultHeroProductItem(),
+            productId: typeof legacy.productId === 'number' ? (legacy.productId as number) : null,
+            label: typeof legacy.label === 'string' ? (legacy.label as string) : 'Товар недели',
+            productTitle: typeof legacy.productTitle === 'string' ? (legacy.productTitle as string) : '',
+            productDescription: typeof legacy.productDescription === 'string' ? (legacy.productDescription as string) : '',
+            mediaFileId: typeof legacy.mediaFileId === 'number' ? (legacy.mediaFileId as number) : null,
+            imageUrl: typeof legacy.imageUrl === 'string' ? (legacy.imageUrl as string) : '',
+            priceText: typeof legacy.priceText === 'string' ? (legacy.priceText as string) : '',
+            oldPriceText: typeof legacy.oldPriceText === 'string' ? (legacy.oldPriceText as string) : '',
+            discountText: typeof legacy.discountText === 'string' ? (legacy.discountText as string) : '',
+            cta:
+              legacy.cta && typeof legacy.cta === 'object'
+                ? { text: '', url: '', target: '_self', ...(legacy.cta as Record<string, unknown>) } as CtaSetting
+                : { text: 'Купить сейчас', url: '', target: '_self' },
+          },
+        ];
+      } else {
+        merged.items = [defaultHeroProductItem()];
+      }
+    } else {
+      // Гарантия id и additionalPhotos для каждого item (back-compat при ручном редактировании JSON).
+      merged.items = merged.items.map((it) => ({
+        ...defaultHeroProductItem(),
+        ...it,
+        id: typeof it?.id === 'string' && it.id ? it.id : `hp-${Math.random().toString(36).slice(2, 9)}`,
+        additionalPhotos: Array.isArray(it?.additionalPhotos) ? it.additionalPhotos : [],
+        cta: it?.cta && typeof it.cta === 'object' ? { text: '', url: '', target: '_self', ...it.cta } : { text: 'Купить сейчас', url: '', target: '_self' },
+      }));
+    }
+    if (typeof merged.autoplaySeconds !== 'number' || !Number.isFinite(merged.autoplaySeconds) || merged.autoplaySeconds < 0) {
+      merged.autoplaySeconds = 0;
+    }
+    merged.autoplaySeconds = Math.min(60, Math.max(0, Math.round(merged.autoplaySeconds)));
   }
   return merged;
 }

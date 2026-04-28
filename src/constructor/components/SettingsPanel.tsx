@@ -288,33 +288,150 @@ function ProfileSettingsForm({
   );
 }
 
+type HeroProductPhotoLocal = { mediaFileId: number | null; url: string };
+
+type HeroProductItemLocal = {
+  id: string;
+  productId: number | null;
+  label: string;
+  productTitle: string;
+  productDescription: string;
+  mediaFileId: number | null;
+  imageUrl: string;
+  additionalPhotos: HeroProductPhotoLocal[];
+  priceText: string;
+  oldPriceText: string;
+  discountText: string;
+  cta: { text: string; url: string; target: '_self' | '_blank' };
+};
+
+function makeNewItem(): HeroProductItemLocal {
+  return {
+    id: `hp-${Math.random().toString(36).slice(2, 9)}`,
+    productId: null,
+    label: 'Товар недели',
+    productTitle: '',
+    productDescription: '',
+    mediaFileId: null,
+    imageUrl: '',
+    additionalPhotos: [],
+    priceText: '',
+    oldPriceText: '',
+    discountText: '',
+    cta: { text: 'Купить сейчас', url: '', target: '_self' },
+  };
+}
+
 function HeroProductSettingsForm({
-  block,
+  block: _block,
   normalized,
   update,
 }: {
   block: BlockConfig;
   normalized: {
-    productId: number | null;
-    label: string;
-    productTitle: string;
-    productDescription: string;
-    mediaFileId: number | null;
-    imageUrl: string;
-    priceText: string;
-    oldPriceText: string;
-    discountText: string;
-    cta: { text: string; url: string; target: '_self' | '_blank' };
+    items: HeroProductItemLocal[];
+    autoplaySeconds: number;
   };
   update: (patch: Record<string, unknown>) => void;
 }) {
-  const [pickerOpen, setPickerOpen] = React.useState(false);
+  const items = Array.isArray(normalized.items) ? normalized.items : [];
+  const autoplay = Number.isFinite(normalized.autoplaySeconds) ? Number(normalized.autoplaySeconds) : 0;
+
+  const setItems = (next: HeroProductItemLocal[]) => update({ items: next });
+  const updateItem = (idx: number, patch: Partial<HeroProductItemLocal>) =>
+    setItems(items.map((x, i) => (i === idx ? { ...x, ...patch } : x)));
+
+  const moveItem = (from: number, to: number) => {
+    if (from === to || to < 0 || to >= items.length) return;
+    const next = [...items];
+    const [sp] = next.splice(from, 1);
+    next.splice(to, 0, sp);
+    setItems(next);
+  };
+
+  return (
+    <div className="space-y-4">
+      <SettingField label="Автослайд (секунды между слайдами; 0 — выкл)">
+        <div className="flex items-center gap-2">
+          <Input
+            type="number"
+            min={0}
+            max={60}
+            step={1}
+            className="h-8 text-xs w-24"
+            value={autoplay}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              const safe = Number.isFinite(n) ? Math.max(0, Math.min(60, Math.round(n))) : 0;
+              update({ autoplaySeconds: safe });
+            }}
+          />
+          <span className="text-[11px] text-muted-foreground">сек (0–60). Активен только при двух и более товарах.</span>
+        </div>
+      </SettingField>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium">Товары ({items.length})</p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() => setItems([...items, makeNewItem()])}
+          >
+            + Добавить товар
+          </Button>
+        </div>
+
+        {items.length === 0 ? <p className="text-[11px] text-muted-foreground">Добавьте хотя бы один товар.</p> : null}
+
+        {items.map((item, idx) => (
+          <HeroProductItemEditor
+            key={item.id || idx}
+            index={idx}
+            total={items.length}
+            item={item}
+            onChange={(patch) => updateItem(idx, patch)}
+            onMoveUp={() => moveItem(idx, idx - 1)}
+            onMoveDown={() => moveItem(idx, idx + 1)}
+            onDuplicate={() =>
+              setItems([...items.slice(0, idx + 1), { ...item, id: `hp-${Math.random().toString(36).slice(2, 9)}` }, ...items.slice(idx + 1)])
+            }
+            onRemove={() => setItems(items.filter((_, i) => i !== idx))}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HeroProductItemEditor({
+  index,
+  total,
+  item,
+  onChange,
+  onMoveUp,
+  onMoveDown,
+  onDuplicate,
+  onRemove,
+}: {
+  index: number;
+  total: number;
+  item: HeroProductItemLocal;
+  onChange: (patch: Partial<HeroProductItemLocal>) => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onDuplicate: () => void;
+  onRemove: () => void;
+}) {
+  const [collapsed, setCollapsed] = React.useState(true);
+  const [mediaPicker, setMediaPicker] = React.useState<{ mode: 'main' | 'extra'; extraIndex?: number } | null>(null);
   const [productSnapshot, setProductSnapshot] = React.useState<SystemProductItem | null>(null);
 
-  // Когда settings.productId есть, но снимок ещё не загружен — подгружаем для отображения карточки.
   React.useEffect(() => {
     let cancelled = false;
-    const id = normalized.productId;
+    const id = item.productId;
     if (!id) {
       setProductSnapshot(null);
       return;
@@ -332,148 +449,239 @@ function HeroProductSettingsForm({
     return () => {
       cancelled = true;
     };
-  }, [normalized.productId, productSnapshot]);
+  }, [item.productId, productSnapshot]);
 
   const applyProduct = (p: SystemProductItem) => {
     setProductSnapshot(p);
-    const primaryPhoto = (p.photos ?? []).find((x) => x.is_primary && x.is_enabled !== false) ?? (p.photos ?? [])[0];
-    update({
+    const enabledPhotos = (p.photos ?? []).filter((x) => x.is_enabled !== false);
+    const primary = enabledPhotos.find((x) => x.is_primary) ?? enabledPhotos[0];
+    const rest = enabledPhotos
+      .filter((x) => x !== primary)
+      .map((x) => ({ mediaFileId: x.media_file_id ?? null, url: x.url ?? '' }))
+      .filter((x) => x.mediaFileId || x.url);
+    onChange({
       productId: p.id,
       productTitle: p.name ?? '',
       productDescription: p.description ?? '',
-      mediaFileId: primaryPhoto?.media_file_id ?? null,
-      imageUrl: primaryPhoto?.url ?? p.thumbnail_url ?? '',
+      mediaFileId: primary?.media_file_id ?? null,
+      imageUrl: primary?.url ?? p.thumbnail_url ?? '',
+      additionalPhotos: rest,
       priceText: p.price ?? '',
       oldPriceText: '',
       discountText: '',
-      cta: { ...normalized.cta, url: `/product/${p.id}` },
+      cta: { ...item.cta, url: `/product/${p.id}` },
     });
   };
 
   const handlePickMedia = (file: CrmMediaFile) => {
-    update({ mediaFileId: file.id, imageUrl: file.url ?? '' });
+    if (!mediaPicker) return;
+    if (mediaPicker.mode === 'main') {
+      onChange({ mediaFileId: file.id, imageUrl: file.url ?? '' });
+    } else if (mediaPicker.mode === 'extra' && typeof mediaPicker.extraIndex === 'number') {
+      const i = mediaPicker.extraIndex;
+      if (i === -1) {
+        onChange({ additionalPhotos: [...item.additionalPhotos, { mediaFileId: file.id, url: file.url ?? '' }] });
+      } else {
+        onChange({
+          additionalPhotos: item.additionalPhotos.map((x, k) => (k === i ? { mediaFileId: file.id, url: file.url ?? '' } : x)),
+        });
+      }
+    }
+    setMediaPicker(null);
   };
 
+  const heading =
+    item.productTitle?.trim() ||
+    productSnapshot?.name ||
+    (item.productId ? `Товар #${item.productId}` : `Товар ${index + 1}`);
+
   return (
-    <div className="space-y-3">
-      <CrmMediaPickerDialog open={pickerOpen} onOpenChange={setPickerOpen} onPick={handlePickMedia} />
+    <div className="rounded-md border border-border p-2 space-y-2">
+      <CrmMediaPickerDialog open={Boolean(mediaPicker)} onOpenChange={(v) => !v && setMediaPicker(null)} onPick={handlePickMedia} />
 
-      <SettingField label="Метка-плашка над заголовком">
-        <Input
-          className="h-8 text-xs"
-          value={normalized.label ?? ''}
-          placeholder="Например: Товар недели"
-          onChange={(e) => update({ label: e.target.value })}
-        />
-      </SettingField>
-
-      <SettingField label="Товар (поиск по ID, названию, артикулу)">
-        <ProductPickerField
-          value={productSnapshot}
-          onPick={applyProduct}
-          onClear={() => {
-            setProductSnapshot(null);
-            update({
-              productId: null,
-              productTitle: '',
-              productDescription: '',
-              mediaFileId: null,
-              imageUrl: '',
-              priceText: '',
-              oldPriceText: '',
-              discountText: '',
-              cta: { ...normalized.cta, url: '' },
-            });
-          }}
-        />
-      </SettingField>
-
-      <SettingField label="Заголовок (override)">
-        <Input
-          className="h-8 text-xs"
-          value={normalized.productTitle ?? ''}
-          placeholder={productSnapshot?.name ?? 'Введите заголовок'}
-          onChange={(e) => update({ productTitle: e.target.value })}
-        />
-      </SettingField>
-
-      <SettingField label="Описание (override)">
-        <Textarea
-          className="text-xs min-h-[60px]"
-          value={normalized.productDescription ?? ''}
-          placeholder={productSnapshot?.description ?? 'Введите описание'}
-          onChange={(e) => update({ productDescription: e.target.value })}
-        />
-      </SettingField>
-
-      <SettingField label="Изображение">
-        <div className="rounded-md border border-dashed border-border overflow-hidden">
-          {normalized.imageUrl || normalized.mediaFileId ? (
-            <div className="relative group">
-              <img
-                src={resolveCrmMediaAssetUrl(normalized.imageUrl)}
-                alt={normalized.productTitle || 'preview'}
-                className="h-32 w-full object-cover"
-                loading="lazy"
-              />
-              <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
-                <Button type="button" size="sm" className="h-7 text-xs" onClick={() => setPickerOpen(true)}>
-                  Заменить
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs text-destructive"
-                  onClick={() => update({ mediaFileId: null, imageUrl: '' })}
-                >
-                  Убрать
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="w-full h-24 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:bg-accent/50 transition-colors text-xs"
-              onClick={() => setPickerOpen(true)}
-            >
-              <span className="text-lg">🖼</span>
-              <span>Выбрать фото из медиатеки</span>
-            </button>
-          )}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="flex-1 min-w-0 text-left text-xs font-medium truncate hover:text-primary"
+          onClick={() => setCollapsed((v) => !v)}
+        >
+          <span className="text-muted-foreground mr-1">#{index + 1}</span>
+          {heading}
+        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 text-xs" disabled={index === 0} onClick={onMoveUp} title="Вверх">↑</Button>
+          <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 text-xs" disabled={index === total - 1} onClick={onMoveDown} title="Вниз">↓</Button>
+          <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 text-xs" onClick={onDuplicate} title="Дублировать">⧉</Button>
+          <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 text-xs text-destructive" onClick={onRemove} title="Удалить">✕</Button>
+          <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 text-xs" onClick={() => setCollapsed((v) => !v)} title={collapsed ? 'Раскрыть' : 'Свернуть'}>
+            {collapsed ? '▸' : '▾'}
+          </Button>
         </div>
-      </SettingField>
-
-      <div className="grid grid-cols-3 gap-2">
-        <SettingField label="Цена">
-          <Input
-            className="h-8 text-xs"
-            value={normalized.priceText ?? ''}
-            placeholder="4 990 ₽"
-            onChange={(e) => update({ priceText: e.target.value })}
-          />
-        </SettingField>
-        <SettingField label="Старая цена">
-          <Input
-            className="h-8 text-xs"
-            value={normalized.oldPriceText ?? ''}
-            placeholder="6 990 ₽"
-            onChange={(e) => update({ oldPriceText: e.target.value })}
-          />
-        </SettingField>
-        <SettingField label="Скидка">
-          <Input
-            className="h-8 text-xs"
-            value={normalized.discountText ?? ''}
-            placeholder="-28%"
-            onChange={(e) => update({ discountText: e.target.value })}
-          />
-        </SettingField>
       </div>
 
-      <SettingField label="Кнопка-CTA">
-        <CtaEditor value={normalized.cta} onChange={(cta) => update({ cta })} />
-      </SettingField>
+      {!collapsed ? (
+        <div className="space-y-3 pt-1">
+          <SettingField label="Метка-плашка">
+            <Input
+              className="h-8 text-xs"
+              value={item.label ?? ''}
+              placeholder="Например: Товар недели"
+              onChange={(e) => onChange({ label: e.target.value })}
+            />
+          </SettingField>
+
+          <SettingField label="Товар (поиск по ID, названию, артикулу)">
+            <ProductPickerField
+              value={productSnapshot}
+              onPick={applyProduct}
+              onClear={() => {
+                setProductSnapshot(null);
+                onChange({
+                  productId: null,
+                  productTitle: '',
+                  productDescription: '',
+                  mediaFileId: null,
+                  imageUrl: '',
+                  additionalPhotos: [],
+                  priceText: '',
+                  oldPriceText: '',
+                  discountText: '',
+                  cta: { ...item.cta, url: '' },
+                });
+              }}
+            />
+          </SettingField>
+
+          <SettingField label="Заголовок (override)">
+            <Input
+              className="h-8 text-xs"
+              value={item.productTitle ?? ''}
+              placeholder={productSnapshot?.name ?? 'Введите заголовок'}
+              onChange={(e) => onChange({ productTitle: e.target.value })}
+            />
+          </SettingField>
+
+          <SettingField label="Описание (override)">
+            <Textarea
+              className="text-xs min-h-[60px]"
+              value={item.productDescription ?? ''}
+              placeholder={productSnapshot?.description ?? 'Введите описание'}
+              onChange={(e) => onChange({ productDescription: e.target.value })}
+            />
+          </SettingField>
+
+          <SettingField label="Главное изображение">
+            <div className="rounded-md border border-dashed border-border overflow-hidden">
+              {item.imageUrl || item.mediaFileId ? (
+                <div className="relative group">
+                  <img
+                    src={resolveCrmMediaAssetUrl(item.imageUrl)}
+                    alt={item.productTitle || 'preview'}
+                    className="h-32 w-full object-contain bg-muted/40"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
+                    <Button type="button" size="sm" className="h-7 text-xs" onClick={() => setMediaPicker({ mode: 'main' })}>
+                      Заменить
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs text-destructive"
+                      onClick={() => onChange({ mediaFileId: null, imageUrl: '' })}
+                    >
+                      Убрать
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="w-full h-24 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:bg-accent/50 transition-colors text-xs"
+                  onClick={() => setMediaPicker({ mode: 'main' })}
+                >
+                  <span className="text-lg">🖼</span>
+                  <span>Выбрать фото из медиатеки</span>
+                </button>
+              )}
+            </div>
+          </SettingField>
+
+          <SettingField label={`Дополнительные фото (галерея): ${item.additionalPhotos.length}`}>
+            <div className="space-y-2">
+              <div className="grid grid-cols-4 gap-2">
+                {item.additionalPhotos.map((ph, i) => (
+                  <div key={i} className="relative group rounded-md border border-border overflow-hidden bg-muted/40">
+                    <img
+                      src={resolveCrmMediaAssetUrl(ph.url)}
+                      alt={`extra-${i}`}
+                      className="h-20 w-full object-contain"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100 bg-black/50 transition-opacity">
+                      <Button type="button" size="sm" className="h-6 text-[10px] px-2" onClick={() => setMediaPicker({ mode: 'extra', extraIndex: i })}>
+                        Заменить
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-6 text-[10px] px-2 text-destructive"
+                        onClick={() => onChange({ additionalPhotos: item.additionalPhotos.filter((_, k) => k !== i) })}
+                      >
+                        Убрать
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="h-20 rounded-md border border-dashed border-border flex flex-col items-center justify-center gap-1 text-muted-foreground hover:bg-accent/50 text-[11px]"
+                  onClick={() => setMediaPicker({ mode: 'extra', extraIndex: -1 })}
+                >
+                  <span className="text-base">＋</span>
+                  <span>Добавить</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                На витрине покажутся миниатюрами под главным фото с переключением.
+              </p>
+            </div>
+          </SettingField>
+
+          <div className="grid grid-cols-3 gap-2">
+            <SettingField label="Цена">
+              <Input
+                className="h-8 text-xs"
+                value={item.priceText ?? ''}
+                placeholder="4 990 ₽"
+                onChange={(e) => onChange({ priceText: e.target.value })}
+              />
+            </SettingField>
+            <SettingField label="Старая цена">
+              <Input
+                className="h-8 text-xs"
+                value={item.oldPriceText ?? ''}
+                placeholder="6 990 ₽"
+                onChange={(e) => onChange({ oldPriceText: e.target.value })}
+              />
+            </SettingField>
+            <SettingField label="Скидка">
+              <Input
+                className="h-8 text-xs"
+                value={item.discountText ?? ''}
+                placeholder="-28%"
+                onChange={(e) => onChange({ discountText: e.target.value })}
+              />
+            </SettingField>
+          </div>
+
+          <SettingField label="Кнопка-CTA">
+            <CtaEditor value={item.cta} onChange={(cta) => onChange({ cta })} />
+          </SettingField>
+        </div>
+      ) : null}
     </div>
   );
 }
