@@ -141,7 +141,7 @@ function AnimatedRoutes() {
         <Route path="/brand" element={<PageTransition><BrandsListPage /></PageTransition>} />
         <Route path="/brand/:slug" element={<PageTransition><BrandPage /></PageTransition>} />
         <Route path="/seller" element={<PageTransition><SellersListPage /></PageTransition>} />
-        <Route path="/seller/:id" element={<PageTransition><SellerPage /></PageTransition>} />
+        <Route path="/seller/:slug" element={<PageTransition><SellerPage /></PageTransition>} />
 
         {/* Account routes — public, no auth redirect (demo mode) */}
         <Route path="/account" element={<PageTransition><AccountLayout /></PageTransition>}>

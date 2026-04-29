@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Trash2, Copy, Eye, EyeOff } from 'lucide-react';
 import { BlockConfig, type BlockSettings, type FooterSettings, type HeaderSettings } from '../types';
+import type { SocialFeedSettings } from '../settingsProfiles';
 import { getSettingsProfileForBlockType, normalizeBlockProfileSettings } from '../settingsProfiles';
 import { AdvantagesItemsField, CategoryImageOverridesField, CategoryTreeField, CtaEditor, LinksEditor, MediaPickerField, ProductFeedField, ProductPickerField, SettingField } from './settings/SharedProfileFields';
 import { CrmMediaPickerDialog } from '@/crm/components/CrmMediaPickerDialog';
@@ -263,6 +264,75 @@ function ProfileSettingsForm({
 
   if (profile === 'P-HERO-PRODUCT') {
     return <HeroProductSettingsForm block={block} normalized={normalized as any} update={update} />;
+  }
+
+  if (profile === 'P-SOCIAL-FEED') {
+    const s = normalized as SocialFeedSettings;
+    return (
+      <div className="space-y-3">
+        <p className="text-[11px] text-muted-foreground leading-relaxed rounded-md border border-border bg-muted/30 px-2 py-1.5">
+          Лента подтягивает данные из API витрины (источник и лимиты). На опубликованной странице контент приходит с сервера, не из статики.
+        </p>
+        <SettingField label="Источник ленты">
+          <select
+            className="h-8 text-xs w-full rounded-md border border-border bg-background px-2"
+            value={s.source}
+            onChange={(e) =>
+              update({
+                source: e.target.value as SocialFeedSettings['source'],
+              })
+            }
+          >
+            <option value="reviews">Отзывы покупателей</option>
+            <option value="sellers">Продавцы</option>
+            <option value="brands">Бренды</option>
+            <option value="recent">Недавнее</option>
+          </select>
+        </SettingField>
+        <SettingField label="Лимит элементов">
+          <Input
+            type="number"
+            min={1}
+            max={60}
+            className="h-8 text-xs"
+            value={Number.isFinite(s.limit) ? s.limit : 8}
+            onChange={(e) => update({ limit: Math.min(60, Math.max(1, Number(e.target.value) || 8)) })}
+          />
+        </SettingField>
+        <SettingField label="Сортировка">
+          <select
+            className="h-8 text-xs w-full rounded-md border border-border bg-background px-2"
+            value={s.sortBy}
+            onChange={(e) =>
+              update({
+                sortBy: e.target.value as SocialFeedSettings['sortBy'],
+              })
+            }
+          >
+            <option value="created_at">По дате</option>
+            <option value="updated_at">По обновлению</option>
+            <option value="name">По имени</option>
+            <option value="rating">По рейтингу</option>
+          </select>
+        </SettingField>
+        <SettingField label="Направление">
+          <select
+            className="h-8 text-xs w-full rounded-md border border-border bg-background px-2"
+            value={s.sortDir}
+            onChange={(e) =>
+              update({
+                sortDir: e.target.value as SocialFeedSettings['sortDir'],
+              })
+            }
+          >
+            <option value="desc">По убыванию</option>
+            <option value="asc">По возрастанию</option>
+          </select>
+        </SettingField>
+        <SettingField label="Title"><Input className="h-8 text-xs" value={s.title ?? ''} onChange={(e) => update({ title: e.target.value })} /></SettingField>
+        <SettingField label="Subtitle"><Input className="h-8 text-xs" value={s.subtitle ?? ''} onChange={(e) => update({ subtitle: e.target.value })} /></SettingField>
+      </div>
+    );
   }
 
   return (

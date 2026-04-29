@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Heart, ShoppingCart, BarChart2 } from "lucide-react";
 
 interface Product {
-  id: number;
+  id: string | number;
   name: string;
   price: number;
   oldPrice?: number;

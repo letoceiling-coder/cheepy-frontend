@@ -2,7 +2,7 @@
  * Унифицированная модель товара для корзины, избранного и карточек UI (без привязки к mock-data).
  */
 export interface StorefrontProduct {
-  id: number;
+  id: string | number;
   name: string;
   price: number;
   oldPrice?: number;

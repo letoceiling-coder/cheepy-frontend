@@ -300,7 +300,7 @@ export interface PaginatedResponse<T> {
 }
 
 export interface Product {
-  id: number;
+  id: string | number;
   external_id: string;
   title: string;
   price: string | null;
@@ -375,6 +375,12 @@ export interface SellerFull extends Seller {
   source_url: string | null;
   description: string | null;
   last_parsed_at?: string | null;
+  avatar_url?: string | null;
+  reviews_summary?: {
+    count: number;
+    avg_rating: number | null;
+    positive_percent: number | null;
+  };
   contacts?: {
     phone: string | null;
     whatsapp_url: string | null;
@@ -393,6 +399,28 @@ export interface Brand {
   status: string;
   seo_title: string | null;
   category_ids: number[];
+}
+
+export interface SellerReviewPublic {
+  id: number;
+  author_name: string;
+  rating: number;
+  body: string;
+  created_at: string | null;
+}
+
+/** Карточка продавца в списке GET /public/sellers */
+export interface PublicSellerListItem {
+  id: number;
+  name: string;
+  slug: string;
+  avatar_url: string | null;
+  products_count: number;
+  reviews_summary: {
+    count: number;
+    avg_rating: number | null;
+    positive_percent: number | null;
+  };
 }
 
 export interface ExcludedRule {
@@ -1412,10 +1440,42 @@ export const publicApi = {
   product: (externalId: string) =>
     get<{ product: ProductFull; seller_products: Product[] }>(`/public/products/${externalId}`, true),
 
-  seller: (slug: string, page = 1) =>
-    get<{ seller: SellerFull; data: Product[]; meta: PaginatedResponse<Product>['meta'] }>(
-      `/public/sellers/${slug}?page=${page}`, true
-    ),
+  seller: (slug: string, params?: { page?: number; per_page?: number; sort_by?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.page != null) q.set("page", String(params.page));
+    if (params?.per_page != null) q.set("per_page", String(params.per_page));
+    if (params?.sort_by) q.set("sort_by", params.sort_by);
+    const qs = q.toString();
+    return get<{ seller: SellerFull; data: Product[]; meta: PaginatedResponse<Product>["meta"] }>(
+      `/public/sellers/${encodeURIComponent(slug)}${qs ? `?${qs}` : ""}`,
+      true
+    );
+  },
+
+  sellerReviews: (slug: string, page = 1, perPage = 10) => {
+    const q = new URLSearchParams();
+    q.set("page", String(page));
+    q.set("per_page", String(perPage));
+    return get<{ data: SellerReviewPublic[]; meta: PaginatedResponse<SellerReviewPublic>["meta"] }>(
+      `/public/sellers/${encodeURIComponent(slug)}/reviews?${q}`,
+      true
+    );
+  },
+
+  createSellerReview: (slug: string, body: { author_name: string; rating: number; body: string }) =>
+    post<{ data: SellerReviewPublic }>(`/public/sellers/${encodeURIComponent(slug)}/reviews`, body, true),
+
+  sellers: (params?: { page?: number; per_page?: number; sort_by?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.page != null) q.set("page", String(params.page));
+    if (params?.per_page != null) q.set("per_page", String(params.per_page));
+    if (params?.sort_by) q.set("sort_by", params.sort_by);
+    const qs = q.toString();
+    return get<{ data: PublicSellerListItem[]; meta: PaginatedResponse<PublicSellerListItem>["meta"] }>(
+      `/public/sellers${qs ? `?${qs}` : ""}`,
+      true
+    );
+  },
 
   search: (q: string, page = 1, perPage = 20) =>
     get<{ query: string; data: Product[]; meta: PaginatedResponse<Product>['meta'] }>(
