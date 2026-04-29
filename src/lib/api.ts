@@ -1424,6 +1424,39 @@ export const publicApi = {
 
   featured: (limit = 24) =>
     get<{ data: Product[] }>(`/public/featured?limit=${limit}`, true),
+
+  /** Список брендов (витрина). */
+  brands: (params?: { page?: number; per_page?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.page != null) q.set("page", String(params.page));
+    if (params?.per_page != null) q.set("per_page", String(params.per_page));
+    return get<{
+      data: Array<{
+        id: number;
+        name: string;
+        slug: string;
+        logo_url?: string | null;
+        products_count?: number;
+        description?: string | null;
+      }>;
+      meta?: { total: number; per_page: number; current_page: number; last_page: number };
+    }>(`/public/brands${q.toString() ? `?${q}` : ""}`, true);
+  },
+
+  /** Страница бренда: карточка + товары. */
+  brandDetail: (slug: string, page = 1, perPage = 24) =>
+    get<{
+      brand: {
+        id: number;
+        name: string;
+        slug: string;
+        logo_url?: string | null;
+        description?: string | null;
+        products_count?: number | null;
+      };
+      data: Product[];
+      meta: PaginatedResponse<Product>["meta"];
+    }>(`/public/brands/${encodeURIComponent(slug)}?page=${page}&per_page=${perPage}`, true),
 };
 
 // ──────────────────────────────────────────────

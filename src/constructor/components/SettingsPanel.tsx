@@ -267,6 +267,12 @@ function ProfileSettingsForm({
 
   return (
     <div className="space-y-3">
+      {profile === "P-PAGE-COMPOSED" ? (
+        <p className="text-[11px] text-muted-foreground leading-relaxed rounded-md border border-border bg-muted/30 px-2 py-1.5">
+          На опубликованной витрине данные подставляются из каталога по URL (категория, товар, бренд). Поля Title/Subtitle ниже — опциональные подписи в конструкторе;
+          основной контент блока берётся из API.
+        </p>
+      ) : null}
       <SettingField label="Title"><Input className="h-8 text-xs" value={normalized.title ?? ''} onChange={(e) => update({ title: e.target.value })} /></SettingField>
       <SettingField label="Subtitle"><Input className="h-8 text-xs" value={normalized.subtitle ?? ''} onChange={(e) => update({ subtitle: e.target.value })} /></SettingField>
       {block.type === 'MarketplaceAdvantages' ? (

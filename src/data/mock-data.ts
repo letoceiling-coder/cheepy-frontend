@@ -4,23 +4,10 @@ import product3 from "@/assets/product-3.jpg";
 import product4 from "@/assets/product-4.jpg";
 import product5 from "@/assets/product-5.jpg";
 import product6 from "@/assets/product-6.jpg";
+import type { StorefrontProduct } from "@/types/storefront-product";
 
-export interface Product {
-  id: number;
-  name: string;
-  price: number;
-  oldPrice?: number;
-  images: string[];
-  rating: number;
-  reviews: number;
-  seller: string;
-  category: string;
-  description: string;
-  colors: string[];
-  sizes: string[];
-  material: string;
-  brand: string;
-}
+/** @deprecated Используйте StorefrontProduct из @/types/storefront-product */
+export type Product = StorefrontProduct;
 
 export interface Order {
   id: string;

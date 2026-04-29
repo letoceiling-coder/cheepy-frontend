@@ -1,32 +1,46 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReviewModal from "@/components/ReviewModal";
-import { mockProducts } from "@/data/mock-data";
 import { useAuth } from "@/contexts/AuthContext";
-
-const mockReviews = [
-  { id: 1, author: "Мария", date: "2024-12-10", rating: 5, text: "Отличная вещь! Соответствует описанию.", pros: "Качественная ткань, красивый цвет", cons: "Нет" },
-  { id: 2, author: "Дмитрий", date: "2024-12-05", rating: 4, text: "Хорошее качество за свою цену.", pros: "Удобная, хорошо сидит", cons: "Немного отличается от фото" },
-  { id: 3, author: "Анна", date: "2024-11-28", rating: 5, text: "Заказываю второй раз. Рекомендую!", pros: "Быстрая доставка, качество", cons: "Нет" },
-];
+import { usePublicProduct } from "@/hooks/usePublicProduct";
 
 export default function ProductDetailTabsSection() {
   const { id } = useParams();
-  const product = mockProducts.find((p) => p.id === Number(id)) || mockProducts[0];
+  const { data, isLoading } = usePublicProduct(id);
+  const product = data?.product;
   const { isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<"about" | "reviews" | "delivery">("about");
   const [showReviewModal, setShowReviewModal] = useState(false);
+
+  if (isLoading) {
+    return <div className="mb-10 h-48 bg-muted animate-pulse rounded-xl" />;
+  }
+
+  if (!product) {
+    return null;
+  }
+
+  const rows: { label: string; value: string }[] = [];
+  if (product.brand?.name) rows.push({ label: "Бренд", value: product.brand.name });
+  const mat = product.attributes?.find((a) => /материал/i.test(a.name));
+  if (mat?.value) rows.push({ label: "Материал", value: mat.value });
+  if (product.category?.name) rows.push({ label: "Категория", value: product.category.name });
+  rows.push({ label: "Артикул", value: product.external_id ? String(product.external_id) : `ID-${product.id}` });
+  if (product.characteristics) {
+    Object.entries(product.characteristics).forEach(([k, v]) => {
+      if (v && String(v).trim()) rows.push({ label: k, value: String(v) });
+    });
+  }
 
   return (
     <>
       <div>
         <div className="border-b border-border mb-6">
-          <div className="flex gap-0">
+          <div className="flex gap-0 flex-wrap">
             {[
               { key: "about" as const, label: "О товаре" },
-              { key: "reviews" as const, label: `Отзывы (${mockReviews.length})` },
+              { key: "reviews" as const, label: "Отзывы" },
               { key: "delivery" as const, label: "Доставка" },
             ].map((t) => (
               <button
@@ -45,20 +59,21 @@ export default function ProductDetailTabsSection() {
 
         {activeTab === "about" && (
           <div className="max-w-3xl mb-10">
-            <p className="text-foreground mb-4">{product.description}</p>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: "Бренд", value: product.brand },
-                { label: "Материал", value: product.material },
-                { label: "Категория", value: product.category },
-                { label: "Артикул", value: `CP-${product.id.toString().padStart(6, "0")}` },
-              ].map((r) => (
-                <div key={r.label} className="flex justify-between py-2 border-b border-border text-sm">
-                  <span className="text-muted-foreground">{r.label}</span>
-                  <span className="text-foreground font-medium">{r.value}</span>
-                </div>
-              ))}
-            </div>
+            {product.description ? (
+              <p className="text-foreground mb-4 whitespace-pre-wrap">{product.description}</p>
+            ) : (
+              <p className="text-muted-foreground text-sm mb-4">Описание уточняется у продавца.</p>
+            )}
+            {rows.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {rows.map((r) => (
+                  <div key={r.label + r.value} className="flex justify-between gap-4 py-2 border-b border-border text-sm">
+                    <span className="text-muted-foreground shrink-0">{r.label}</span>
+                    <span className="text-foreground font-medium text-right break-words">{r.value}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -76,56 +91,27 @@ export default function ProductDetailTabsSection() {
                 </Link>
               )}
             </div>
-            <div className="space-y-4">
-              {mockReviews.map((r) => (
-                <div key={r.id} className="p-4 rounded-xl border border-border">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-foreground text-sm">{r.author}</span>
-                      <div className="flex">
-                        {[1, 2, 3, 4, 5].map((s) => (
-                          <Star key={s} className={`w-3 h-3 ${s <= r.rating ? "fill-yellow-500 text-yellow-500" : "text-border"}`} />
-                        ))}
-                      </div>
-                    </div>
-                    <span className="text-xs text-muted-foreground">{r.date}</span>
-                  </div>
-                  <p className="text-sm text-foreground mb-2">{r.text}</p>
-                  {r.pros && (
-                    <p className="text-xs text-muted-foreground">
-                      <span className="text-green-600 font-medium">Достоинства:</span> {r.pros}
-                    </p>
-                  )}
-                  {r.cons && r.cons !== "Нет" && (
-                    <p className="text-xs text-muted-foreground">
-                      <span className="text-destructive font-medium">Недостатки:</span> {r.cons}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
+            <p className="text-sm text-muted-foreground">Отзывы появятся после накопления оценок на площадке.</p>
           </div>
         )}
 
         {activeTab === "delivery" && (
           <div className="max-w-3xl mb-10 space-y-4">
             <div className="p-4 rounded-xl border border-border">
-              <h4 className="font-semibold text-foreground mb-2">Доставка курьером</h4>
-              <p className="text-sm text-muted-foreground">от 1-3 дней, бесплатно при заказе от 3000 ₽</p>
-            </div>
-            <div className="p-4 rounded-xl border border-border">
-              <h4 className="font-semibold text-foreground mb-2">Самовывоз из ПВЗ</h4>
-              <p className="text-sm text-muted-foreground">от 2-5 дней, бесплатно</p>
+              <h4 className="font-semibold text-foreground mb-2">Доставка</h4>
+              <p className="text-sm text-muted-foreground">
+                Условия и сроки доставки уточняются при оформлении заказа и зависят от продавца и региона.
+              </p>
             </div>
             <div className="p-4 rounded-xl border border-border">
               <h4 className="font-semibold text-foreground mb-2">Возврат</h4>
-              <p className="text-sm text-muted-foreground">В течение 14 дней после получения</p>
+              <p className="text-sm text-muted-foreground">Возврат оформляется по правилам маркетплейса и договору с продавцом.</p>
             </div>
           </div>
         )}
       </div>
 
-      {showReviewModal && <ReviewModal onClose={() => setShowReviewModal(false)} productName={product.name} />}
+      {showReviewModal ? <ReviewModal onClose={() => setShowReviewModal(false)} productName={product.title} /> : null}
     </>
   );
 }

@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, ReactNode } from "react";
-import { type Product } from "@/data/mock-data";
+import type { StorefrontProduct } from "@/types/storefront-product";
 
 export interface CartItem {
-  product: Product;
+  product: StorefrontProduct;
   quantity: number;
   color: string;
   size: string;
@@ -10,7 +10,7 @@ export interface CartItem {
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Product, color: string, size: string) => void;
+  addToCart: (product: StorefrontProduct, color: string, size: string) => void;
   removeFromCart: (productId: number) => void;
   updateQuantity: (productId: number, quantity: number) => void;
   updateColor: (productId: number, color: string) => void;
@@ -26,7 +26,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
 
-  const addToCart = (product: Product, color: string, size: string) => {
+  const addToCart = (product: StorefrontProduct, color: string, size: string) => {
     setItems(prev => {
       const existing = prev.find(i => i.product.id === product.id && i.color === color && i.size === size);
       if (existing) {

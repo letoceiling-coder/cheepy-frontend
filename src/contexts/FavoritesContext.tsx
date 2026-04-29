@@ -1,9 +1,9 @@
 import { createContext, useContext, useState, ReactNode } from "react";
-import { type Product } from "@/data/mock-data";
+import type { StorefrontProduct } from "@/types/storefront-product";
 
 interface FavoritesContextType {
-  favorites: Product[];
-  toggleFavorite: (product: Product) => void;
+  favorites: StorefrontProduct[];
+  toggleFavorite: (product: StorefrontProduct) => void;
   isFavorite: (productId: number) => boolean;
   count: number;
 }
@@ -11,9 +11,9 @@ interface FavoritesContextType {
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
 
 export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
-  const [favorites, setFavorites] = useState<Product[]>([]);
+  const [favorites, setFavorites] = useState<StorefrontProduct[]>([]);
 
-  const toggleFavorite = (product: Product) => {
+  const toggleFavorite = (product: StorefrontProduct) => {
     setFavorites(prev =>
       prev.some(p => p.id === product.id)
         ? prev.filter(p => p.id !== product.id)

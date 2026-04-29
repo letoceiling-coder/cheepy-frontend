@@ -1,44 +1,51 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronDown, SlidersHorizontal, Grid2X2, LayoutList, X } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
-import { mockProducts, mockCategories, mockSubcategories } from "@/data/mock-data";
+import { useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { publicApi } from "@/lib/api";
+import { publicListProductToStorefront } from "@/lib/mapPublicProduct";
 
 export default function CategoryListingContent() {
+  const { slug } = useParams();
   const [sortBy, setSortBy] = useState("popular");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500000]);
 
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 30000]);
-  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
-  const [selectedColors, setSelectedColors] = useState<string[]>([]);
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [selectedRating, setSelectedRating] = useState<number | null>(null);
+  const sortParams = useMemo(() => {
+    switch (sortBy) {
+      case "price_asc":
+        return { sort_by: "price_raw", sort_dir: "asc" as const };
+      case "price_desc":
+        return { sort_by: "price_raw", sort_dir: "desc" as const };
+      case "new":
+        return { sort_by: "parsed_at", sort_dir: "desc" as const };
+      default:
+        return { sort_by: "list_position", sort_dir: "desc" as const };
+    }
+  }, [sortBy]);
 
-  const subcategories = mockSubcategories[Object.keys(mockSubcategories)[0]] || ["Все", "Популярные", "Новинки", "Со скидкой"];
-  const [activeSubcat, setActiveSubcat] = useState(0);
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["category-products", slug, currentPage, sortBy, priceRange[0], priceRange[1]],
+    queryFn: () =>
+      publicApi.categoryProducts(String(slug), {
+        page: currentPage,
+        per_page: 12,
+        ...sortParams,
+        price_from: priceRange[0] > 0 ? priceRange[0] : undefined,
+        price_to: priceRange[1] > 0 ? priceRange[1] : undefined,
+      }),
+    enabled: Boolean(slug),
+    staleTime: 30_000,
+  });
 
-  const sizes = ["XS", "S", "M", "L", "XL", "XXL"];
-  const colors = [
-    { name: "Чёрный", hex: "#000" },
-    { name: "Белый", hex: "#fff" },
-    { name: "Синий", hex: "#3B82F6" },
-    { name: "Красный", hex: "#EF4444" },
-    { name: "Серый", hex: "#9CA3AF" },
-    { name: "Бежевый", hex: "#D2B48C" },
-  ];
-  const brands = ["Nike", "Zara", "H&M", "Mango", "Uniqlo", "Levi's"];
-  const materials = ["Хлопок", "Полиэстер", "Шерсть", "Экокожа", "Замша", "Деним"];
-
-  const perPage = 12;
-  const products = mockProducts;
-  const totalPages = Math.ceil(products.length / perPage);
-  const pageProducts = products.slice((currentPage - 1) * perPage, currentPage * perPage);
-
-  const toggleSize = (s: string) => setSelectedSizes((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
-  const toggleColor = (c: string) => setSelectedColors((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
-  const toggleBrand = (b: string) => setSelectedBrands((prev) => (prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]));
+  const products = data?.data ?? [];
+  const meta = data?.meta;
+  const apiFilters = data?.filters ?? [];
+  const totalPages = meta?.last_page ?? 1;
 
   const FilterSection = ({
     title,
@@ -71,120 +78,51 @@ export default function CategoryListingContent() {
         <div className="flex items-center gap-2">
           <input
             type="number"
+            min={0}
             value={priceRange[0]}
-            onChange={(e) => setPriceRange([+e.target.value, priceRange[1]])}
+            onChange={(e) => setPriceRange([+e.target.value || 0, priceRange[1]])}
             className="w-full py-2 px-3 rounded-lg border border-border bg-background text-foreground text-sm"
             placeholder="От"
           />
           <span className="text-muted-foreground">—</span>
           <input
             type="number"
+            min={0}
             value={priceRange[1]}
-            onChange={(e) => setPriceRange([priceRange[0], +e.target.value])}
+            onChange={(e) => setPriceRange([priceRange[0], +e.target.value || 0])}
             className="w-full py-2 px-3 rounded-lg border border-border bg-background text-foreground text-sm"
             placeholder="До"
           />
         </div>
       </FilterSection>
 
-      <FilterSection title="Размер">
-        <div className="flex flex-wrap gap-2">
-          {sizes.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => toggleSize(s)}
-              className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                selectedSizes.includes(s) ? "border-primary bg-primary/10 text-primary" : "border-border text-foreground hover:border-primary/50"
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      </FilterSection>
-
-      <FilterSection title="Цвет">
-        <div className="flex flex-wrap gap-2">
-          {colors.map((c) => (
-            <button
-              key={c.name}
-              type="button"
-              onClick={() => toggleColor(c.name)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                selectedColors.includes(c.name) ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
-              }`}
-            >
-              <span className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: c.hex }} />
-              {c.name}
-            </button>
-          ))}
-        </div>
-      </FilterSection>
-
-      <FilterSection title="Бренд">
-        <div className="space-y-2">
-          {brands.map((b) => (
-            <label key={b} className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={selectedBrands.includes(b)}
-                onChange={() => toggleBrand(b)}
-                className="rounded border-border text-primary focus:ring-primary"
-              />
-              <span className="text-sm text-foreground">{b}</span>
-            </label>
-          ))}
-        </div>
-      </FilterSection>
-
-      <FilterSection title="Материал" defaultOpen={false}>
-        <div className="space-y-2">
-          {materials.map((m) => (
-            <label key={m} className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" className="rounded border-border text-primary focus:ring-primary" />
-              <span className="text-sm text-foreground">{m}</span>
-            </label>
-          ))}
-        </div>
-      </FilterSection>
-
-      <FilterSection title="Рейтинг">
-        <div className="space-y-2">
-          {[4, 3, 2, 1].map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setSelectedRating(selectedRating === r ? null : r)}
-              className={`flex items-center gap-1 text-sm ${selectedRating === r ? "text-primary" : "text-foreground"}`}
-            >
-              {"★".repeat(r)}
-              {"☆".repeat(5 - r)}
-              <span className="text-muted-foreground ml-1">от {r}</span>
-            </button>
-          ))}
-        </div>
-      </FilterSection>
+      {apiFilters
+        .filter((f) => Array.isArray(f.values) && f.values.length > 0)
+        .map((f) => (
+          <FilterSection key={f.attr_name} title={f.display_name || f.attr_name} defaultOpen={false}>
+            <div className="flex flex-wrap gap-2">
+              {f.values!.slice(0, 40).map((v) => (
+                <span key={v} className="px-3 py-1.5 rounded-lg text-xs border border-border bg-secondary text-foreground">
+                  {v}
+                </span>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-2">Фильтрация по этим значениям будет добавлена в следующей версии API.</p>
+          </FilterSection>
+        ))}
     </div>
   );
 
+  if (isError) {
+    return (
+      <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-6 text-sm">
+        Не удалось загрузить товары категории. Проверьте адрес или попробуйте позже.
+      </div>
+    );
+  }
+
   return (
     <>
-      <div className="flex gap-2 overflow-x-auto no-scrollbar mb-6 pb-1">
-        {subcategories.map((s, i) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setActiveSubcat(i)}
-            className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              i === activeSubcat ? "gradient-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
-            }`}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-
       <div className="flex gap-6">
         <aside className="hidden lg:block w-[260px] shrink-0">
           <div className="sticky top-[180px]">
@@ -197,6 +135,7 @@ export default function CategoryListingContent() {
           type="button"
           onClick={() => setShowFilters(true)}
           className="lg:hidden fixed bottom-20 right-4 z-40 gradient-primary text-primary-foreground p-3 rounded-full shadow-lg"
+          aria-label="Фильтры"
         >
           <SlidersHorizontal className="w-5 h-5" />
         </button>
@@ -207,7 +146,7 @@ export default function CategoryListingContent() {
             <div className="absolute right-0 top-0 bottom-0 w-[320px] bg-background overflow-y-auto p-4 shadow-xl">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-foreground">Фильтры</h2>
-                <button type="button" onClick={() => setShowFilters(false)}>
+                <button type="button" onClick={() => setShowFilters(false)} aria-label="Закрыть">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -219,28 +158,31 @@ export default function CategoryListingContent() {
           </div>
         )}
 
-        <div className="flex-1">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">{products.length} товаров</span>
-            </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <span className="text-sm text-muted-foreground">
+              {isLoading ? "Загрузка…" : `${meta?.total ?? products.length} товаров`}
+            </span>
             <div className="flex items-center gap-3">
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => {
+                  setSortBy(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="text-sm py-2 px-3 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:border-primary"
               >
-                <option value="popular">По популярности</option>
+                <option value="popular">По каталогу</option>
                 <option value="price_asc">Сначала дешёвые</option>
                 <option value="price_desc">Сначала дорогие</option>
-                <option value="new">Новинки</option>
-                <option value="rating">По рейтингу</option>
+                <option value="new">По дате</option>
               </select>
               <div className="hidden md:flex border border-border rounded-lg overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setViewMode("grid")}
                   className={`p-2 ${viewMode === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}
+                  aria-label="Сетка"
                 >
                   <Grid2X2 className="w-4 h-4" />
                 </button>
@@ -248,6 +190,7 @@ export default function CategoryListingContent() {
                   type="button"
                   onClick={() => setViewMode("list")}
                   className={`p-2 ${viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}
+                  aria-label="Список"
                 >
                   <LayoutList className="w-4 h-4" />
                 </button>
@@ -255,43 +198,45 @@ export default function CategoryListingContent() {
             </div>
           </div>
 
-          <div className={viewMode === "grid" ? "grid grid-cols-2 md:grid-cols-3 gap-4" : "flex flex-col gap-3"}>
-            {pageProducts.map((p) =>
-              viewMode === "list" ? (
-                <ProductCard key={p.id} product={p} variant="list" />
-              ) : (
-                <a key={p.id} href={`/product/${p.id}`} className="block">
-                  <ProductCard product={p} />
-                </a>
-              )
-            )}
-          </div>
+          {isLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-64 rounded-xl bg-muted animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className={viewMode === "grid" ? "grid grid-cols-2 md:grid-cols-3 gap-4" : "flex flex-col gap-3"}>
+              {products.map((p) => {
+                const card = publicListProductToStorefront(p);
+                return (
+                  <a key={p.id} href={`/product/${p.id}`} className={viewMode === "list" ? "block" : "block"}>
+                    <ProductCard product={card} variant={viewMode === "list" ? "list" : "grid"} />
+                  </a>
+                );
+              })}
+            </div>
+          )}
 
-          <div className="flex items-center justify-center gap-2 mt-8">
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button
-                key={i + 1}
-                type="button"
-                onClick={() => setCurrentPage(i + 1)}
-                className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
-                  currentPage === i + 1 ? "gradient-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-          </div>
+          {!isLoading && products.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8">В этой категории пока нет товаров.</p>
+          ) : null}
 
-          <div className="mt-8 gradient-primary rounded-2xl p-6 text-center text-primary-foreground">
-            <h3 className="text-xl font-bold mb-2">Зарегистрируйтесь и получите -10%</h3>
-            <p className="text-sm opacity-80 mb-4">На первый заказ от любого продавца</p>
-            <a
-              href="/auth"
-              className="inline-block bg-background text-foreground px-6 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity"
-            >
-              Зарегистрироваться
-            </a>
-          </div>
+          {totalPages > 1 ? (
+            <div className="flex items-center justify-center gap-2 mt-8 flex-wrap">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setCurrentPage(p)}
+                  className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
+                    currentPage === p ? "gradient-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </>
