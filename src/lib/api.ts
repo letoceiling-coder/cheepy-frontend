@@ -1775,20 +1775,67 @@ export interface AiProviderItem {
   description: string;
   docs_url: string;
   is_active: boolean;
+  /** Участвует в выборе «источник для агента» (чат). Replicate — только медиа/predictions. */
+  agent_chat_capable: boolean;
   has_api_key: boolean;
   api_key_hint: string | null;
   default_model: string;
+  /** Опционально: свой endpoint (OpenAI-совместимые), для Ollama — база вида http://127.0.0.1:11434 */
+  base_url: string;
   models: AiProviderModelOption[];
   catalog_updated_at: string;
 }
 
+export interface AiActiveAgentOption {
+  value: string;
+  title: string;
+  description: string;
+}
+
+export interface AiProvidersListResponse {
+  data: AiProviderItem[];
+  catalog_updated_at: string;
+  active_agent_provider: string;
+  active_agent_options: AiActiveAgentOption[];
+}
+
+export interface AiTokenUsageRow {
+  id: number;
+  provider: string;
+  model: string;
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  total_tokens: number | null;
+  cost_usd: string | null;
+  created_at: string | null;
+}
+
+export interface AiTokenUsageListResponse {
+  data: AiTokenUsageRow[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
 export const crmAiProvidersApi = {
-  list: () => get<{ data: AiProviderItem[]; catalog_updated_at: string }>('/crm/ai-providers'),
+  list: () => get<AiProvidersListResponse>('/crm/ai-providers'),
   update: (
     name: string,
-    body: { is_active?: boolean; api_key?: string; default_model?: string }
+    body: { is_active?: boolean; api_key?: string; default_model?: string; base_url?: string }
   ) => patch<AiProviderItem>(`/crm/ai-providers/${name}`, body),
   clearKey: (name: string) => post<AiProviderItem>(`/crm/ai-providers/${name}/clear-key`, {}),
+  setActiveAgent: (provider: string) =>
+    post<{ active_agent_provider: string; active_agent_options: AiActiveAgentOption[] }>(
+      '/crm/ai-providers/active-agent',
+      { provider }
+    ),
+  tokenUsage: (page = 1, perPage = 40) =>
+    get<AiTokenUsageListResponse>(
+      `/crm/ai-providers/token-usage?page=${encodeURIComponent(String(page))}&per_page=${encodeURIComponent(String(perPage))}`
+    ),
 };
 
 // ──────────────────────────────────────────────
