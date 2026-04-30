@@ -32,6 +32,7 @@ export interface Coupon {
 }
 
 export interface UserProfile {
+  id?: number;
   name: string;
   email: string;
   phone: string;
@@ -41,6 +42,8 @@ export interface UserProfile {
   referralCode: string;
   addresses: string[];
   pvzAddresses: string[];
+  /** Провайдеры соцвхода (vk, yandex, ok), привязанные к аккаунту покупателя */
+  linked_social_providers?: string[];
 }
 
 export interface NewsItem {

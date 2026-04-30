@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { MapPin, Pencil, Trash2, Plus, Copy, Check, X, Save, Camera } from "lucide-react";
+import { MapPin, Pencil, Trash2, Plus, Copy, Check, X, Save, Camera, Link2 } from "lucide-react";
 import { mockUser } from "@/data/mock-data";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLoginPrompt } from "@/contexts/LoginPromptContext";
@@ -7,17 +7,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { SOCIAL_ORDER, SOCIAL_UI } from "@/components/auth/storefrontSocial";
+import { ApiError, publicSocialAuthApi, storefrontAuthApi, type SocialAuthMetaProvider } from "@/lib/api";
 
 const PersonProfile = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const { requireAuth } = useLoginPrompt();
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const editFormRef = useRef<HTMLDivElement>(null);
+  const [oauthProviders, setOauthProviders] = useState<SocialAuthMetaProvider[]>([]);
 
   const displayUser = user || mockUser;
+
+  useEffect(() => {
+    publicSocialAuthApi
+      .meta()
+      .then((r) => setOauthProviders(r.providers ?? []))
+      .catch(() => setOauthProviders([]));
+  }, []);
 
   // Edit form state
   const [editName, setEditName] = useState(displayUser.name);
@@ -55,6 +65,25 @@ const PersonProfile = () => {
   const handleAddressAction = (action: string) => {
     if (!requireAuth(action)) return;
     toast({ title: action, description: "Действие выполнено успешно" });
+  };
+
+  const sortedOauth = [...oauthProviders].sort(
+    (a, b) =>
+      SOCIAL_ORDER.indexOf(a.id as (typeof SOCIAL_ORDER)[number]) -
+      SOCIAL_ORDER.indexOf(b.id as (typeof SOCIAL_ORDER)[number])
+  );
+
+  const linkedSocial = user?.linked_social_providers ?? [];
+
+  const startSocialLink = async (providerId: string) => {
+    if (!requireAuth("Привязка соцсети")) return;
+    try {
+      const { redirect_url } = await storefrontAuthApi.socialLinkSession(providerId);
+      window.location.href = redirect_url;
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Не удалось начать привязку";
+      toast({ variant: "destructive", title: "Ошибка", description: msg });
+    }
   };
 
   if (loading) return <ProfileSkeleton />;
@@ -255,27 +284,56 @@ const PersonProfile = () => {
         </label>
       </section>
 
-      {/* Social connections */}
+      {/* OAuth (VK / Яндекс / OK) — только провайдеры, активные в CRM */}
       <section className="animate-fade-in" style={{ animationDelay: "500ms", animationFillMode: "both" }}>
-        <h2 className="text-lg font-bold text-foreground mb-3">Социальные сети</h2>
-        <div className="flex flex-wrap gap-2">
-          {["Google", "Apple", "VK", "Telegram"].map((name, i) => (
-            <button
-              key={i}
-              onClick={() => { if (requireAuth("Привязать " + name)) toast({ title: "Привязано" }); }}
-              className="rounded-xl border border-border bg-card px-4 py-3 flex items-center gap-2.5 min-w-[140px] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/20 group animate-fade-in"
-              style={{ animationDelay: `${550 + i * 50}ms`, animationFillMode: "both" }}
-            >
-              <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-sm font-bold text-foreground transition-transform duration-200 group-hover:scale-110">
-                {name[0]}
-              </div>
-              <div className="text-left">
-                <p className="text-xs font-medium text-foreground">{name}</p>
-                <p className="text-[10px] text-primary">Привязать</p>
-              </div>
-            </button>
-          ))}
-        </div>
+        <h2 className="text-lg font-bold text-foreground mb-3">Вход через соцсети</h2>
+        <p className="text-xs text-muted-foreground mb-4 max-w-lg">
+          Привяжите аккаунт, чтобы входить через выбранную сеть. Отображаются только провайдеры, включённые в CRM → Интеграции → Соцсети.
+        </p>
+        {sortedOauth.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Нет доступных провайдеров для привязки.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {sortedOauth.map((p) => {
+              const ui = SOCIAL_UI[p.id];
+              if (!ui) return null;
+              const Icon = ui.icon;
+              const linked = linkedSocial.includes(p.id);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  disabled={linked}
+                  onClick={() => {
+                    if (!linked) void startSocialLink(p.id);
+                  }}
+                  className={`rounded-xl border border-border bg-card px-4 py-3 flex items-center gap-2.5 min-w-[160px] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/20 group animate-fade-in ${
+                    linked ? "opacity-70 cursor-default" : "cursor-pointer"
+                  }`}
+                  style={{ animationDelay: "550ms", animationFillMode: "both" }}
+                >
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold transition-transform duration-200 group-hover:scale-110 ${ui.bg} ${ui.text}`}
+                  >
+                    <Icon />
+                  </div>
+                  <div className="text-left flex-1">
+                    <p className="text-xs font-medium text-foreground">{ui.label}</p>
+                    <p className="text-[10px] text-primary flex items-center gap-1">
+                      {linked ? (
+                        "Привязано"
+                      ) : (
+                        <>
+                          <Link2 className="w-3 h-3" /> Привязать
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </section>
     </div>
   );

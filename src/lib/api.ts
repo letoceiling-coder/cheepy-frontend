@@ -1831,6 +1831,66 @@ export const publicSocialAuthApi = {
   meta: () => get<{ providers: SocialAuthMetaProvider[] }>("/auth/social/meta", true),
 };
 
+export interface AuthSmsMeta {
+  phone_auth_enabled: boolean;
+}
+
+export const publicSmsAuthApi = {
+  meta: () => get<AuthSmsMeta>("/auth/sms/meta", true),
+};
+
+export interface StorefrontUser {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  linked_social_providers?: string[];
+}
+
+async function storefrontRequest<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  withAuth = false
+): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+  if (withAuth) {
+    const tok = typeof localStorage !== "undefined" ? localStorage.getItem("customer_token") : null;
+    if (tok) headers.Authorization = `Bearer ${tok}`;
+  }
+  const url = `${BASE_URL}${path}`;
+  const res = await fetch(url, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: res.statusText }));
+    const errObj = error as { message?: string; error?: string };
+    const msg =
+      (typeof errObj.message === "string" && errObj.message.trim()) ||
+      (typeof errObj.error === "string" && errObj.error.trim()) ||
+      res.statusText;
+    throw new ApiError(res.status, msg);
+  }
+  if (res.status === 204) return undefined as T;
+  return res.json() as Promise<T>;
+}
+
+export const storefrontAuthApi = {
+  login: (login: string, password: string) =>
+    storefrontRequest<{ token: string; user: StorefrontUser }>("POST", "/store/auth/login", { login, password }, false),
+  register: (payload: { name: string; email: string; password: string; phone?: string }) =>
+    storefrontRequest<{ token: string; user: StorefrontUser }>("POST", "/store/auth/register", payload, false),
+  me: () => storefrontRequest<{ user: StorefrontUser }>("GET", "/store/auth/me", undefined, true),
+  refresh: () => storefrontRequest<{ token: string }>("POST", "/store/auth/refresh", {}, true),
+  socialLinkSession: (provider: string) =>
+    storefrontRequest<{ redirect_url: string }>("POST", "/store/auth/social/link-session", { provider }, true),
+};
+
 export interface AiProviderModelOption {
   id: string;
   label: string;
