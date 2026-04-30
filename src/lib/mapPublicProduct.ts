@@ -28,6 +28,26 @@ function attrByKeyword(attrs: Array<{ name: string; value: string; type?: string
   return undefined;
 }
 
+function attrsByKeyword(attrs: Array<{ name: string; value: string; type?: string }> | undefined, needles: string[]): string[] {
+  if (!attrs?.length) return [];
+  const nl = needles.map((n) => n.toLowerCase());
+  const values: string[] = [];
+  const seen = new Set<string>();
+
+  for (const a of attrs) {
+    const key = (a.name || "").toLowerCase();
+    if (!nl.some((n) => key.includes(n))) continue;
+    const parts = splitList(String(a.value ?? ""));
+    for (const part of parts.length > 0 ? parts : [String(a.value ?? "").trim()]) {
+      if (!part || seen.has(part)) continue;
+      seen.add(part);
+      values.push(part);
+    }
+  }
+
+  return values;
+}
+
 /** Карточка каталога / списка → модель для ProductCard и корзины. */
 export function publicListProductToStorefront(p: Product): StorefrontProduct {
   const price = p.price_raw ?? parseRuPrice(p.price);
@@ -61,10 +81,8 @@ export function productFullToStorefront(full: ProductFull): StorefrontProduct {
 
   const price = full.price_raw ?? parseRuPrice(full.price);
 
-  const sizeFromAttr = attrByKeyword(attrs, ["размер", "size"]);
-  const colorFromAttr = attrByKeyword(attrs, ["цвет", "color"]);
-  const sizes = splitList(full.size_range).length > 0 ? splitList(full.size_range) : splitList(sizeFromAttr);
-  const colors = splitList(full.color).length > 0 ? splitList(full.color) : splitList(colorFromAttr);
+  const sizes = splitList(full.size_range).length > 0 ? splitList(full.size_range) : attrsByKeyword(attrs, ["размер", "size"]);
+  const colors = splitList(full.color).length > 0 ? splitList(full.color) : attrsByKeyword(attrs, ["цвет", "color"]);
 
   return {
     id: full.id,
