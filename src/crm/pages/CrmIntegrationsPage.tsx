@@ -10,6 +10,7 @@ import {
   type DeliveryIntegrationItem,
 } from "@/lib/api";
 import { PaymentAlertsBanner } from "../components/PaymentAlertsBanner";
+import CrmAiIntegrationsTab from "../components/CrmAiIntegrationsTab";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -75,10 +76,11 @@ export default function CrmIntegrationsPage() {
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [loadingDelivery, setLoadingDelivery] = useState(true);
 
-  const categories = ["payments", "delivery", "crm", "erp"] as const;
+  const categories = ["payments", "delivery", "ai", "crm", "erp"] as const;
   const categoryLabels: Record<(typeof categories)[number], string> = {
     payments: "Платежи",
     delivery: "Доставка",
+    ai: "ИИ",
     crm: "CRM",
     erp: "ERP",
   };
@@ -219,6 +221,10 @@ export default function CrmIntegrationsPage() {
               })}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="ai" className="mt-4">
+          <CrmAiIntegrationsTab />
         </TabsContent>
 
         <TabsContent value="crm" className="mt-4">

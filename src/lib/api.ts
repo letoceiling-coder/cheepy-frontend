@@ -1764,6 +1764,33 @@ export const crmDeliveryIntegrationsApi = {
     ),
 };
 
+export interface AiProviderModelOption {
+  id: string;
+  label: string;
+}
+
+export interface AiProviderItem {
+  name: string;
+  title: string;
+  description: string;
+  docs_url: string;
+  is_active: boolean;
+  has_api_key: boolean;
+  api_key_hint: string | null;
+  default_model: string;
+  models: AiProviderModelOption[];
+  catalog_updated_at: string;
+}
+
+export const crmAiProvidersApi = {
+  list: () => get<{ data: AiProviderItem[]; catalog_updated_at: string }>('/crm/ai-providers'),
+  update: (
+    name: string,
+    body: { is_active?: boolean; api_key?: string; default_model?: string }
+  ) => patch<AiProviderItem>(`/crm/ai-providers/${name}`, body),
+  clearKey: (name: string) => post<AiProviderItem>(`/crm/ai-providers/${name}/clear-key`, {}),
+};
+
 // ──────────────────────────────────────────────
 // CMS (динамические страницы конструктора, JWT для админки)
 // ──────────────────────────────────────────────
