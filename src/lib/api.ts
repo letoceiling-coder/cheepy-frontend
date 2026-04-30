@@ -39,6 +39,9 @@ function resolveApiBaseUrl(): string {
 
 const BASE_URL = resolveApiBaseUrl();
 
+/** Базовый URL API (`…/api/v1`), как у CRM — для публичных вызовов без JWT. */
+export { BASE_URL };
+
 /** Публичные URL из API (`/storage/...`) без домена — подставляем origin API (Laravel). */
 export function resolveCrmMediaAssetUrl(url: string): string {
   const u = String(url || '').trim();
@@ -1775,6 +1778,57 @@ export const crmSmsIntegrationsApi = {
       `/crm/sms-integrations/${name}/test`,
       body ?? {}
     ),
+};
+
+export interface SocialOauthDocLink {
+  title: string;
+  url: string;
+}
+
+export interface SocialOauthDocStep {
+  title: string;
+  body: string;
+}
+
+export interface SocialOauthDocumentation {
+  title: string;
+  official_documentation: SocialOauthDocLink[];
+  recommended_scopes: string;
+  steps: SocialOauthDocStep[];
+  notes: string;
+}
+
+export interface SocialOauthIntegrationItem {
+  name: string;
+  title: string;
+  is_active: boolean;
+  status: "connected" | "disconnected";
+  last_successful_oauth_at?: string | null;
+}
+
+export interface SocialOauthIntegrationDetail extends SocialOauthIntegrationItem {
+  config: Record<string, unknown>;
+  hints: Record<string, string>;
+  documentation: SocialOauthDocumentation;
+  config_schema: ConfigSchemaField[];
+}
+
+export const crmSocialOauthIntegrationsApi = {
+  list: () => get<SocialOauthIntegrationItem[]>("/crm/social-oauth-integrations"),
+  get: (name: string) => get<SocialOauthIntegrationDetail>(`/crm/social-oauth-integrations/${name}`),
+  update: (name: string, data: Record<string, string | number | boolean | null>) =>
+    patch<SocialOauthIntegrationDetail>(`/crm/social-oauth-integrations/${name}`, data),
+};
+
+export interface SocialAuthMetaProvider {
+  id: string;
+  title: string;
+  enabled: boolean;
+  start_url: string | null;
+}
+
+export const publicSocialAuthApi = {
+  meta: () => get<{ providers: SocialAuthMetaProvider[] }>("/auth/social/meta", true),
 };
 
 export interface AiProviderModelOption {

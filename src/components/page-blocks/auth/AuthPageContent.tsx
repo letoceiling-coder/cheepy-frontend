@@ -1,32 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import type { ComponentType } from "react";
 import { Eye, EyeOff, Mail, Phone, Lock, User as UserIcon } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { publicSocialAuthApi, type SocialAuthMetaProvider } from "@/lib/api";
+import { toast } from "sonner";
 
 const VkIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
     <path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.391 0 15.684 0zm3.692 17.123h-1.744c-.66 0-.864-.525-2.05-1.727-1.033-1-1.49-1.135-1.744-1.135-.356 0-.458.102-.458.593v1.575c0 .424-.135.678-1.253.678-1.846 0-3.896-1.12-5.335-3.202C4.624 10.857 4.03 8.57 4.03 8.096c0-.254.102-.491.593-.491h1.744c.44 0 .61.203.78.678.863 2.49 2.303 4.675 2.896 4.675.22 0 .322-.102.322-.66V9.721c-.068-1.186-.695-1.287-.695-1.71 0-.203.17-.407.44-.407h2.744c.373 0 .508.203.508.643v3.473c0 .372.17.508.271.508.22 0 .407-.136.813-.542 1.254-1.406 2.151-3.574 2.151-3.574.119-.254.322-.491.763-.491h1.744c.525 0 .644.27.525.643-.22 1.017-2.354 4.031-2.354 4.031-.186.305-.254.44 0 .78.186.254.796.779 1.203 1.253.745.847 1.32 1.558 1.473 2.05.17.49-.085.744-.576.744z" />
-  </svg>
-);
-const GoogleIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24">
-    <path
-      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-      fill="#4285F4"
-    />
-    <path
-      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-      fill="#34A853"
-    />
-    <path
-      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-      fill="#FBBC05"
-    />
-    <path
-      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-      fill="#EA4335"
-    />
   </svg>
 );
 const YandexIcon = () => (
@@ -43,6 +26,24 @@ const OkIcon = () => (
 type AuthMode = "login" | "register" | "recovery";
 type LoginTab = "email" | "phone";
 
+const SOCIAL_ORDER = ["vk", "yandex", "ok"] as const;
+
+const SOCIAL_UI: Record<string, { icon: ComponentType; label: string; bg: string; text: string }> = {
+  vk: { icon: VkIcon, label: "VK", bg: "bg-[#0077FF]", text: "text-white" },
+  yandex: {
+    icon: YandexIcon,
+    label: "Яндекс",
+    bg: "bg-background border border-border",
+    text: "text-foreground",
+  },
+  ok: {
+    icon: OkIcon,
+    label: "OK",
+    bg: "bg-background border border-border",
+    text: "text-foreground",
+  },
+};
+
 export default function AuthPageContent() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [loginTab, setLoginTab] = useState<LoginTab>("email");
@@ -53,6 +54,35 @@ export default function AuthPageContent() {
   const [name, setName] = useState("");
   const { login, register } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [socialProviders, setSocialProviders] = useState<SocialAuthMetaProvider[]>([]);
+
+  useEffect(() => {
+    publicSocialAuthApi
+      .meta()
+      .then((r) => setSocialProviders(r.providers ?? []))
+      .catch(() => setSocialProviders([]));
+  }, []);
+
+  useEffect(() => {
+    const err = searchParams.get("social_error");
+    const ok = searchParams.get("social_ok");
+    if (err) {
+      toast.error(decodeURIComponent(err.replace(/\+/g, " ")));
+      const next = new URLSearchParams(searchParams);
+      next.delete("social_error");
+      next.delete("social_login");
+      setSearchParams(next, { replace: true });
+    } else if (ok === "1") {
+      toast.success(
+        "Вход через соцсеть подтверждён провайдером. Выдача сессии на витрине будет подключена при появлении API профиля покупателя.",
+      );
+      const next = new URLSearchParams(searchParams);
+      next.delete("social_ok");
+      next.delete("social_login");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const passwordStrength = (p: string) => {
     let s = 0;
@@ -85,32 +115,58 @@ export default function AuthPageContent() {
     setMode("login");
   };
 
-  const socialButtons = (
-    <div className="space-y-3">
-      <div className="relative flex items-center justify-center my-4">
-        <div className="border-t border-border flex-1" />
-        <span className="px-3 text-sm text-muted-foreground">или</span>
-        <div className="border-t border-border flex-1" />
+  const socialButtons = (() => {
+    const byId = Object.fromEntries(socialProviders.map((p) => [p.id, p])) as Record<
+      string,
+      SocialAuthMetaProvider
+    >;
+    const rows = SOCIAL_ORDER.map((id) => {
+      const meta = byId[id];
+      const ui = SOCIAL_UI[id];
+      return {
+        id,
+        enabled: meta?.enabled === true && !!meta?.start_url,
+        startUrl: meta?.start_url ?? null,
+        icon: ui.icon,
+        label: ui.label,
+        bg: ui.bg,
+        text: ui.text,
+      };
+    });
+
+    return (
+      <div className="space-y-3">
+        <div className="relative flex items-center justify-center my-4">
+          <div className="border-t border-border flex-1" />
+          <span className="px-3 text-sm text-muted-foreground">или</span>
+          <div className="border-t border-border flex-1" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {rows.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              title={
+                s.enabled
+                  ? undefined
+                  : "Настройте приложение и включите провайдера в CRM → Интеграции → Соцсети"
+              }
+              disabled={!s.enabled}
+              onClick={() => {
+                if (s.enabled && s.startUrl) {
+                  window.location.href = s.startUrl;
+                }
+              }}
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-opacity ${s.bg} ${s.text} ${s.enabled ? "hover:opacity-90 cursor-pointer" : "opacity-55 cursor-not-allowed"}`}
+            >
+              <s.icon />
+              {s.label}
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        {[
-          { icon: VkIcon, label: "VK", bg: "bg-[#0077FF]", text: "text-white" },
-          { icon: GoogleIcon, label: "Google", bg: "bg-background border border-border", text: "text-foreground" },
-          { icon: YandexIcon, label: "Яндекс", bg: "bg-background border border-border", text: "text-foreground" },
-          { icon: OkIcon, label: "OK", bg: "bg-background border border-border", text: "text-foreground" },
-        ].map((s) => (
-          <button
-            key={s.label}
-            type="button"
-            className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-opacity hover:opacity-80 ${s.bg} ${s.text}`}
-          >
-            <s.icon />
-            {s.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+    );
+  })();
 
   return (
     <div className="max-w-[440px] mx-auto w-full">
