@@ -1693,7 +1693,7 @@ export interface PaymentProviderItem {
 export interface ConfigSchemaField {
   key: string;
   label: string;
-  type: 'text' | 'password' | 'select';
+  type: 'text' | 'password' | 'select' | 'textarea';
   required?: boolean;
   readonly?: boolean;
   options?: { value: string; label: string }[];
@@ -1735,6 +1735,33 @@ export const crmPaymentProvidersApi = {
       atol_failures_24h: number;
       recent: Array<{ id: number; provider: string; error: string | null; created_at: string }>;
     }>('/crm/payment-alerts'),
+};
+
+export interface DeliveryIntegrationItem {
+  name: string;
+  title: string;
+  is_active: boolean;
+  status: 'connected' | 'disconnected';
+  last_successful_auth_at?: string | null;
+}
+
+export interface DeliveryIntegrationDetail extends DeliveryIntegrationItem {
+  config: Record<string, unknown>;
+  hints: Record<string, string>;
+  config_schema: ConfigSchemaField[];
+  docs_url?: string | null;
+}
+
+export const crmDeliveryIntegrationsApi = {
+  list: () => get<DeliveryIntegrationItem[]>('/crm/delivery-integrations'),
+  get: (name: string) => get<DeliveryIntegrationDetail>(`/crm/delivery-integrations/${name}`),
+  update: (name: string, data: Record<string, string | number | boolean | null>) =>
+    patch<DeliveryIntegrationDetail>(`/crm/delivery-integrations/${name}`, data),
+  test: (name: string) =>
+    post<{ success: boolean; message: string; raw_status?: number }>(
+      `/crm/delivery-integrations/${name}/test`,
+      {}
+    ),
 };
 
 // ──────────────────────────────────────────────

@@ -112,6 +112,9 @@ import CrmNotificationsPage from "./crm/pages/CrmNotificationsPage";
 import CrmIntegrationsPage from "./crm/pages/CrmIntegrationsPage";
 import CrmWebhookLogsPage from "./crm/pages/CrmWebhookLogsPage";
 import CrmProviderDetailPage from "./crm/pages/CrmProviderDetailPage";
+import CrmDeliveryIntegrationPage from "./crm/pages/CrmDeliveryIntegrationPage";
+import CrmGenericIntegrationPage from "./crm/pages/CrmGenericIntegrationPage";
+import CrmIntegrationLegacyRedirect from "./crm/pages/CrmIntegrationLegacyRedirect";
 import CrmApiKeysPage from "./crm/pages/CrmApiKeysPage";
 import CrmApiKeyDetailPage from "./crm/pages/CrmApiKeyDetailPage";
 import CrmOrderDetailPage from "./crm/pages/CrmOrderDetailPage";
@@ -268,7 +271,11 @@ function AnimatedRoutes() {
           <Route path="analytics" element={<CrmAnalyticsPage />} />
           <Route path="tenants" element={<CrmTenantsPage />} />
           <Route path="integrations" element={<CrmIntegrationsPage />} />
-          <Route path="integrations/:provider" element={<CrmProviderDetailPage />} />
+          <Route path="integrations/payments/:provider" element={<CrmProviderDetailPage />} />
+          <Route path="integrations/delivery/:slug" element={<CrmDeliveryIntegrationPage />} />
+          <Route path="integrations/crm/:slug" element={<CrmGenericIntegrationPage category="crm" />} />
+          <Route path="integrations/erp/:slug" element={<CrmGenericIntegrationPage category="erp" />} />
+          <Route path="integrations/:provider" element={<CrmIntegrationLegacyRedirect />} />
           <Route path="webhook-logs" element={<CrmWebhookLogsPage />} />
           <Route path="api-keys" element={<CrmApiKeysPage />} />
           <Route path="api-keys/:id" element={<CrmApiKeyDetailPage />} />
