@@ -6,6 +6,7 @@ import { Wifi, WifiOff, Settings } from "lucide-react";
 import {
   crmPaymentProvidersApi,
   crmDeliveryIntegrationsApi,
+  crmSmsIntegrationsApi,
   type PaymentProviderItem,
   type DeliveryIntegrationItem,
 } from "@/lib/api";
@@ -27,6 +28,10 @@ const DELIVERY_UI: Record<
   cdek: { icon: "📦", description: "Доставка по России и СНГ (OAuth API v2)" },
   nova_poshta: { icon: "📨", description: "Украинская служба доставки" },
   dhl: { icon: "🚀", description: "Международная доставка" },
+};
+
+const SMS_UI: Record<string, { icon: string; description: string }> = {
+  iqsms: { icon: "📲", description: "SMS через REST API (SMS Дисконт / iqsms.ru)" },
 };
 
 const CRM_CARDS = [
@@ -73,13 +78,16 @@ export default function CrmIntegrationsPage() {
   const navigate = useNavigate();
   const [paymentProviders, setPaymentProviders] = useState<PaymentProviderItem[]>([]);
   const [deliveryRows, setDeliveryRows] = useState<DeliveryIntegrationItem[]>([]);
+  const [smsRows, setSmsRows] = useState<DeliveryIntegrationItem[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [loadingDelivery, setLoadingDelivery] = useState(true);
+  const [loadingSms, setLoadingSms] = useState(true);
 
-  const categories = ["payments", "delivery", "ai", "crm", "erp"] as const;
+  const categories = ["payments", "delivery", "sms", "ai", "crm", "erp"] as const;
   const categoryLabels: Record<(typeof categories)[number], string> = {
     payments: "Платежи",
     delivery: "Доставка",
+    sms: "SMS",
     ai: "ИИ",
     crm: "CRM",
     erp: "ERP",
@@ -99,6 +107,14 @@ export default function CrmIntegrationsPage() {
       .then(setDeliveryRows)
       .catch(() => setDeliveryRows([]))
       .finally(() => setLoadingDelivery(false));
+  }, []);
+
+  useEffect(() => {
+    crmSmsIntegrationsApi
+      .list()
+      .then(setSmsRows)
+      .catch(() => setSmsRows([]))
+      .finally(() => setLoadingSms(false));
   }, []);
 
   const paymentList = paymentProviders.filter((p) => ["tinkoff", "sber", "atol"].includes(p.name));
@@ -212,6 +228,61 @@ export default function CrmIntegrationsPage() {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Link to={`/crm/integrations/delivery/${row.name}`}>
+                        <Settings className="h-3.5 w-3.5" />
+                        Настроить
+                      </Link>
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="sms" className="mt-4">
+          {loadingSms ? (
+            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+              Загрузка...
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {smsRows.map((row) => {
+                const ui = SMS_UI[row.name] ?? { icon: "📲", description: "" };
+                return (
+                  <div
+                    key={row.name}
+                    role="link"
+                    tabIndex={0}
+                    className="p-4 rounded-lg border border-border bg-card space-y-3 cursor-pointer hover:bg-accent/5 transition-colors"
+                    onClick={() => navigate(`/crm/integrations/sms/${row.name}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") navigate(`/crm/integrations/sms/${row.name}`);
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{ui.icon}</span>
+                        <span className="font-medium text-sm">{row.title}</span>
+                      </div>
+                      <StatusBadge status={row.status} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">{ui.description}</p>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      {row.status === "connected" ? (
+                        <Wifi className="h-3 w-3" />
+                      ) : (
+                        <WifiOff className="h-3 w-3" />
+                      )}
+                      Последний успех API: {fmtSync(row.last_successful_auth_at)}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full gap-2"
+                      asChild
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Link to={`/crm/integrations/sms/${row.name}`}>
                         <Settings className="h-3.5 w-3.5" />
                         Настроить
                       </Link>

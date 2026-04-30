@@ -1764,6 +1764,19 @@ export const crmDeliveryIntegrationsApi = {
     ),
 };
 
+/** SMS шлюз (тот же контракт полей, что и delivery-integrations). */
+export const crmSmsIntegrationsApi = {
+  list: () => get<DeliveryIntegrationItem[]>('/crm/sms-integrations'),
+  get: (name: string) => get<DeliveryIntegrationDetail>(`/crm/sms-integrations/${name}`),
+  update: (name: string, data: Record<string, string | number | boolean | null>) =>
+    patch<DeliveryIntegrationDetail>(`/crm/sms-integrations/${name}`, data),
+  test: (name: string, body?: Record<string, unknown>) =>
+    post<{ success: boolean; message: string; balances?: string[]; message_id?: string; raw?: string }>(
+      `/crm/sms-integrations/${name}/test`,
+      body ?? {}
+    ),
+};
+
 export interface AiProviderModelOption {
   id: string;
   label: string;
