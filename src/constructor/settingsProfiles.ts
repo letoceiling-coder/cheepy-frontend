@@ -58,6 +58,37 @@ export interface ProductFeedSettings {
   excludedProductIds: number[];
 }
 
+export interface ScheduleWindowSetting {
+  id: string;
+  title: string;
+  enabled: boolean;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  daysOfWeek: number[];
+}
+
+export interface BlockScheduleSetting {
+  enabled: boolean;
+  timezone: string;
+  windows: ScheduleWindowSetting[];
+}
+
+export interface HotDealProductSetting {
+  id: string;
+  productId: number | null;
+  title: string;
+  imageUrl: string;
+  productUrl: string;
+  priceRaw: number | null;
+  priceText: string;
+  discountPercent: number;
+  startsAt: string;
+  endsAt: string;
+  enabled: boolean;
+}
+
 export interface CategoryFeedSettings {
   source: 'catalog_categories';
   rootCategoryId: number | null;
@@ -125,6 +156,8 @@ export interface HeroProductSettings extends ProfileBaseSettings {
 export interface ProductFeedProfileSettings extends ProfileBaseSettings {
   profile: 'P-PRODUCT-FEED';
   feed: ProductFeedSettings;
+  dealItems?: HotDealProductSetting[];
+  schedule?: BlockScheduleSetting;
 }
 
 export interface CategoryFeedProfileSettings extends ProfileBaseSettings {
@@ -246,6 +279,10 @@ function defaultMediaItem(): MediaItemSetting {
   return { id: `media-${Math.random().toString(36).slice(2, 9)}`, mediaFileId: null, url: '', title: '', subtitle: '', caption: '', alt: '' };
 }
 
+function defaultSchedule(): BlockScheduleSetting {
+  return { enabled: false, timezone: 'Europe/Moscow', windows: [] };
+}
+
 export function defaultHeroProductItem(): HeroProductItemSetting {
   return {
     id: `hp-${Math.random().toString(36).slice(2, 9)}`,
@@ -316,7 +353,33 @@ export function normalizeBlockProfileSettings(blockType: string, raw: Record<str
   const safeRaw = raw && typeof raw === 'object' ? raw : {};
   const merged = { ...defaults, ...safeRaw } as NormalizedProfileSettings;
   merged.profile = profile;
-  if (merged.profile === 'P-PRODUCT-FEED' && typeof merged.feed?.limit !== 'number') merged.feed.limit = 12;
+  if (merged.profile === 'P-PRODUCT-FEED') {
+    merged.feed = { ...(defaults as ProductFeedProfileSettings).feed, ...(safeRaw as Partial<ProductFeedProfileSettings>).feed };
+    if (typeof merged.feed?.limit !== 'number') merged.feed.limit = 12;
+    if (blockType === 'HotDeals') {
+      const s = safeRaw as Partial<ProductFeedProfileSettings>;
+      merged.dealItems = Array.isArray(s.dealItems)
+        ? s.dealItems.map((it) => ({
+          id: typeof it?.id === 'string' && it.id ? it.id : `deal-${Math.random().toString(36).slice(2, 9)}`,
+          productId: typeof it?.productId === 'number' ? it.productId : null,
+          title: typeof it?.title === 'string' ? it.title : '',
+          imageUrl: typeof it?.imageUrl === 'string' ? it.imageUrl : '',
+          productUrl: typeof it?.productUrl === 'string' ? it.productUrl : '',
+          priceRaw: typeof it?.priceRaw === 'number' ? it.priceRaw : null,
+          priceText: typeof it?.priceText === 'string' ? it.priceText : '',
+          discountPercent: Math.min(99, Math.max(1, Number(it?.discountPercent) || 10)),
+          startsAt: typeof it?.startsAt === 'string' ? it.startsAt : '',
+          endsAt: typeof it?.endsAt === 'string' ? it.endsAt : '',
+          enabled: it?.enabled !== false,
+        }))
+        : [];
+      merged.schedule = {
+        ...defaultSchedule(),
+        ...(s.schedule && typeof s.schedule === 'object' ? s.schedule : {}),
+        windows: Array.isArray(s.schedule?.windows) ? s.schedule.windows : [],
+      };
+    }
+  }
   if (merged.profile === 'P-CATEGORY-FEED' && typeof merged.feed?.depth !== 'number') merged.feed.depth = 3;
   if ((merged.profile === 'P-HERO-MEDIA' || merged.profile === 'P-BANNER-MEDIA' || merged.profile === 'P-VIDEO-MEDIA' || merged.profile === 'P-LOOKBOOK-MEDIA')
     && (!Array.isArray(merged.media) || merged.media.length === 0)) {

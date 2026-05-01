@@ -1,0 +1,288 @@
+import React, { useMemo, useState } from 'react';
+import { CalendarClock, Plus, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
+import type { BlockScheduleSetting, ScheduleWindowSetting } from '@/constructor/settingsProfiles';
+
+const DAYS = [
+  { id: 1, label: 'Пн' },
+  { id: 2, label: 'Вт' },
+  { id: 3, label: 'Ср' },
+  { id: 4, label: 'Чт' },
+  { id: 5, label: 'Пт' },
+  { id: 6, label: 'Сб' },
+  { id: 0, label: 'Вс' },
+];
+
+function uid(): string {
+  return `schedule-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function isoDate(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function dateFromIso(value: string): Date | undefined {
+  if (!value) return undefined;
+  const [y, m, d] = value.split('-').map(Number);
+  if (!y || !m || !d) return undefined;
+  return new Date(y, m - 1, d);
+}
+
+function createWindow(index: number): ScheduleWindowSetting {
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  return {
+    id: uid(),
+    title: `Окно ${index + 1}`,
+    enabled: true,
+    startDate: isoDate(now),
+    endDate: isoDate(tomorrow),
+    startTime: '09:00',
+    endTime: '21:00',
+    daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
+  };
+}
+
+function humanWindow(w: ScheduleWindowSetting): string {
+  const days = DAYS.filter((d) => w.daysOfWeek.includes(d.id)).map((d) => d.label).join(', ');
+  return `${w.startDate || 'дата'} — ${w.endDate || 'дата'}, ${w.startTime || '--:--'}–${w.endTime || '--:--'} · ${days || 'дни не выбраны'}`;
+}
+
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  value: BlockScheduleSetting;
+  onChange: (next: BlockScheduleSetting) => void;
+  title?: string;
+  description?: string;
+};
+
+export function SchedulePlannerDialog({
+  open,
+  onOpenChange,
+  value,
+  onChange,
+  title = 'Планирование показа блока',
+  description = 'Настройте, когда блок включается на витрине. Компонент можно использовать для любых блоков с расписанием.',
+}: Props) {
+  const schedule = useMemo<BlockScheduleSetting>(
+    () => ({
+      enabled: Boolean(value?.enabled),
+      timezone: value?.timezone || 'Europe/Moscow',
+      windows: Array.isArray(value?.windows) ? value.windows : [],
+    }),
+    [value],
+  );
+  const [activeId, setActiveId] = useState<string | null>(schedule.windows[0]?.id ?? null);
+
+  const active = schedule.windows.find((w) => w.id === activeId) ?? schedule.windows[0] ?? null;
+
+  const patchSchedule = (patch: Partial<BlockScheduleSetting>) => onChange({ ...schedule, ...patch });
+  const patchWindow = (id: string, patch: Partial<ScheduleWindowSetting>) => {
+    onChange({
+      ...schedule,
+      windows: schedule.windows.map((w) => (w.id === id ? { ...w, ...patch } : w)),
+    });
+  };
+
+  const addWindow = () => {
+    const next = createWindow(schedule.windows.length);
+    onChange({ ...schedule, windows: [...schedule.windows, next] });
+    setActiveId(next.id);
+  };
+
+  const removeWindow = (id: string) => {
+    const next = schedule.windows.filter((w) => w.id !== id);
+    onChange({ ...schedule, windows: next });
+    setActiveId(next[0]?.id ?? null);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl max-h-[92vh] overflow-hidden p-0">
+        <DialogHeader className="p-5 pb-3 border-b">
+          <DialogTitle className="flex items-center gap-2">
+            <CalendarClock className="h-5 w-5 text-primary" />
+            {title}
+          </DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+
+        <div className="grid min-h-[560px] grid-cols-1 md:grid-cols-[280px_1fr]">
+          <aside className="border-r bg-muted/20 p-4 space-y-4">
+            <div className="rounded-lg border bg-background p-3 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Включить расписание</p>
+                  <p className="text-xs text-muted-foreground">Если выключено, блок виден всегда.</p>
+                </div>
+                <Switch checked={schedule.enabled} onCheckedChange={(enabled) => patchSchedule({ enabled })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Часовой пояс</Label>
+                <Input
+                  value={schedule.timezone}
+                  onChange={(e) => patchSchedule({ timezone: e.target.value })}
+                  className="h-8 text-xs"
+                  placeholder="Europe/Moscow"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">Окна показа</p>
+              <Button type="button" size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={addWindow}>
+                <Plus className="h-3.5 w-3.5" /> Добавить
+              </Button>
+            </div>
+
+            <div className="space-y-2 max-h-[340px] overflow-auto pr-1">
+              {schedule.windows.length === 0 ? (
+                <p className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
+                  Добавьте первое окно, например «будни 9:00–21:00» или «выходные акции».
+                </p>
+              ) : (
+                schedule.windows.map((w) => (
+                  <button
+                    key={w.id}
+                    type="button"
+                    onClick={() => setActiveId(w.id)}
+                    className={cn(
+                      'w-full rounded-lg border bg-background p-3 text-left transition-colors hover:bg-accent',
+                      active?.id === w.id && 'border-primary ring-1 ring-primary/30',
+                      !w.enabled && 'opacity-60',
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium truncate">{w.title || 'Окно показа'}</p>
+                      <span className={cn('h-2 w-2 rounded-full', w.enabled ? 'bg-emerald-500' : 'bg-muted-foreground')} />
+                    </div>
+                    <p className="mt-1 text-[11px] text-muted-foreground leading-snug">{humanWindow(w)}</p>
+                  </button>
+                ))
+              )}
+            </div>
+          </aside>
+
+          <main className="p-5 overflow-auto">
+            {!active ? (
+              <div className="flex h-full items-center justify-center rounded-xl border border-dashed text-sm text-muted-foreground">
+                Добавьте окно показа, чтобы настроить календарь и время.
+              </div>
+            ) : (
+              <div className="grid gap-5 lg:grid-cols-[330px_1fr]">
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium">Календарь периода</p>
+                      <p className="text-xs text-muted-foreground">Выберите дату начала и окончания.</p>
+                    </div>
+                    <Switch checked={active.enabled} onCheckedChange={(enabled) => patchWindow(active.id, { enabled })} />
+                  </div>
+                  <div className="rounded-lg border">
+                    <Calendar
+                      mode="range"
+                      numberOfMonths={1}
+                      selected={{ from: dateFromIso(active.startDate), to: dateFromIso(active.endDate) }}
+                      onSelect={(range: any) =>
+                        patchWindow(active.id, {
+                          startDate: range?.from ? isoDate(range.from) : active.startDate,
+                          endDate: range?.to ? isoDate(range.to) : (range?.from ? isoDate(range.from) : active.endDate),
+                        })
+                      }
+                    />
+                  </div>
+                </section>
+
+                <section className="space-y-4">
+                  <div className="rounded-lg border bg-background p-4 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Название окна</Label>
+                        <Input value={active.title} onChange={(e) => patchWindow(active.id, { title: e.target.value })} className="h-9 text-sm" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Даты</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input type="date" value={active.startDate} onChange={(e) => patchWindow(active.id, { startDate: e.target.value })} className="h-9 text-sm" />
+                          <Input type="date" value={active.endDate} onChange={(e) => patchWindow(active.id, { endDate: e.target.value })} className="h-9 text-sm" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Время показа</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input type="time" value={active.startTime} onChange={(e) => patchWindow(active.id, { startTime: e.target.value })} className="h-9 text-sm" />
+                          <Input type="time" value={active.endTime} onChange={(e) => patchWindow(active.id, { endTime: e.target.value })} className="h-9 text-sm" />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Повторять по дням</Label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {DAYS.map((day) => {
+                            const checked = active.daysOfWeek.includes(day.id);
+                            return (
+                              <Button
+                                key={day.id}
+                                type="button"
+                                size="sm"
+                                variant={checked ? 'default' : 'outline'}
+                                className="h-8 px-2 text-xs"
+                                onClick={() => {
+                                  const days = checked
+                                    ? active.daysOfWeek.filter((d) => d !== day.id)
+                                    : [...active.daysOfWeek, day.id];
+                                  patchWindow(active.id, { daysOfWeek: days });
+                                }}
+                              >
+                                {day.label}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border bg-muted/30 p-4">
+                    <p className="text-sm font-medium">Как это будет работать</p>
+                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                      Блок отображается, если текущее время попадает хотя бы в одно активное окно. Внутри окна можно
+                      ограничить дни недели и часы. Это же расписание можно переиспользовать для баннеров, подборок и
+                      других промо-блоков.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-between gap-2">
+                    <Button type="button" variant="outline" className="gap-1 text-destructive" onClick={() => removeWindow(active.id)}>
+                      <Trash2 className="h-4 w-4" /> Удалить окно
+                    </Button>
+                    <Button type="button" onClick={() => onOpenChange(false)}>Готово</Button>
+                  </div>
+                </section>
+              </div>
+            )}
+          </main>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

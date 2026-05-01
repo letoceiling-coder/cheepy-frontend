@@ -7,8 +7,9 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { adminCatalogApi, adminSystemProductsApi, crmMediaApi, fetchCrmMediaBlobUrl, resolveCrmMediaAssetUrl, type CatalogCategoryItem, type CrmMediaFile, type CrmMediaFolder, type SystemProductItem } from '@/lib/api';
 import { CrmMediaPickerDialog } from '@/crm/components/CrmMediaPickerDialog';
-import type { CtaSetting, LinkItemSetting, MediaItemSetting, ProductFeedSettings } from '@/constructor/settingsProfiles';
+import type { BlockScheduleSetting, CtaSetting, HotDealProductSetting, LinkItemSetting, MediaItemSetting, ProductFeedSettings } from '@/constructor/settingsProfiles';
 import { IconPickerDialog } from '@/constructor/components/settings/IconPickerDialog';
+import { SchedulePlannerDialog } from '@/constructor/components/settings/SchedulePlannerDialog';
 import * as LucideIcons from 'lucide-react';
 
 export const SettingField: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
@@ -327,6 +328,173 @@ export function ProductFeedField({ value, onChange }: { value: ProductFeedSettin
       <SettingField label="Категории">
         <CategoryTreeField value={value.categoryIds} onChange={(ids) => onChange({ ...value, categoryIds: ids })} />
       </SettingField>
+    </div>
+  );
+}
+
+function formatMoneyText(raw: number | null | undefined, fallback?: string | null): string {
+  if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) return `${raw.toLocaleString('ru-RU')} ₽`;
+  return fallback || '';
+}
+
+function parsePriceText(text: string | null | undefined): number | null {
+  if (!text) return null;
+  const digits = String(text).replace(/[^\d]/g, '');
+  return digits ? Number(digits) : null;
+}
+
+function createDealFromProduct(p: SystemProductItem): HotDealProductSetting {
+  const priceRaw = typeof p.price_raw === 'number' ? p.price_raw : parsePriceText(p.price);
+  const now = new Date();
+  const ends = new Date(now);
+  ends.setHours(now.getHours() + 24);
+  return {
+    id: uid('deal'),
+    productId: p.id,
+    title: p.name ?? '',
+    imageUrl: p.thumbnail_url ?? '',
+    productUrl: `/product/${p.id}`,
+    priceRaw,
+    priceText: formatMoneyText(priceRaw, p.price),
+    discountPercent: 20,
+    startsAt: now.toISOString().slice(0, 16),
+    endsAt: ends.toISOString().slice(0, 16),
+    enabled: true,
+  };
+}
+
+function dealOldPrice(deal: HotDealProductSetting): string {
+  if (!deal.priceRaw || !deal.discountPercent) return '';
+  const old = Math.round(deal.priceRaw / (1 - deal.discountPercent / 100));
+  return `${old.toLocaleString('ru-RU')} ₽`;
+}
+
+export function HotDealsSettingsField({
+  items,
+  schedule,
+  onItemsChange,
+  onScheduleChange,
+}: {
+  items: HotDealProductSetting[];
+  schedule: BlockScheduleSetting;
+  onItemsChange: (next: HotDealProductSetting[]) => void;
+  onScheduleChange: (next: BlockScheduleSetting) => void;
+}) {
+  const [plannerOpen, setPlannerOpen] = useState(false);
+
+  const updateItem = (idx: number, patch: Partial<HotDealProductSetting>) => {
+    onItemsChange(items.map((item, i) => (i === idx ? { ...item, ...patch } : item)));
+  };
+
+  const moveItem = (from: number, to: number) => {
+    if (to < 0 || to >= items.length) return;
+    const next = [...items];
+    const [sp] = next.splice(from, 1);
+    next.splice(to, 0, sp);
+    onItemsChange(next);
+  };
+
+  return (
+    <div className="space-y-3">
+      <SchedulePlannerDialog open={plannerOpen} onOpenChange={setPlannerOpen} value={schedule} onChange={onScheduleChange} />
+
+      <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-xs font-medium">Планирование блока</p>
+            <p className="text-[11px] text-muted-foreground">
+              {schedule.enabled ? `Активно окон: ${schedule.windows.length}` : 'Расписание выключено, блок показывается всегда.'}
+            </p>
+          </div>
+          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => setPlannerOpen(true)}>
+            Открыть календарь
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-medium">Товары акции ({items.length})</p>
+        <ProductPickerField
+          value={null}
+          onPick={(product) => onItemsChange([...items, createDealFromProduct(product)])}
+          onClear={() => undefined}
+        />
+      </div>
+
+      {items.length === 0 ? (
+        <p className="rounded-md border border-dashed p-3 text-[11px] text-muted-foreground">
+          Добавьте товары через поиск. Для каждого товара можно задать скидку и точное время действия.
+        </p>
+      ) : null}
+
+      <div className="space-y-2">
+        {items.map((deal, idx) => (
+          <div key={deal.id || idx} className="rounded-md border border-border p-2 space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="h-12 w-12 rounded bg-muted overflow-hidden shrink-0">
+                {deal.imageUrl ? (
+                  <img src={resolveCrmMediaAssetUrl(deal.imageUrl)} alt={deal.title} className="h-full w-full object-cover" loading="lazy" />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-muted-foreground text-[10px]">—</div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium truncate">{deal.title || `Товар #${deal.productId ?? idx + 1}`}</p>
+                <p className="text-[10px] text-muted-foreground truncate">
+                  {deal.priceText || 'Цена не указана'} · старая цена: {dealOldPrice(deal) || '—'}
+                </p>
+              </div>
+              <Switch checked={deal.enabled !== false} onCheckedChange={(enabled) => updateItem(idx, { enabled })} />
+            </div>
+
+            <Input
+              className="h-8 text-xs"
+              value={deal.title}
+              onChange={(e) => updateItem(idx, { title: e.target.value })}
+              placeholder="Название товара в акции"
+            />
+
+            <div className="grid grid-cols-2 gap-2">
+              <SettingField label="Скидка, %">
+                <Input
+                  type="number"
+                  min={1}
+                  max={99}
+                  value={deal.discountPercent}
+                  className="h-8 text-xs"
+                  onChange={(e) => updateItem(idx, { discountPercent: Math.min(99, Math.max(1, Number(e.target.value) || 1)) })}
+                />
+              </SettingField>
+              <SettingField label="Цена">
+                <Input
+                  value={deal.priceText}
+                  className="h-8 text-xs"
+                  onChange={(e) => updateItem(idx, { priceText: e.target.value, priceRaw: parsePriceText(e.target.value) })}
+                />
+              </SettingField>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <SettingField label="Начало">
+                <Input type="datetime-local" value={deal.startsAt} className="h-8 text-xs" onChange={(e) => updateItem(idx, { startsAt: e.target.value })} />
+              </SettingField>
+              <SettingField label="Окончание">
+                <Input type="datetime-local" value={deal.endsAt} className="h-8 text-xs" onChange={(e) => updateItem(idx, { endsAt: e.target.value })} />
+              </SettingField>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1">
+                <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={idx === 0} onClick={() => moveItem(idx, idx - 1)}>↑</Button>
+                <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={idx === items.length - 1} onClick={() => moveItem(idx, idx + 1)}>↓</Button>
+              </div>
+              <Button type="button" size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={() => onItemsChange(items.filter((_, i) => i !== idx))}>
+                Удалить
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

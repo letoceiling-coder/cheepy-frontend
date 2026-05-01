@@ -8,9 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Trash2, Copy, Eye, EyeOff } from 'lucide-react';
 import { BlockConfig, type BlockSettings, type FooterSettings, type HeaderSettings } from '../types';
-import type { SocialFeedSettings } from '../settingsProfiles';
+import type { ProductFeedProfileSettings, SocialFeedSettings } from '../settingsProfiles';
 import { getSettingsProfileForBlockType, normalizeBlockProfileSettings } from '../settingsProfiles';
-import { AdvantagesItemsField, CategoryImageOverridesField, CategoryTreeField, CtaEditor, LinksEditor, MediaPickerField, ProductFeedField, ProductPickerField, SettingField } from './settings/SharedProfileFields';
+import { AdvantagesItemsField, CategoryImageOverridesField, CategoryTreeField, CtaEditor, HotDealsSettingsField, LinksEditor, MediaPickerField, ProductFeedField, ProductPickerField, SettingField } from './settings/SharedProfileFields';
 import { CrmMediaPickerDialog } from '@/crm/components/CrmMediaPickerDialog';
 import { resolveCrmMediaAssetUrl, type CrmMediaFile, type SystemProductItem } from '@/lib/api';
 
@@ -353,7 +353,18 @@ function ProfileSettingsForm({
           />
         </SettingField>
       ) : null}
-      {profile === 'P-PRODUCT-FEED' ? <ProductFeedField value={normalized.feed} onChange={(feed) => update({ feed })} /> : null}
+      {profile === 'P-PRODUCT-FEED' ? (
+        block.type === 'HotDeals' ? (
+          <HotDealsSettingsField
+            items={(normalized as ProductFeedProfileSettings).dealItems ?? []}
+            schedule={(normalized as ProductFeedProfileSettings).schedule ?? { enabled: false, timezone: 'Europe/Moscow', windows: [] }}
+            onItemsChange={(dealItems) => update({ dealItems })}
+            onScheduleChange={(schedule) => update({ schedule })}
+          />
+        ) : (
+          <ProductFeedField value={normalized.feed} onChange={(feed) => update({ feed })} />
+        )
+      ) : null}
       {profile === 'P-CATEGORY-FEED' ? (
         <>
           <SettingField label="Категории источника">

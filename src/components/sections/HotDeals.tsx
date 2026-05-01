@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, ShoppingCart } from "lucide-react";
 import { useDragScroll } from "@/hooks/useDragScroll";
 import { Link } from "react-router-dom";
 import { hotDeals, type HotDeal } from "@/data/marketplaceData";
+import { resolveCrmMediaAssetUrl } from "@/lib/api";
+import type { BlockScheduleSetting, HotDealProductSetting } from "@/constructor/settingsProfiles";
 
 const useCountdown = (endsAt: number) => {
   const [timeLeft, setTimeLeft] = useState(() => Math.max(0, endsAt - Date.now()));
@@ -25,13 +27,62 @@ const useCountdown = (endsAt: number) => {
   return { hours, minutes, seconds, expired };
 };
 
-const DealCard = ({ deal }: { deal: HotDeal }) => {
+type RenderDeal = {
+  id: string | number;
+  name: string;
+  image: string;
+  price: number;
+  oldPrice: number;
+  endsAt: number;
+  url: string;
+};
+
+function parsePriceText(text: string | null | undefined): number {
+  const digits = String(text ?? '').replace(/[^\d]/g, '');
+  return digits ? Number(digits) : 0;
+}
+
+function fromConfiguredDeal(deal: HotDealProductSetting): RenderDeal | null {
+  if (deal.enabled === false || !deal.productId) return null;
+  const now = Date.now();
+  const startsAt = deal.startsAt ? new Date(deal.startsAt).getTime() : 0;
+  const endsAt = deal.endsAt ? new Date(deal.endsAt).getTime() : now + 24 * 3600000;
+  if (Number.isFinite(startsAt) && startsAt > now) return null;
+  const price = deal.priceRaw ?? parsePriceText(deal.priceText);
+  if (!price) return null;
+  const oldPrice = Math.round(price / (1 - Math.min(99, Math.max(1, deal.discountPercent || 1)) / 100));
+  return {
+    id: deal.productId,
+    name: deal.title || `Товар #${deal.productId}`,
+    image: resolveCrmMediaAssetUrl(deal.imageUrl),
+    price,
+    oldPrice,
+    endsAt,
+    url: deal.productUrl || `/product/${deal.productId}`,
+  };
+}
+
+function isScheduleActive(schedule: BlockScheduleSetting | undefined): boolean {
+  if (!schedule?.enabled) return true;
+  const now = new Date();
+  return (schedule.windows ?? []).some((w) => {
+    if (!w.enabled) return false;
+    const start = w.startDate ? new Date(`${w.startDate}T${w.startTime || '00:00'}`).getTime() : 0;
+    const end = w.endDate ? new Date(`${w.endDate}T${w.endTime || '23:59'}`).getTime() : Number.POSITIVE_INFINITY;
+    const t = now.getTime();
+    if (t < start || t > end) return false;
+    if (Array.isArray(w.daysOfWeek) && w.daysOfWeek.length > 0 && !w.daysOfWeek.includes(now.getDay())) return false;
+    return true;
+  });
+}
+
+const DealCard = ({ deal }: { deal: RenderDeal }) => {
   const { hours, minutes, seconds, expired } = useCountdown(deal.endsAt);
   const discount = Math.round((1 - deal.price / deal.oldPrice) * 100);
 
   return (
     <div className="shrink-0 w-[180px] bg-card rounded-xl border border-border overflow-hidden snap-start group flex flex-col">
-      <Link to={`/product/${deal.id}`} className="block relative aspect-square overflow-hidden bg-secondary">
+      <Link to={deal.url} className="block relative aspect-square overflow-hidden bg-secondary">
         <img src={deal.image} alt={deal.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
         {expired ? (
           <span className="absolute top-2 left-2 bg-muted text-muted-foreground text-xs font-semibold px-2 py-1 rounded">
@@ -75,15 +126,37 @@ const DealCard = ({ deal }: { deal: HotDeal }) => {
   );
 };
 
-const HotDeals = () => {
+type HotDealsProps = {
+  title?: string;
+  subtitle?: string;
+  dealItems?: HotDealProductSetting[];
+  schedule?: BlockScheduleSetting;
+};
+
+const HotDeals = ({ title, subtitle, dealItems, schedule }: HotDealsProps) => {
   const scrollRef = useDragScroll<HTMLDivElement>();
+  const configuredDeals = useMemo(() => (dealItems ?? []).map(fromConfiguredDeal).filter(Boolean) as RenderDeal[], [dealItems]);
+  const deals: RenderDeal[] = configuredDeals.length > 0
+    ? configuredDeals
+    : hotDeals.map((deal: HotDeal) => ({
+      id: deal.id,
+      name: deal.name,
+      image: deal.image,
+      price: deal.price,
+      oldPrice: deal.oldPrice,
+      endsAt: deal.endsAt,
+      url: `/product/${deal.id}`,
+    }));
+
+  if (!isScheduleActive(schedule) || deals.length === 0) return null;
 
   return (
     <section className="mb-6">
       <div className="flex items-baseline gap-3 mb-3">
-        <h2 className="text-xl font-bold text-foreground">ГОРЯЧИЕ ПРЕДЛОЖЕНИЯ</h2>
+        <h2 className="text-xl font-bold text-foreground">{title || "ГОРЯЧИЕ ПРЕДЛОЖЕНИЯ"}</h2>
         <span className="text-sm text-destructive font-semibold animate-pulse">LIVE</span>
       </div>
+      {subtitle ? <p className="text-sm text-muted-foreground -mt-2 mb-3">{subtitle}</p> : null}
       <div className="relative flex items-center gap-3">
         <button
           onClick={() => scrollRef.current?.scrollBy({ left: -240, behavior: "smooth" })}
