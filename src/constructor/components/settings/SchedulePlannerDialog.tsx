@@ -102,6 +102,26 @@ function salePrice(deal: HotDealProductSetting): string {
   return `${price.toLocaleString('ru-RU')} ₽`;
 }
 
+function normalizeSearch(value: string | null | undefined): string {
+  return String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function productMatchesSearch(product: SystemProductItem, query: string): boolean {
+  const q = normalizeSearch(query);
+  if (!q) return true;
+  if (/^\d+$/.test(q) && String(product.id) === q) return true;
+  const fields = [
+    product.name,
+    product.category?.name,
+    product.category?.slug,
+    product.seller?.name,
+    product.seller?.slug,
+    product.brand?.name,
+    product.brand?.slug,
+  ];
+  return fields.some((field) => normalizeSearch(field).includes(q));
+}
+
 function ProductSearchBox({
   selectedIds,
   onPick,
@@ -125,14 +145,29 @@ function ProductSearchBox({
     void (async () => {
       setLoading(true);
       try {
+        const numericId = Number(debounced);
+        if (/^\d+$/.test(debounced) && Number.isFinite(numericId) && numericId > 0) {
+          try {
+            const single = await adminSystemProductsApi.get(numericId);
+            if (!cancelled) {
+              setItems(single ? [single] : []);
+              setLoading(false);
+              return;
+            }
+          } catch {
+            // If exact ID lookup fails, fall back to list search below.
+          }
+        }
         const res = await adminSystemProductsApi.list({
           search: debounced || undefined,
           page: 1,
-          per_page: 12,
+          per_page: 30,
           sort_by: 'updated_at',
           sort_dir: 'desc',
         });
-        if (!cancelled) setItems(Array.isArray(res.data) ? res.data : []);
+        const rows = Array.isArray(res.data) ? res.data : [];
+        const filtered = debounced ? rows.filter((p) => productMatchesSearch(p, debounced)) : rows;
+        if (!cancelled) setItems(filtered.slice(0, 12));
       } catch {
         if (!cancelled) setItems([]);
       } finally {
@@ -259,7 +294,7 @@ export function SchedulePlannerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(1280px,96vw)] max-w-none max-h-[94vh] overflow-hidden p-0">
+      <DialogContent className="w-[min(1280px,96vw)] max-w-none h-[94vh] max-h-[94vh] overflow-hidden p-0 grid grid-rows-[auto_1fr]">
         <DialogHeader className="p-5 pb-3 border-b">
           <DialogTitle className="flex items-center gap-2">
             <CalendarClock className="h-5 w-5 text-primary" />
@@ -268,8 +303,8 @@ export function SchedulePlannerDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <div className="grid min-h-[680px] grid-cols-1 md:grid-cols-[300px_1fr]">
-          <aside className="border-r bg-muted/20 p-4 space-y-4">
+        <div className="grid min-h-0 grid-cols-1 md:grid-cols-[300px_1fr]">
+          <aside className="min-h-0 overflow-y-auto border-r bg-muted/20 p-4 space-y-4">
             <div className="rounded-lg border bg-background p-3 space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -324,7 +359,7 @@ export function SchedulePlannerDialog({
             </div>
           </aside>
 
-          <main className="p-5 overflow-auto">
+          <main className="min-h-0 overflow-y-auto p-5">
             {!active ? (
               <div className="flex h-full items-center justify-center rounded-xl border border-dashed text-sm text-muted-foreground">
                 Добавьте окно показа, чтобы настроить календарь и время.
