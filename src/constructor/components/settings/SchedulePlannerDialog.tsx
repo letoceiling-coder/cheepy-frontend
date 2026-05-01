@@ -44,6 +44,16 @@ function dateFromIso(value: string): Date | undefined {
   return new Date(y, m - 1, d);
 }
 
+function toDateTimeLocal(date: string, time: string, fallbackTime: string): string {
+  if (!date) return '';
+  return `${date}T${time || fallbackTime}`;
+}
+
+function splitDateTimeLocal(value: string): { date: string; time: string } {
+  const [date = '', rawTime = ''] = value.split('T');
+  return { date, time: rawTime.slice(0, 5) };
+}
+
 function createWindow(index: number): ScheduleWindowSetting {
   const now = new Date();
   const tomorrow = new Date(now);
@@ -397,21 +407,37 @@ export function SchedulePlannerDialog({
                         <Input value={active.title} onChange={(e) => patchWindow(active.id, { title: e.target.value })} className="h-9 text-sm" />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Даты</Label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input type="date" value={active.startDate} onChange={(e) => patchWindow(active.id, { startDate: e.target.value })} className="h-9 text-sm" />
-                          <Input type="date" value={active.endDate} onChange={(e) => patchWindow(active.id, { endDate: e.target.value })} className="h-9 text-sm" />
-                        </div>
+                        <Label className="text-xs text-muted-foreground">Начало окна</Label>
+                        <Input
+                          type="datetime-local"
+                          value={toDateTimeLocal(active.startDate, active.startTime, '09:00')}
+                          onChange={(e) => {
+                            const next = splitDateTimeLocal(e.target.value);
+                            patchWindow(active.id, {
+                              startDate: next.date || active.startDate,
+                              startTime: next.time || active.startTime || '09:00',
+                            });
+                          }}
+                          className="h-9 text-sm"
+                        />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Время показа</Label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input type="time" value={active.startTime} onChange={(e) => patchWindow(active.id, { startTime: e.target.value })} className="h-9 text-sm" />
-                          <Input type="time" value={active.endTime} onChange={(e) => patchWindow(active.id, { endTime: e.target.value })} className="h-9 text-sm" />
-                        </div>
+                        <Label className="text-xs text-muted-foreground">Конец окна</Label>
+                        <Input
+                          type="datetime-local"
+                          value={toDateTimeLocal(active.endDate, active.endTime, '21:00')}
+                          onChange={(e) => {
+                            const next = splitDateTimeLocal(e.target.value);
+                            patchWindow(active.id, {
+                              endDate: next.date || active.endDate,
+                              endTime: next.time || active.endTime || '21:00',
+                            });
+                          }}
+                          className="h-9 text-sm"
+                        />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground">Повторять по дням</Label>
@@ -424,7 +450,7 @@ export function SchedulePlannerDialog({
                                 type="button"
                                 size="sm"
                                 variant={checked ? 'default' : 'outline'}
-                                className="h-8 px-2 text-xs"
+                                className="h-9 px-2 text-xs"
                                 onClick={() => {
                                   const days = checked
                                     ? active.daysOfWeek.filter((d) => d !== day.id)
@@ -439,6 +465,10 @@ export function SchedulePlannerDialog({
                         </div>
                       </div>
                     </div>
+
+                    <p className="text-[11px] text-muted-foreground">
+                      Выберите дату, часы и минуты в одном поле. Календарь слева меняет только период дат, время сохраняется из этих полей.
+                    </p>
                   </div>
 
                   <div className="rounded-lg border bg-background p-4 space-y-3">
