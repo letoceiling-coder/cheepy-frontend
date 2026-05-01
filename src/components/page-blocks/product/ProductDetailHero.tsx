@@ -54,8 +54,11 @@ export default function ProductDetailHero() {
     staleTime: 60_000,
   });
   const hotDealSettings = useMemo(() => extractHotDealsSettingsFromPageLayout(homeLayout), [homeLayout]);
+  const routeNumericId = Number(id);
   const productNumericId = Number(full?.id);
-  const activeDeal = getActiveHotDealForProduct(hotDealSettings ?? undefined, Number.isFinite(productNumericId) ? productNumericId : undefined);
+  const activeDeal =
+    getActiveHotDealForProduct(hotDealSettings ?? undefined, Number.isFinite(routeNumericId) ? routeNumericId : undefined) ??
+    getActiveHotDealForProduct(hotDealSettings ?? undefined, Number.isFinite(productNumericId) ? productNumericId : undefined);
   const dealCountdown = useCountdown(activeDeal?.endsAt);
 
   const [activeImage, setActiveImage] = useState(0);
