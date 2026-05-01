@@ -3,8 +3,8 @@ import { ChevronLeft, ChevronRight, ShoppingCart } from "lucide-react";
 import { useDragScroll } from "@/hooks/useDragScroll";
 import { Link } from "react-router-dom";
 import { hotDeals, type HotDeal } from "@/data/marketplaceData";
-import { resolveCrmMediaAssetUrl } from "@/lib/api";
 import type { BlockScheduleSetting, HotDealProductSetting } from "@/constructor/settingsProfiles";
+import { getActiveHotDeals, type ActiveHotDeal } from "@/lib/hotDeals";
 
 const useCountdown = (endsAt: number) => {
   const [timeLeft, setTimeLeft] = useState(() => Math.max(0, endsAt - Date.now()));
@@ -27,58 +27,8 @@ const useCountdown = (endsAt: number) => {
   return { hours, minutes, seconds, expired };
 };
 
-type RenderDeal = {
-  id: string | number;
-  name: string;
-  image: string;
-  price: number;
-  oldPrice: number;
-  endsAt: number;
-  url: string;
-};
-
-function parsePriceText(text: string | null | undefined): number {
-  const digits = String(text ?? '').replace(/[^\d]/g, '');
-  return digits ? Number(digits) : 0;
-}
-
-function fromConfiguredDeal(deal: HotDealProductSetting): RenderDeal | null {
-  if (deal.enabled === false || !deal.productId) return null;
-  const now = Date.now();
-  const startsAt = deal.startsAt ? new Date(deal.startsAt).getTime() : 0;
-  const endsAt = deal.endsAt ? new Date(deal.endsAt).getTime() : now + 24 * 3600000;
-  if (Number.isFinite(startsAt) && startsAt > now) return null;
-  const price = deal.priceRaw ?? parsePriceText(deal.priceText);
-  if (!price) return null;
-  const oldPrice = Math.round(price / (1 - Math.min(99, Math.max(1, deal.discountPercent || 1)) / 100));
-  return {
-    id: deal.productId,
-    name: deal.title || `Товар #${deal.productId}`,
-    image: resolveCrmMediaAssetUrl(deal.imageUrl),
-    price,
-    oldPrice,
-    endsAt,
-    url: deal.productUrl || `/product/${deal.productId}`,
-  };
-}
-
-function isScheduleActive(schedule: BlockScheduleSetting | undefined): boolean {
-  if (!schedule?.enabled) return true;
-  const now = new Date();
-  return (schedule.windows ?? []).some((w) => {
-    if (!w.enabled) return false;
-    const start = w.startDate ? new Date(`${w.startDate}T${w.startTime || '00:00'}`).getTime() : 0;
-    const end = w.endDate ? new Date(`${w.endDate}T${w.endTime || '23:59'}`).getTime() : Number.POSITIVE_INFINITY;
-    const t = now.getTime();
-    if (t < start || t > end) return false;
-    if (Array.isArray(w.daysOfWeek) && w.daysOfWeek.length > 0 && !w.daysOfWeek.includes(now.getDay())) return false;
-    return true;
-  });
-}
-
-const DealCard = ({ deal }: { deal: RenderDeal }) => {
+const DealCard = ({ deal }: { deal: ActiveHotDeal }) => {
   const { hours, minutes, seconds, expired } = useCountdown(deal.endsAt);
-  const discount = Math.round((1 - deal.price / deal.oldPrice) * 100);
 
   return (
     <div className="shrink-0 w-[180px] bg-card rounded-xl border border-border overflow-hidden snap-start group flex flex-col">
@@ -90,15 +40,15 @@ const DealCard = ({ deal }: { deal: RenderDeal }) => {
           </span>
         ) : (
           <span className="absolute top-2 left-2 bg-destructive text-destructive-foreground text-xs font-bold px-2 py-1 rounded">
-            -{discount}%
+            -{deal.discountPercent}%
           </span>
         )}
       </Link>
       <div className="flex-1 min-h-0 p-3 flex flex-col">
         <p className="text-sm text-foreground line-clamp-2 mb-2 font-medium">{deal.name}</p>
         <div className="flex items-baseline gap-2 mb-2">
-          <span className="text-lg font-bold text-foreground">{deal.price.toLocaleString()} ₽</span>
-          <span className="text-xs text-muted-foreground line-through">{deal.oldPrice.toLocaleString()} ₽</span>
+          <span className="text-lg font-bold text-foreground">{deal.salePrice.toLocaleString()} ₽</span>
+          <span className="text-xs text-muted-foreground line-through">{deal.originalPrice.toLocaleString()} ₽</span>
         </div>
         {!expired && (
           <div className="flex items-center gap-1 mb-3">
@@ -114,13 +64,14 @@ const DealCard = ({ deal }: { deal: RenderDeal }) => {
             </div>
           </div>
         )}
-        <button
+        <Link
+          to={deal.url}
           className="mt-auto w-full gradient-primary text-primary-foreground text-xs py-2 rounded-full font-medium flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity disabled:opacity-50"
-          disabled={expired}
+          aria-disabled={expired}
         >
           <ShoppingCart className="w-3.5 h-3.5" />
           Купить
-        </button>
+        </Link>
       </div>
     </div>
   );
@@ -135,20 +86,23 @@ type HotDealsProps = {
 
 const HotDeals = ({ title, subtitle, dealItems, schedule }: HotDealsProps) => {
   const scrollRef = useDragScroll<HTMLDivElement>();
-  const configuredDeals = useMemo(() => (dealItems ?? []).map(fromConfiguredDeal).filter(Boolean) as RenderDeal[], [dealItems]);
-  const deals: RenderDeal[] = configuredDeals.length > 0
+  const configuredDeals = useMemo(() => getActiveHotDeals({ dealItems, schedule }), [dealItems, schedule]);
+  const deals: ActiveHotDeal[] = configuredDeals.length > 0
     ? configuredDeals
     : hotDeals.map((deal: HotDeal) => ({
-      id: deal.id,
+      id: `mock-${deal.id}`,
+      productId: Number(deal.id) || 0,
       name: deal.name,
       image: deal.image,
-      price: deal.price,
-      oldPrice: deal.oldPrice,
+      salePrice: deal.price,
+      originalPrice: deal.oldPrice,
+      discountPercent: Math.round((1 - deal.price / deal.oldPrice) * 100),
+      startsAt: 0,
       endsAt: deal.endsAt,
       url: `/product/${deal.id}`,
     }));
 
-  if (!isScheduleActive(schedule) || deals.length === 0) return null;
+  if (deals.length === 0) return null;
 
   return (
     <section className="mb-6">
@@ -166,7 +120,7 @@ const HotDeals = ({ title, subtitle, dealItems, schedule }: HotDealsProps) => {
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div ref={scrollRef} className="flex-1 overflow-x-auto flex gap-4 py-2 no-scrollbar snap-x snap-mandatory cursor-grab active:cursor-grabbing">
-          {hotDeals.map((deal) => (
+          {deals.map((deal) => (
             <DealCard key={deal.id} deal={deal} />
           ))}
         </div>

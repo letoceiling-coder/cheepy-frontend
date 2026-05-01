@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { Heart, ShoppingCart, Share2, Star, Minus, Plus, Shield, Truck, RotateCcw } from "lucide-react";
+import { Clock, Heart, ShoppingCart, Share2, Star, Minus, Plus, Shield, Truck, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { publicApi } from "@/lib/api";
 import { productFullToStorefront } from "@/lib/mapPublicProduct";
+import { extractHotDealsSettingsFromPageLayout, getActiveHotDealForProduct } from "@/lib/hotDeals";
 import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { usePublicProduct } from "@/hooks/usePublicProduct";
@@ -20,6 +23,22 @@ function pushRecentProductId(id: number) {
   }
 }
 
+function useCountdown(endsAt: number | undefined) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!endsAt) return;
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [endsAt]);
+  const left = Math.max(0, (endsAt ?? now) - now);
+  return {
+    expired: left <= 0,
+    hours: Math.floor(left / 3600000),
+    minutes: Math.floor((left % 3600000) / 60000),
+    seconds: Math.floor((left % 60000) / 1000),
+  };
+}
+
 export default function ProductDetailHero() {
   const { id } = useParams();
   const { data, isLoading, isError, error } = usePublicProduct(id);
@@ -28,6 +47,16 @@ export default function ProductDetailHero() {
 
   const full = data?.product;
   const storefront = useMemo(() => (full ? productFullToStorefront(full) : null), [full]);
+  const { data: homeLayout } = useQuery({
+    queryKey: ["public-layout-page", "home"],
+    queryFn: () => publicApi.pageLayout("home"),
+    retry: false,
+    staleTime: 60_000,
+  });
+  const hotDealSettings = useMemo(() => extractHotDealsSettingsFromPageLayout(homeLayout), [homeLayout]);
+  const productNumericId = Number(full?.id);
+  const activeDeal = getActiveHotDealForProduct(hotDealSettings ?? undefined, Number.isFinite(productNumericId) ? productNumericId : undefined);
+  const dealCountdown = useCountdown(activeDeal?.endsAt);
 
   const [activeImage, setActiveImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState("");
@@ -77,6 +106,9 @@ export default function ProductDetailHero() {
   const cartSize = selectedSize || storefront.sizes[0] || "—";
 
   const seller = full.seller;
+  const shownPrice = activeDeal && !dealCountdown.expired ? activeDeal.salePrice : storefront.price;
+  const shownOldPrice = activeDeal && !dealCountdown.expired ? activeDeal.originalPrice : storefront.oldPrice;
+  const shownDiscount = activeDeal && !dealCountdown.expired ? activeDeal.discountPercent : discount;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10 md:items-start">
@@ -136,18 +168,34 @@ export default function ProductDetailHero() {
         ) : null}
 
         <div className="flex items-baseline gap-3 mb-6 flex-wrap">
-          <span className="text-3xl font-bold text-foreground">{(storefront.price * quantity).toLocaleString("ru-RU")} ₽</span>
-          {storefront.oldPrice != null && storefront.oldPrice > storefront.price ? (
+          <span className="text-3xl font-bold text-foreground">{(shownPrice * quantity).toLocaleString("ru-RU")} ₽</span>
+          {shownOldPrice != null && shownOldPrice > shownPrice ? (
             <>
               <span className="text-lg text-muted-foreground line-through">
-                {(storefront.oldPrice * quantity).toLocaleString("ru-RU")} ₽
+                {(shownOldPrice * quantity).toLocaleString("ru-RU")} ₽
               </span>
-              {discount > 0 ? (
-                <span className="gradient-hero text-primary-foreground text-sm font-semibold px-2 py-0.5 rounded-full">-{discount}%</span>
+              {shownDiscount > 0 ? (
+                <span className="gradient-hero text-primary-foreground text-sm font-semibold px-2 py-0.5 rounded-full">-{shownDiscount}%</span>
               ) : null}
             </>
           ) : null}
         </div>
+
+        {activeDeal && !dealCountdown.expired ? (
+          <div className="mb-5 rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
+            <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
+              <Clock className="h-4 w-4 text-destructive" />
+              Товар участвует в горячем предложении
+              {activeDeal.windowTitle ? <span className="text-muted-foreground">· {activeDeal.windowTitle}</span> : null}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span>Скидка отменится через:</span>
+              <span className="rounded bg-foreground px-1.5 py-0.5 font-mono font-bold text-background">{String(dealCountdown.hours).padStart(2, "0")}</span>
+              <span className="rounded bg-foreground px-1.5 py-0.5 font-mono font-bold text-background">{String(dealCountdown.minutes).padStart(2, "0")}</span>
+              <span className="rounded bg-foreground px-1.5 py-0.5 font-mono font-bold text-background">{String(dealCountdown.seconds).padStart(2, "0")}</span>
+            </div>
+          </div>
+        ) : null}
 
         {storefront.colors.length > 0 ? (
           <div className="mb-4">

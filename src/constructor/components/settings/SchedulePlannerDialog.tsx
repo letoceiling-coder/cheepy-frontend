@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { CalendarClock, Plus, Trash2 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { CalendarClock, HelpCircle, Plus, Search, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -13,7 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import type { BlockScheduleSetting, ScheduleWindowSetting } from '@/constructor/settingsProfiles';
+import { adminSystemProductsApi, resolveCrmMediaAssetUrl, type SystemProductItem } from '@/lib/api';
+import type { BlockScheduleSetting, HotDealProductSetting, ScheduleWindowSetting } from '@/constructor/settingsProfiles';
 
 const DAYS = [
   { id: 1, label: 'Пн' },
@@ -56,12 +57,123 @@ function createWindow(index: number): ScheduleWindowSetting {
     startTime: '09:00',
     endTime: '21:00',
     daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
+    dealItems: [],
   };
 }
 
 function humanWindow(w: ScheduleWindowSetting): string {
   const days = DAYS.filter((d) => w.daysOfWeek.includes(d.id)).map((d) => d.label).join(', ');
-  return `${w.startDate || 'дата'} — ${w.endDate || 'дата'}, ${w.startTime || '--:--'}–${w.endTime || '--:--'} · ${days || 'дни не выбраны'}`;
+  const count = w.dealItems?.filter((x) => x.enabled !== false).length ?? 0;
+  return `${w.startDate || 'дата'} — ${w.endDate || 'дата'}, ${w.startTime || '--:--'}–${w.endTime || '--:--'} · ${days || 'дни не выбраны'} · ${count} тов.`;
+}
+
+function parsePriceText(text: string | null | undefined): number | null {
+  const digits = String(text ?? '').replace(/[^\d]/g, '');
+  return digits ? Number(digits) : null;
+}
+
+function formatMoneyText(raw: number | null | undefined, fallback?: string | null): string {
+  if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) return `${raw.toLocaleString('ru-RU')} ₽`;
+  return fallback || '';
+}
+
+function createDealFromProduct(p: SystemProductItem): HotDealProductSetting {
+  const priceRaw = typeof p.price_raw === 'number' ? p.price_raw : parsePriceText(p.price);
+  return {
+    id: `deal-${Math.random().toString(36).slice(2, 9)}`,
+    productId: p.id,
+    title: p.name ?? '',
+    imageUrl: p.thumbnail_url ?? '',
+    productUrl: `/product/${p.id}`,
+    priceRaw,
+    priceText: formatMoneyText(priceRaw, p.price),
+    discountPercent: 20,
+    durationMinutes: 60,
+    startsAt: '',
+    endsAt: '',
+    enabled: true,
+  };
+}
+
+function salePrice(deal: HotDealProductSetting): string {
+  const raw = deal.priceRaw ?? parsePriceText(deal.priceText);
+  if (!raw) return '—';
+  const price = Math.round(raw * (1 - Math.min(99, Math.max(1, deal.discountPercent || 1)) / 100));
+  return `${price.toLocaleString('ru-RU')} ₽`;
+}
+
+function ProductSearchBox({ onPick }: { onPick: (product: SystemProductItem) => void }) {
+  const [query, setQuery] = useState('');
+  const [debounced, setDebounced] = useState('');
+  const [items, setItems] = useState<SystemProductItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebounced(query.trim()), 300);
+    return () => window.clearTimeout(t);
+  }, [query]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setLoading(true);
+      try {
+        const res = await adminSystemProductsApi.list({
+          search: debounced || undefined,
+          page: 1,
+          per_page: 12,
+          sort_by: 'updated_at',
+          sort_dir: 'desc',
+        });
+        if (!cancelled) setItems(Array.isArray(res.data) ? res.data : []);
+      } catch {
+        if (!cancelled) setItems([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [debounced]);
+
+  return (
+    <div className="rounded-lg border bg-background p-3 space-y-2">
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Поиск товара по названию или ID"
+          className="h-9 pl-8 text-sm"
+        />
+      </div>
+      <div className="max-h-52 overflow-auto space-y-1">
+        {loading ? <p className="text-xs text-muted-foreground">Загрузка товаров...</p> : null}
+        {!loading && items.length === 0 ? <p className="text-xs text-muted-foreground">Ничего не найдено.</p> : null}
+        {items.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            className="w-full flex items-center gap-2 rounded-md p-1.5 text-left hover:bg-accent"
+            onClick={() => onPick(p)}
+          >
+            <div className="h-10 w-10 rounded bg-muted overflow-hidden shrink-0">
+              {p.thumbnail_url ? (
+                <img src={resolveCrmMediaAssetUrl(p.thumbnail_url)} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-[10px] text-muted-foreground">—</div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium truncate">{p.name || `Товар #${p.id}`}</p>
+              <p className="text-[10px] text-muted-foreground truncate">ID {p.id}{p.price ? ` · ${p.price}` : ''}</p>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 type Props = {
@@ -115,7 +227,7 @@ export function SchedulePlannerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[92vh] overflow-hidden p-0">
+      <DialogContent className="w-[min(1280px,96vw)] max-w-none max-h-[94vh] overflow-hidden p-0">
         <DialogHeader className="p-5 pb-3 border-b">
           <DialogTitle className="flex items-center gap-2">
             <CalendarClock className="h-5 w-5 text-primary" />
@@ -124,7 +236,7 @@ export function SchedulePlannerDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <div className="grid min-h-[560px] grid-cols-1 md:grid-cols-[280px_1fr]">
+        <div className="grid min-h-[680px] grid-cols-1 md:grid-cols-[300px_1fr]">
           <aside className="border-r bg-muted/20 p-4 space-y-4">
             <div className="rounded-lg border bg-background p-3 space-y-3">
               <div className="flex items-center justify-between gap-3">
@@ -186,7 +298,7 @@ export function SchedulePlannerDialog({
                 Добавьте окно показа, чтобы настроить календарь и время.
               </div>
             ) : (
-              <div className="grid gap-5 lg:grid-cols-[330px_1fr]">
+              <div className="grid gap-5 xl:grid-cols-[340px_1fr]">
                 <section className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <div>
@@ -262,12 +374,138 @@ export function SchedulePlannerDialog({
                     </div>
                   </div>
 
+                  <div className="rounded-lg border bg-background p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium">Товары этого окна</p>
+                        <p className="text-xs text-muted-foreground">
+                          Отсчёт каждого товара начинается в момент появления окна. Когда время товара истекает, он исчезает с витрины.
+                        </p>
+                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[11px] text-muted-foreground">
+                        <HelpCircle className="h-3 w-3" /> товары не общие
+                      </span>
+                    </div>
+
+                    <ProductSearchBox
+                      onPick={(product) =>
+                        patchWindow(active.id, {
+                          dealItems: [...(active.dealItems ?? []), createDealFromProduct(product)],
+                        })
+                      }
+                    />
+
+                    <div className="space-y-2">
+                      {(active.dealItems ?? []).length === 0 ? (
+                        <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                          Добавьте товары для выбранного окна. У каждого товара можно настроить скидку и длительность показа.
+                        </p>
+                      ) : null}
+                      {(active.dealItems ?? []).map((deal, idx) => (
+                        <div key={deal.id || idx} className="rounded-lg border p-3 space-y-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-12 w-12 rounded bg-muted overflow-hidden shrink-0">
+                              {deal.imageUrl ? (
+                                <img src={resolveCrmMediaAssetUrl(deal.imageUrl)} alt={deal.title} className="h-full w-full object-cover" loading="lazy" />
+                              ) : (
+                                <div className="h-full w-full flex items-center justify-center text-[10px] text-muted-foreground">—</div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <Input
+                                value={deal.title}
+                                onChange={(e) =>
+                                  patchWindow(active.id, {
+                                    dealItems: (active.dealItems ?? []).map((x, i) => (i === idx ? { ...x, title: e.target.value } : x)),
+                                  })
+                                }
+                                className="h-8 text-xs"
+                              />
+                              <p className="mt-1 text-[10px] text-muted-foreground truncate">ID {deal.productId ?? '—'} · цена со скидкой: {salePrice(deal)}</p>
+                            </div>
+                            <Switch
+                              checked={deal.enabled !== false}
+                              onCheckedChange={(enabled) =>
+                                patchWindow(active.id, {
+                                  dealItems: (active.dealItems ?? []).map((x, i) => (i === idx ? { ...x, enabled } : x)),
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Скидка, %</Label>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={99}
+                                value={deal.discountPercent}
+                                className="h-8 text-xs"
+                                onChange={(e) =>
+                                  patchWindow(active.id, {
+                                    dealItems: (active.dealItems ?? []).map((x, i) =>
+                                      i === idx ? { ...x, discountPercent: Math.min(99, Math.max(1, Number(e.target.value) || 1)) } : x,
+                                    ),
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Базовая цена</Label>
+                              <Input
+                                value={deal.priceText}
+                                className="h-8 text-xs"
+                                onChange={(e) =>
+                                  patchWindow(active.id, {
+                                    dealItems: (active.dealItems ?? []).map((x, i) =>
+                                      i === idx ? { ...x, priceText: e.target.value, priceRaw: parsePriceText(e.target.value) } : x,
+                                    ),
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Длительность, мин</Label>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={10080}
+                                value={deal.durationMinutes ?? 60}
+                                className="h-8 text-xs"
+                                title="Время считается от старта окна показа."
+                                onChange={(e) =>
+                                  patchWindow(active.id, {
+                                    dealItems: (active.dealItems ?? []).map((x, i) =>
+                                      i === idx ? { ...x, durationMinutes: Math.min(10080, Math.max(1, Number(e.target.value) || 60)) } : x,
+                                    ),
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs text-destructive"
+                              onClick={() => patchWindow(active.id, { dealItems: (active.dealItems ?? []).filter((_, i) => i !== idx) })}
+                            >
+                              Удалить товар
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="rounded-lg border bg-muted/30 p-4">
                     <p className="text-sm font-medium">Как это будет работать</p>
                     <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                      Блок отображается, если текущее время попадает хотя бы в одно активное окно. Внутри окна можно
-                      ограничить дни недели и часы. Это же расписание можно переиспользовать для баннеров, подборок и
-                      других промо-блоков.
+                      Блок отображается, если есть активное окно и хотя бы один товар, срок которого ещё не истёк.
+                      Скидка товара действует только до окончания его таймера; после этого товар исчезает с витрины.
                     </p>
                   </div>
 

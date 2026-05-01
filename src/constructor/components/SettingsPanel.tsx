@@ -356,9 +356,7 @@ function ProfileSettingsForm({
       {profile === 'P-PRODUCT-FEED' ? (
         block.type === 'HotDeals' ? (
           <HotDealsSettingsField
-            items={(normalized as ProductFeedProfileSettings).dealItems ?? []}
             schedule={(normalized as ProductFeedProfileSettings).schedule ?? { enabled: false, timezone: 'Europe/Moscow', windows: [] }}
-            onItemsChange={(dealItems) => update({ dealItems })}
             onScheduleChange={(schedule) => update({ schedule })}
           />
         ) : (

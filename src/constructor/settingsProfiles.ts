@@ -67,6 +67,8 @@ export interface ScheduleWindowSetting {
   startTime: string;
   endTime: string;
   daysOfWeek: number[];
+  /** Для HotDeals: товары конкретного окна показа. У других блоков может не использоваться. */
+  dealItems?: HotDealProductSetting[];
 }
 
 export interface BlockScheduleSetting {
@@ -84,6 +86,8 @@ export interface HotDealProductSetting {
   priceRaw: number | null;
   priceText: string;
   discountPercent: number;
+  /** Минуты показа товара от момента старта окна. */
+  durationMinutes?: number;
   startsAt: string;
   endsAt: string;
   enabled: boolean;
@@ -376,8 +380,44 @@ export function normalizeBlockProfileSettings(blockType: string, raw: Record<str
       merged.schedule = {
         ...defaultSchedule(),
         ...(s.schedule && typeof s.schedule === 'object' ? s.schedule : {}),
-        windows: Array.isArray(s.schedule?.windows) ? s.schedule.windows : [],
+        windows: Array.isArray(s.schedule?.windows)
+          ? s.schedule.windows.map((w, idx) => ({
+            ...w,
+            id: typeof w?.id === 'string' && w.id ? w.id : `schedule-${Math.random().toString(36).slice(2, 9)}`,
+            title: typeof w?.title === 'string' ? w.title : `Окно ${idx + 1}`,
+            enabled: w?.enabled !== false,
+            dealItems: Array.isArray(w?.dealItems)
+              ? w.dealItems.map((it) => ({
+                id: typeof it?.id === 'string' && it.id ? it.id : `deal-${Math.random().toString(36).slice(2, 9)}`,
+                productId: typeof it?.productId === 'number' ? it.productId : null,
+                title: typeof it?.title === 'string' ? it.title : '',
+                imageUrl: typeof it?.imageUrl === 'string' ? it.imageUrl : '',
+                productUrl: typeof it?.productUrl === 'string' ? it.productUrl : '',
+                priceRaw: typeof it?.priceRaw === 'number' ? it.priceRaw : null,
+                priceText: typeof it?.priceText === 'string' ? it.priceText : '',
+                discountPercent: Math.min(99, Math.max(1, Number(it?.discountPercent) || 10)),
+                durationMinutes: Math.min(10080, Math.max(1, Number(it?.durationMinutes) || 60)),
+                startsAt: typeof it?.startsAt === 'string' ? it.startsAt : '',
+                endsAt: typeof it?.endsAt === 'string' ? it.endsAt : '',
+                enabled: it?.enabled !== false,
+              }))
+              : [],
+          }))
+          : [],
       };
+      if ((merged.schedule.windows?.length ?? 0) === 0 && (merged.dealItems?.length ?? 0) > 0) {
+        merged.schedule.windows = [{
+          id: `schedule-${Math.random().toString(36).slice(2, 9)}`,
+          title: 'Основное окно',
+          enabled: true,
+          startDate: '',
+          endDate: '',
+          startTime: '00:00',
+          endTime: '23:59',
+          daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
+          dealItems: merged.dealItems,
+        }];
+      }
     }
   }
   if (merged.profile === 'P-CATEGORY-FEED' && typeof merged.feed?.depth !== 'number') merged.feed.depth = 3;
