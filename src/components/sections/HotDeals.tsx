@@ -87,8 +87,14 @@ type HotDealsProps = {
 const HotDeals = ({ title, subtitle, dealItems, schedule }: HotDealsProps) => {
   const scrollRef = useDragScroll<HTMLDivElement>();
   const configuredDeals = useMemo(() => getActiveHotDeals({ dealItems, schedule }), [dealItems, schedule]);
+  const hasConfiguredDeals = Boolean(
+    (dealItems?.length ?? 0) > 0 ||
+    (schedule?.windows ?? []).some((window) => (window.dealItems?.length ?? 0) > 0),
+  );
   const deals: ActiveHotDeal[] = configuredDeals.length > 0
     ? configuredDeals
+    : hasConfiguredDeals
+      ? []
     : hotDeals.map((deal: HotDeal) => ({
       id: `mock-${deal.id}`,
       productId: Number(deal.id) || 0,
