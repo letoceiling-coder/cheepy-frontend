@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Play, Square, Pause, Loader2, RotateCcw, Trash2, RefreshCw, RotateCw, Plus } from "lucide-react";
 import { parserApi, categoriesApi, logsApi, sellersApi } from "@/lib/api";
 import { summarizeParserActivity } from "@/admin/parserActivity";
+import { ParserCategoryTreePicker } from "@/admin/components/ParserCategoryTreePicker";
 import type { ParserJob, Category, ParserSettings } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -1165,28 +1166,16 @@ export default function ParserPage() {
               />
             </div>
             <div className="md:col-span-2">
-              <Label>Категории для полного режима (пусто = все включённые)</Label>
-              <p className="text-xs text-muted-foreground mb-2">Сохраняется в БД; демон использует тот же список.</p>
-              <div className="flex flex-wrap gap-2 max-h-32 overflow-auto rounded border p-2">
-                {categories.map((c) => {
-                  const checked = settingsForm.default_category_ids.includes(c.id);
-                  return (
-                    <label key={c.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => {
-                          const next = checked
-                            ? settingsForm.default_category_ids.filter((id) => id !== c.id)
-                            : [...settingsForm.default_category_ids, c.id];
-                          setSettingsForm({ ...settingsForm, default_category_ids: next });
-                        }}
-                      />
-                      <span className="truncate max-w-[140px]">{c.name}</span>
-                    </label>
-                  );
-                })}
-              </div>
+              <Label>Категории для полного режима</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Дерево: отметка родителя включает все подкатегории. Пустой список после «Очистить» = парсятся все включённые категории.
+                Сохраняется в БД; демон использует тот же список.
+              </p>
+              <ParserCategoryTreePicker
+                roots={categoriesData?.data ?? []}
+                selectedIds={settingsForm.default_category_ids}
+                onChange={(ids) => setSettingsForm((prev) => ({ ...prev, default_category_ids: ids }))}
+              />
             </div>
             <div className="md:col-span-2">
               <Label>Исключить продавцов из импорта</Label>
