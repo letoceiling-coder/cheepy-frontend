@@ -120,7 +120,7 @@ export default function CrmModerationPage() {
     queryFn: async () => ({ data: await sellersApi.listAll() }),
   });
 
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isPending, isFetching, isError, error } = useQuery({
     queryKey: [QK[0], statusFilter, debouncedSearch, categoryFilter, sellerIdsFilterKey, page],
     queryFn: () =>
       adminSystemProductsApi.list({
@@ -131,6 +131,7 @@ export default function CrmModerationPage() {
         page,
         per_page: PER_PAGE,
       }),
+    placeholderData: (previousData) => previousData,
   });
 
   const patchMutation = useMutation({
@@ -210,7 +211,7 @@ export default function CrmModerationPage() {
     },
   ];
 
-  if (isLoading) {
+  if (!data && isPending) {
     return (
       <div className="space-y-4 animate-fade-in">
         <PageHeader title="Модерация" description="Загрузка..." />
@@ -221,7 +222,7 @@ export default function CrmModerationPage() {
     );
   }
 
-  if (isError) {
+  if (isError && !data) {
     return (
       <div className="space-y-4 animate-fade-in">
         <PageHeader title="Модерация" description="Ошибка загрузки" />
@@ -275,6 +276,13 @@ export default function CrmModerationPage() {
           onChange={setSellerIdsFilter}
         />
       </div>
+
+      {isFetching && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5" aria-live="polite">
+          <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+          Обновление списка…
+        </p>
+      )}
 
       <DataTable data={items} columns={columns} onRowClick={(m) => navigate(`/crm/moderation/${m.id}`)} />
       <div className="flex flex-wrap items-center justify-between gap-3">

@@ -168,7 +168,7 @@ export default function CrmProductsPage() {
     queryFn: async () => ({ data: await sellersApi.listAll() }),
   });
 
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isPending, isFetching, isError, error } = useQuery({
     queryKey: [QK[0], statusFilter, debouncedSearch, categoryFilter, sellerIdsFilterKey, page],
     queryFn: () =>
       adminSystemProductsApi.list({
@@ -179,6 +179,7 @@ export default function CrmProductsPage() {
         page,
         per_page: PER_PAGE,
       }),
+    placeholderData: (previousData) => previousData,
   });
 
   const items = data?.data ?? [];
@@ -264,7 +265,7 @@ export default function CrmProductsPage() {
     },
   ];
 
-  if (isLoading) {
+  if (!data && isPending) {
     return (
       <div className="space-y-4 animate-fade-in">
         <PageHeader title="Товары" description="Загрузка..." />
@@ -275,7 +276,7 @@ export default function CrmProductsPage() {
     );
   }
 
-  if (isError) {
+  if (isError && !data) {
     return (
       <div className="space-y-4 animate-fade-in">
         <PageHeader title="Товары" description="Ошибка загрузки" />
@@ -351,6 +352,13 @@ export default function CrmProductsPage() {
           <Download className="h-3.5 w-3.5" /> Экспорт
         </Button>
       </div>
+
+      {isFetching && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5" aria-live="polite">
+          <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+          Обновление списка…
+        </p>
+      )}
 
       <DataTable data={items} columns={columns} onRowClick={(p) => navigate(`/crm/moderation/${p.id}`)} />
       <div className="flex flex-wrap items-center justify-between gap-3">
