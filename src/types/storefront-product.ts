@@ -16,4 +16,5 @@ export interface StorefrontProduct {
   sizes: string[];
   material: string;
   brand: string;
+  attributes?: Array<{ name: string; value: string; type?: string }>;
 }

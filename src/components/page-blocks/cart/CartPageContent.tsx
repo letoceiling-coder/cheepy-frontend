@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 
 export default function CartPageContent() {
-  const { items, removeFromCart, updateQuantity, updateColor, updateSize, totalPrice, totalDiscount } = useCart();
+  const { items, removeFromCart, updateQuantity, updateColor, updateSize, getLinePricing, totalPrice, totalDiscount } = useCart();
   const { isAuthenticated } = useAuth();
   const { toggleFavorite } = useFavorites();
 
@@ -38,23 +38,34 @@ export default function CartPageContent() {
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex-1 space-y-4">
             {items.map((item) => {
+              const pricing = getLinePricing(item);
               return (
-                <div key={item.product.id} className="flex gap-4 p-4 rounded-2xl border border-border">
-                  <a href={`/product/${item.product.id}`} className="shrink-0">
+                <div key={item.lineId} className="flex gap-4 p-4 rounded-2xl border border-border">
+                  <Link to={`/product/${item.product.id}`} className="shrink-0">
                     <img
                       src={item.product.images[0]}
                       alt={item.product.name}
                       className="w-24 h-32 md:w-28 md:h-36 rounded-xl object-cover"
                     />
-                  </a>
+                  </Link>
                   <div className="flex-1 min-w-0">
-                    <a
-                      href={`/product/${item.product.id}`}
+                    <Link
+                      to={`/product/${item.product.id}`}
                       className="text-sm font-medium text-foreground line-clamp-2 hover:text-primary transition-colors mb-1 block"
                     >
                       {item.product.name}
-                    </a>
+                    </Link>
                     <p className="text-xs text-muted-foreground mb-2">{item.product.seller}</p>
+
+                    {item.promotions.length > 0 ? (
+                      <div className={`mb-2 inline-flex rounded-full px-2 py-1 text-[11px] font-medium ${
+                        pricing.promotionActive ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
+                      }`}>
+                        {pricing.appliedPromotion
+                          ? `${pricing.appliedPromotion.label ?? pricing.appliedPromotion.title}${pricing.appliedPromotion.discountPercent ? ` -${pricing.appliedPromotion.discountPercent}%` : ""}`
+                          : "Промо истекло, цена пересчитана"}
+                      </div>
+                    ) : null}
 
                     <div className="flex items-center gap-1.5 mb-2">
                       <span className="text-xs text-muted-foreground">Цвет:</span>
@@ -63,7 +74,7 @@ export default function CartPageContent() {
                           <button
                             key={c}
                             type="button"
-                            onClick={() => updateColor(item.product.id, c)}
+                            onClick={() => updateColor(item.lineId, c)}
                             className={`px-2 py-0.5 rounded text-xs border transition-colors ${
                               item.color === c ? "border-primary bg-primary/10 text-primary" : "border-border text-foreground"
                             }`}
@@ -81,7 +92,7 @@ export default function CartPageContent() {
                           <button
                             key={s}
                             type="button"
-                            onClick={() => updateSize(item.product.id, s)}
+                            onClick={() => updateSize(item.lineId, s)}
                             className={`w-8 h-6 rounded text-xs border transition-colors ${
                               item.size === s ? "border-primary bg-primary/10 text-primary" : "border-border text-foreground"
                             }`}
@@ -92,11 +103,26 @@ export default function CartPageContent() {
                       </div>
                     </div>
 
+                    {item.selectedAttributes.length > 0 ? (
+                      <div className="mb-3 flex flex-wrap gap-1.5">
+                        {item.selectedAttributes.slice(0, 6).map((attr) => (
+                          <span key={`${attr.name}-${attr.value}`} className="rounded bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">
+                            {attr.name}: <span className="text-foreground">{attr.value}</span>
+                          </span>
+                        ))}
+                        {item.selectedAttributes.length > 6 ? (
+                          <span className="rounded bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">
+                            +{item.selectedAttributes.length - 6} атр.
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
+
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.lineId, item.quantity - 1)}
                           className="w-7 h-7 rounded-lg border border-border flex items-center justify-center hover:bg-secondary"
                         >
                           <Minus className="w-3 h-3" />
@@ -104,7 +130,7 @@ export default function CartPageContent() {
                         <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
                         <button
                           type="button"
-                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.lineId, item.quantity + 1)}
                           className="w-7 h-7 rounded-lg border border-border flex items-center justify-center hover:bg-secondary"
                         >
                           <Plus className="w-3 h-3" />
@@ -112,11 +138,11 @@ export default function CartPageContent() {
                       </div>
                       <div className="text-right">
                         <span className="text-base font-bold text-foreground">
-                          {(item.product.price * item.quantity).toLocaleString()} ₽
+                          {pricing.lineTotal.toLocaleString()} ₽
                         </span>
-                        {item.product.oldPrice && (
+                        {pricing.discountTotal > 0 && (
                           <span className="text-xs text-muted-foreground line-through ml-2">
-                            {(item.product.oldPrice * item.quantity).toLocaleString()} ₽
+                            {pricing.lineOriginalTotal.toLocaleString()} ₽
                           </span>
                         )}
                       </div>
@@ -135,7 +161,7 @@ export default function CartPageContent() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => removeFromCart(item.product.id)}
+                      onClick={() => removeFromCart(item.lineId)}
                       className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />

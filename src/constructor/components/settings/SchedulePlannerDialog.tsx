@@ -87,14 +87,21 @@ function formatMoneyText(raw: number | null | undefined, fallback?: string | nul
   return fallback || '';
 }
 
+function publicProductId(product: SystemProductItem): number {
+  const externalId = product.donor_sources?.find((source) => source.donor?.external_id)?.donor?.external_id;
+  const numericExternalId = Number(externalId);
+  return Number.isFinite(numericExternalId) && numericExternalId > 0 ? numericExternalId : product.id;
+}
+
 function createDealFromProduct(p: SystemProductItem): HotDealProductSetting {
   const priceRaw = typeof p.price_raw === 'number' ? p.price_raw : parsePriceText(p.price);
+  const publicId = publicProductId(p);
   return {
     id: `deal-${Math.random().toString(36).slice(2, 9)}`,
-    productId: p.id,
+    productId: publicId,
     title: p.name ?? '',
     imageUrl: p.thumbnail_url ?? '',
-    productUrl: `/product/${p.id}`,
+    productUrl: `/product/${publicId}`,
     priceRaw,
     priceText: formatMoneyText(priceRaw, p.price),
     discountPercent: 20,
@@ -132,6 +139,10 @@ function productMatchesSearch(product: SystemProductItem, query: string): boolea
   return fields.some((field) => normalizeSearch(field).includes(q));
 }
 
+function isPublicHotDealCandidate(product: SystemProductItem): boolean {
+  return product.status === 'approved' || product.status === 'published';
+}
+
 function ProductSearchBox({
   selectedIds,
   onPick,
@@ -160,7 +171,7 @@ function ProductSearchBox({
           try {
             const single = await adminSystemProductsApi.get(numericId);
             if (!cancelled) {
-              setItems(single ? [single] : []);
+              setItems(single && isPublicHotDealCandidate(single) ? [single] : []);
               setLoading(false);
               return;
             }
@@ -176,7 +187,8 @@ function ProductSearchBox({
           sort_dir: 'desc',
         });
         const rows = Array.isArray(res.data) ? res.data : [];
-        const filtered = debounced ? rows.filter((p) => productMatchesSearch(p, debounced)) : rows;
+        const filtered = (debounced ? rows.filter((p) => productMatchesSearch(p, debounced)) : rows)
+          .filter(isPublicHotDealCandidate);
         if (!cancelled) setItems(filtered.slice(0, 12));
       } catch {
         if (!cancelled) setItems([]);
@@ -202,9 +214,10 @@ function ProductSearchBox({
       </div>
       <div className="max-h-52 overflow-auto space-y-1">
         {loading ? <p className="text-xs text-muted-foreground">Загрузка товаров...</p> : null}
-        {!loading && items.length === 0 ? <p className="text-xs text-muted-foreground">Ничего не найдено.</p> : null}
+        {!loading && items.length === 0 ? <p className="text-xs text-muted-foreground">Ничего не найдено среди опубликованных товаров.</p> : null}
         {items.map((p) => {
-          const alreadyAdded = selectedIds.includes(p.id);
+          const publicId = publicProductId(p);
+          const alreadyAdded = selectedIds.includes(publicId);
           const justAdded = addedId === p.id;
           return (
           <button

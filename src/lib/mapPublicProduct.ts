@@ -66,6 +66,7 @@ export function publicListProductToStorefront(p: Product): StorefrontProduct {
     sizes: [],
     material: "",
     brand: "",
+    attributes: [],
   };
 }
 
@@ -99,5 +100,6 @@ export function productFullToStorefront(full: ProductFull): StorefrontProduct {
     sizes,
     material: attrByKeyword(attrs, ["материал", "material"]) ?? "",
     brand: full.brand?.name ?? "",
+    attributes: attrs,
   };
 }

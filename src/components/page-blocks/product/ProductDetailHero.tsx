@@ -9,6 +9,7 @@ import { extractHotDealsSettingsFromPageLayout, getActiveHotDealForProduct } fro
 import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { usePublicProduct } from "@/hooks/usePublicProduct";
+import type { CartPromotionSnapshot } from "@/lib/cartPricing";
 
 const RECENT_KEY = "cheepy_recent_product_ids";
 
@@ -107,6 +108,32 @@ export default function ProductDetailHero() {
 
   const cartColor = selectedColor || storefront.colors[0] || "—";
   const cartSize = selectedSize || storefront.sizes[0] || "—";
+  const selectedAttributes = (storefront.attributes ?? [])
+    .filter((attr) => attr.name && attr.value)
+    .map((attr) => ({ name: attr.name, value: attr.value }));
+  const cartPromotion: CartPromotionSnapshot | undefined = activeDeal && !dealCountdown.expired
+    ? {
+        id: activeDeal.id,
+        type: "hot_deal",
+        title: "Горячее предложение",
+        label: "Горячее предложение",
+        source: {
+          kind: "constructor_block",
+          id: activeDeal.id,
+          blockType: "HotDeals",
+          windowId: activeDeal.windowId,
+          itemId: String(activeDeal.productId),
+        },
+        discountPercent: activeDeal.discountPercent,
+        originalUnitPrice: activeDeal.originalPrice,
+        promotionalUnitPrice: activeDeal.salePrice,
+        startsAt: activeDeal.startsAt,
+        endsAt: activeDeal.endsAt,
+        priority: 50,
+        stackable: false,
+        capturedAt: new Date().toISOString(),
+      }
+    : undefined;
 
   const seller = full.seller;
   const shownPrice = activeDeal && !dealCountdown.expired ? activeDeal.salePrice : storefront.price;
@@ -189,7 +216,6 @@ export default function ProductDetailHero() {
             <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
               <Clock className="h-4 w-4 text-destructive" />
               Товар участвует в горячем предложении
-              {activeDeal.windowTitle ? <span className="text-muted-foreground">· {activeDeal.windowTitle}</span> : null}
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span>Скидка отменится через:</span>
@@ -273,7 +299,11 @@ export default function ProductDetailHero() {
 
         <div className="flex gap-3 mb-6">
           <Button
-            onClick={() => addToCart(storefront, cartColor, cartSize)}
+            onClick={() => addToCart(storefront, cartColor, cartSize, {
+              quantity,
+              selectedAttributes,
+              promotions: cartPromotion ? [cartPromotion] : [],
+            })}
             className="flex-1 gradient-primary text-primary-foreground rounded-xl py-3 h-auto text-sm font-semibold gap-2"
           >
             <ShoppingCart className="w-4 h-4" />
