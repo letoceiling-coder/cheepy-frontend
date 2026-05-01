@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarClock, HelpCircle, Plus, Search, Trash2 } from 'lucide-react';
+import { CalendarClock, Check, HelpCircle, Plus, Search, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -102,11 +102,18 @@ function salePrice(deal: HotDealProductSetting): string {
   return `${price.toLocaleString('ru-RU')} ₽`;
 }
 
-function ProductSearchBox({ onPick }: { onPick: (product: SystemProductItem) => void }) {
+function ProductSearchBox({
+  selectedIds,
+  onPick,
+}: {
+  selectedIds: number[];
+  onPick: (product: SystemProductItem) => void;
+}) {
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [items, setItems] = useState<SystemProductItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [addedId, setAddedId] = useState<number | null>(null);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebounced(query.trim()), 300);
@@ -151,12 +158,29 @@ function ProductSearchBox({ onPick }: { onPick: (product: SystemProductItem) => 
       <div className="max-h-52 overflow-auto space-y-1">
         {loading ? <p className="text-xs text-muted-foreground">Загрузка товаров...</p> : null}
         {!loading && items.length === 0 ? <p className="text-xs text-muted-foreground">Ничего не найдено.</p> : null}
-        {items.map((p) => (
+        {items.map((p) => {
+          const alreadyAdded = selectedIds.includes(p.id);
+          const justAdded = addedId === p.id;
+          return (
           <button
             key={p.id}
             type="button"
-            className="w-full flex items-center gap-2 rounded-md p-1.5 text-left hover:bg-accent"
-            onClick={() => onPick(p)}
+            className={cn(
+              'w-full flex items-center gap-2 rounded-md p-1.5 text-left hover:bg-accent',
+              (alreadyAdded || justAdded) && 'bg-primary/10 text-primary',
+            )}
+            disabled={alreadyAdded}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (alreadyAdded) return;
+              onPick(p);
+              setAddedId(p.id);
+              setQuery('');
+              setDebounced('');
+              window.setTimeout(() => setAddedId((current) => (current === p.id ? null : current)), 1400);
+            }}
           >
             <div className="h-10 w-10 rounded bg-muted overflow-hidden shrink-0">
               {p.thumbnail_url ? (
@@ -169,8 +193,16 @@ function ProductSearchBox({ onPick }: { onPick: (product: SystemProductItem) => 
               <p className="text-xs font-medium truncate">{p.name || `Товар #${p.id}`}</p>
               <p className="text-[10px] text-muted-foreground truncate">ID {p.id}{p.price ? ` · ${p.price}` : ''}</p>
             </div>
+            {alreadyAdded || justAdded ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-[10px] text-primary-foreground">
+                <Check className="h-3 w-3" /> {alreadyAdded ? 'Добавлен' : 'Готово'}
+              </span>
+            ) : (
+              <span className="rounded-full border px-2 py-1 text-[10px] text-muted-foreground">Добавить</span>
+            )}
           </button>
-        ))}
+        );
+        })}
       </div>
     </div>
   );
@@ -387,14 +419,6 @@ export function SchedulePlannerDialog({
                       </span>
                     </div>
 
-                    <ProductSearchBox
-                      onPick={(product) =>
-                        patchWindow(active.id, {
-                          dealItems: [...(active.dealItems ?? []), createDealFromProduct(product)],
-                        })
-                      }
-                    />
-
                     <div className="space-y-2">
                       {(active.dealItems ?? []).length === 0 ? (
                         <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
@@ -499,6 +523,15 @@ export function SchedulePlannerDialog({
                         </div>
                       ))}
                     </div>
+
+                    <ProductSearchBox
+                      selectedIds={(active.dealItems ?? []).map((x) => x.productId).filter((id): id is number => typeof id === 'number')}
+                      onPick={(product) =>
+                        patchWindow(active.id, {
+                          dealItems: [...(active.dealItems ?? []), createDealFromProduct(product)],
+                        })
+                      }
+                    />
                   </div>
 
                   <div className="rounded-lg border bg-muted/30 p-4">
