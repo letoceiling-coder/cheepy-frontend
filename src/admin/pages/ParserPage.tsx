@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Play, Square, Pause, Loader2, RotateCcw, Trash2, RefreshCw, RotateCw, Plus } from "lucide-react";
-import { parserApi, categoriesApi, logsApi } from "@/lib/api";
+import { parserApi, categoriesApi, logsApi, sellersApi } from "@/lib/api";
 import { summarizeParserActivity } from "@/admin/parserActivity";
 import type { ParserJob, Category, ParserSettings } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -35,6 +35,27 @@ function parseDefaultCategoryIds(value: unknown): number[] {
     }
   }
   return [];
+}
+
+/** Нормализация списка slug для формы (совпадает с бэкендом: trim + lower + unique). */
+function parseExcludedSellerSlugs(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    if (typeof value === "string" && value.trim() !== "") {
+      try {
+        const p = JSON.parse(value) as unknown;
+        if (Array.isArray(p)) return parseExcludedSellerSlugs(p);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }
+  const map = new Map<string, string>();
+  for (const x of value) {
+    const s = String(x).trim().toLowerCase();
+    if (s) map.set(s, s);
+  }
+  return [...map.values()];
 }
 
 /** Load proxy list: prefer proxy_urls from API, else wrap legacy proxy_url */
@@ -128,6 +149,7 @@ export default function ParserPage() {
     default_products_per_category: 0,
     default_category_ids: [] as number[],
     default_no_details: false,
+    excluded_seller_slugs: [] as string[],
   });
 
   /** Hydrate form once from GET /admin/parser/settings — no refetch-driven overwrites */
@@ -155,9 +177,21 @@ export default function ParserPage() {
       default_products_per_category: parserSettings.default_products_per_category ?? 0,
       default_category_ids: parseDefaultCategoryIds(parserSettings.default_category_ids),
       default_no_details: parserSettings.default_no_details ?? false,
+      excluded_seller_slugs: parseExcludedSellerSlugs(parserSettings.excluded_seller_slugs),
     });
     parserSettingsHydratedRef.current = true;
   }, [parserSettings]);
+
+  const { data: sellersExcludeData, isPending: sellersExcludePending } = useQuery({
+    queryKey: ["parser-sellers-for-exclusions"],
+    queryFn: () => sellersApi.list({ page: 1, per_page: 500 }),
+    staleTime: 60_000,
+  });
+  const exclusionSellers = sellersExcludeData?.data ?? [];
+  const exclusionSellersSorted = useMemo(
+    () => [...exclusionSellers].sort((a, b) => a.name.localeCompare(b.name, "ru")),
+    [exclusionSellers],
+  );
 
   const flattenCategories = (items: Category[]): Category[] => {
     const out: Category[] = [];
@@ -167,7 +201,7 @@ export default function ParserPage() {
         if (c.children?.length) walk(c.children);
       }
     };
-    walk(categoriesData?.data ?? []);
+    walk(items);
     return out;
   };
   const categories = flattenCategories(categoriesData?.data ?? []);
@@ -461,7 +495,6 @@ export default function ParserPage() {
         download_photos: settingsForm.download_photos,
         no_details: settingsForm.default_no_details,
       };
-      console.log("SAVE SETTINGS PAYLOAD", savePayload);
       const res = await parserApi.updateSettings(savePayload);
       if (res?.data) {
         const d = res.data;
@@ -487,6 +520,7 @@ export default function ParserPage() {
           default_products_per_category: d.default_products_per_category ?? 0,
           default_category_ids: parseDefaultCategoryIds(d.default_category_ids),
           default_no_details: d.default_no_details ?? false,
+          excluded_seller_slugs: parseExcludedSellerSlugs(d.excluded_seller_slugs),
         });
       } else {
         parserSettingsHydratedRef.current = false;
@@ -1152,6 +1186,41 @@ export default function ParserPage() {
                     </label>
                   );
                 })}
+              </div>
+            </div>
+            <div className="md:col-span-2">
+              <Label>Исключить продавцов из импорта</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                По slug в БД; товары этих продавцов не сохраняются при парсинге (полный режим и одиночный продавец).
+              </p>
+              <div className="flex flex-wrap gap-2 max-h-40 overflow-auto rounded border p-2">
+                {sellersExcludePending ? (
+                  <span className="text-sm text-muted-foreground">Загрузка списка продавцов…</span>
+                ) : exclusionSellersSorted.length === 0 ? (
+                  <span className="text-sm text-muted-foreground">Нет продавцов в ответе API.</span>
+                ) : (
+                  exclusionSellersSorted.map((s) => {
+                    const slugNorm = s.slug.trim().toLowerCase();
+                    const checked = settingsForm.excluded_seller_slugs.includes(slugNorm);
+                    return (
+                      <label key={s.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {
+                            const next = checked
+                              ? settingsForm.excluded_seller_slugs.filter((x) => x !== slugNorm)
+                              : [...settingsForm.excluded_seller_slugs, slugNorm];
+                            setSettingsForm({ ...settingsForm, excluded_seller_slugs: next });
+                          }}
+                        />
+                        <span className="truncate max-w-[180px]" title={slugNorm}>
+                          {s.name}
+                        </span>
+                      </label>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>

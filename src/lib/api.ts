@@ -766,6 +766,8 @@ export interface ParserSettings {
   default_linked_only?: boolean;
   default_category_ids?: number[];
   default_no_details?: boolean;
+  /** Slug продавцов (donor `sellers.slug`), товары которых не импортируются */
+  excluded_seller_slugs?: string[];
 }
 
 export interface ParserProgressOverview {
