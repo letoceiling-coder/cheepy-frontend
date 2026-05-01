@@ -35,7 +35,7 @@ export function SellerProductsTable({ sellerId }: SellerProductsTableProps) {
 
   const { data: categoriesData } = useQuery({
     queryKey: ["categories-flat"],
-    queryFn: () => categoriesApi.list({ tree: false, per_page: 500 }),
+    queryFn: () => categoriesApi.listAllFlat(),
   });
 
   const { data, isLoading, error } = useQuery({

@@ -162,7 +162,7 @@ export default function CrmProductsPage() {
 
   const { data: sellersRes } = useQuery({
     queryKey: ["crm-sellers-dd", "products"],
-    queryFn: () => sellersApi.list({ per_page: 500, page: 1 }),
+    queryFn: async () => ({ data: await sellersApi.listAll() }),
   });
 
   const { data, isLoading, isError, error } = useQuery({

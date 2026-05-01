@@ -184,7 +184,7 @@ export default function ParserPage() {
 
   const { data: sellersExcludeData, isPending: sellersExcludePending } = useQuery({
     queryKey: ["parser-sellers-for-exclusions"],
-    queryFn: () => sellersApi.list({ page: 1, per_page: 500 }),
+    queryFn: async () => ({ data: await sellersApi.listAll() }),
     staleTime: 60_000,
   });
   const exclusionSellers = sellersExcludeData?.data ?? [];

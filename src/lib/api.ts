@@ -881,10 +881,33 @@ export const productsApi = {
 // ──────────────────────────────────────────────
 
 export const categoriesApi = {
-  list: (params?: { tree?: boolean; search?: string; enabled_only?: boolean; per_page?: number }) => {
+  list: (params?: { tree?: boolean; search?: string; enabled_only?: boolean; per_page?: number; page?: number }) => {
     const q = new URLSearchParams();
     if (params) Object.entries(params).forEach(([k, v]) => { if (v !== undefined) q.set(k, String(v)); });
-    return get<{ data: Category[]; total?: number }>(`/categories?${q}`);
+    return get<{ data: Category[]; total?: number; meta?: PaginatedResponse<Category>["meta"] }>(`/categories?${q}`);
+  },
+  /** Плоский список всех категорий донора (несколько страниц). Для фильтров в админке. */
+  listAllFlat: async (params?: { search?: string; enabled_only?: boolean }): Promise<{ data: Category[] }> => {
+    const perPage = 500;
+    const buildQs = (page: number) => {
+      const q = new URLSearchParams();
+      q.set("tree", "false");
+      q.set("per_page", String(perPage));
+      q.set("page", String(page));
+      if (params?.search) q.set("search", params.search);
+      if (params?.enabled_only) q.set("enabled_only", "1");
+      return q.toString();
+    };
+    const first = await get<PaginatedResponse<Category>>(`/categories?${buildQs(1)}`);
+    const rows = [...first.data];
+    let page = first.meta.current_page;
+    const lastPage = first.meta.last_page;
+    while (page < lastPage) {
+      page += 1;
+      const next = await get<PaginatedResponse<Category>>(`/categories?${buildQs(page)}`);
+      rows.push(...next.data);
+    }
+    return { data: rows };
   },
   get: (id: number) => get<Category & { parent: Category | null; parser_settings: Record<string, number> }>(`/categories/${id}`),
   update: (id: number, data: Partial<Category & { parser_settings: Record<string, number> }>) =>
@@ -989,6 +1012,20 @@ export const sellersApi = {
     const q = new URLSearchParams();
     if (params) Object.entries(params).forEach(([k, v]) => { if (v !== undefined) q.set(k, String(v)); });
     return get<PaginatedResponse<Seller>>(`/admin/parser/sellers?${q}`);
+  },
+  /** Все продавцы (постраничная загрузка до конца). Для селектов и исключений парсера. */
+  listAll: async (params?: { search?: string; status?: string; pavilion?: string; has_products?: boolean }): Promise<Seller[]> => {
+    const perPage = 500;
+    const first = await sellersApi.list({ ...params, page: 1, per_page: perPage });
+    const rows = [...first.data];
+    let page = first.meta.current_page;
+    const lastPage = first.meta.last_page;
+    while (page < lastPage) {
+      page += 1;
+      const next = await sellersApi.list({ ...params, page, per_page: perPage });
+      rows.push(...next.data);
+    }
+    return rows;
   },
   get: (idOrSlug: string | number) => get<SellerFull>(`/admin/parser/sellers/${idOrSlug}`),
   products: (idOrSlug: string | number, params?: AdminSellerProductsParams) => {

@@ -33,11 +33,11 @@ export default function ProductsPage() {
 
   const { data: categoriesData } = useQuery({
     queryKey: ["categories-flat"],
-    queryFn: () => categoriesApi.list({ tree: false, per_page: 500 }),
+    queryFn: () => categoriesApi.listAllFlat(),
   });
   const { data: sellersData } = useQuery({
     queryKey: ["sellers-list"],
-    queryFn: () => sellersApi.list({ per_page: 500 }),
+    queryFn: async () => ({ data: await sellersApi.listAll() }),
   });
 
   const { data, isLoading, error, refetch } = useQuery({
