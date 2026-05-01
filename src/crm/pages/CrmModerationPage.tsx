@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader";
 import { DataTable, Column } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
+import { CrmSellerMultiSelect } from "../components/CrmSellerMultiSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -90,7 +91,7 @@ export default function CrmModerationPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "needs_review">("pending");
   const [categoryFilter, setCategoryFilter] = useState("");
-  const [sellerFilter, setSellerFilter] = useState("");
+  const [sellerIdsFilter, setSellerIdsFilter] = useState<number[]>([]);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -101,7 +102,9 @@ export default function CrmModerationPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, categoryFilter, sellerFilter, debouncedSearch]);
+  }, [statusFilter, categoryFilter, sellerIdsFilter, debouncedSearch]);
+
+  const sellerIdsFilterKey = useMemo(() => [...sellerIdsFilter].sort((a, b) => a - b).join("|"), [sellerIdsFilter]);
 
   const { data: categoriesRes } = useQuery({
     queryKey: ["catalog-categories-flat", "moderation-list"],
@@ -118,13 +121,13 @@ export default function CrmModerationPage() {
   });
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: [QK[0], statusFilter, debouncedSearch, categoryFilter, sellerFilter, page],
+    queryKey: [QK[0], statusFilter, debouncedSearch, categoryFilter, sellerIdsFilterKey, page],
     queryFn: () =>
       adminSystemProductsApi.list({
         status: statusFilter === "all" ? undefined : statusFilter,
         search: debouncedSearch.trim() || undefined,
         category_id: categoryFilter ? Number(categoryFilter) : undefined,
-        seller_id: sellerFilter ? Number(sellerFilter) : undefined,
+        seller_ids: sellerIdsFilter.length > 0 ? sellerIdsFilter : undefined,
         page,
         per_page: PER_PAGE,
       }),
@@ -266,19 +269,11 @@ export default function CrmModerationPage() {
             </option>
           ))}
         </select>
-        <select
-          value={sellerFilter}
-          onChange={(e) => setSellerFilter(e.target.value)}
-          className="h-8 min-w-[160px] max-w-[220px] rounded-md border border-input bg-background px-3 text-sm truncate"
-          title="Продавец"
-        >
-          <option value="">Все продавцы</option>
-          {(sellersRes?.data ?? []).map((s) => (
-            <option key={s.id} value={String(s.id)}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+        <CrmSellerMultiSelect
+          sellers={sellersRes?.data ?? []}
+          value={sellerIdsFilter}
+          onChange={setSellerIdsFilter}
+        />
       </div>
 
       <DataTable data={items} columns={columns} onRowClick={(m) => navigate(`/crm/moderation/${m.id}`)} />

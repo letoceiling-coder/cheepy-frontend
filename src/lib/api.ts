@@ -1211,12 +1211,23 @@ export const adminSystemProductsApi = {
     page?: number;
     per_page?: number;
     category_id?: number;
+    /** Один продавец (устаревший параметр; при наличии seller_ids не отправляйте). */
     seller_id?: number;
+    /** Несколько продавцов — фильтр на бэкенде whereIn */
+    seller_ids?: number[];
     sort_by?: 'created_at' | 'updated_at' | 'name' | 'status' | 'price_raw' | 'list_position';
     sort_dir?: 'asc' | 'desc';
   }) => {
     const q = new URLSearchParams();
-    if (params) Object.entries(params).forEach(([k, v]) => { if (v !== undefined) q.set(k, String(v)); });
+    if (params) {
+      const { seller_ids, ...rest } = params;
+      Object.entries(rest).forEach(([k, v]) => {
+        if (v !== undefined && v !== null) q.set(k, String(v));
+      });
+      if (seller_ids?.length) {
+        q.set('seller_ids', seller_ids.join(','));
+      }
+    }
     return get<{ data: SystemProductItem[]; meta: { total: number; per_page: number; current_page: number; last_page: number } }>(
       `/admin/system-products${q.toString() ? `?${q}` : ''}`
     );
