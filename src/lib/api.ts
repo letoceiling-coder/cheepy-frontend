@@ -941,6 +941,21 @@ export interface CatalogCategoryItem {
   products_count?: number;
 }
 
+/** Узел дерева витринных категорий (+ счётчики CRM-товаров по поддереву). */
+export interface CatalogCategoryTreeNode {
+  id: number;
+  name: string;
+  slug: string;
+  parent_id?: number | null;
+  sort_order?: number;
+  is_active?: boolean;
+  counts: {
+    approved: number;
+    review: number;
+  };
+  children: CatalogCategoryTreeNode[];
+}
+
 export interface CategoryMappingItem {
   id: number;
   donor_category_id: number;
@@ -973,6 +988,9 @@ export const adminCatalogApi = {
       meta?: { total: number; per_page: number; current_page: number; last_page: number };
     }>(`/admin/catalog/categories${q.toString() ? `?${q}` : ''}`);
   },
+  /** Дерево каталога с агрегатами одобрено/на проверке для фильтров CRM. */
+  catalogCategoriesTreeProductStats: () =>
+    get<{ data: CatalogCategoryTreeNode[] }>('/admin/catalog/categories/tree-product-stats'),
   /** Same-level order; body is JSON array [{ id, sort_order }, ...] */
   catalogCategoriesReorder: (items: Array<{ id: number; sort_order: number }>) =>
     patch<{ message?: string }>('/admin/catalog/categories/reorder', items),
@@ -1211,6 +1229,8 @@ export const adminSystemProductsApi = {
     page?: number;
     per_page?: number;
     category_id?: number;
+    /** Несколько категорий — whereIn по category_id */
+    category_ids?: number[];
     /** Один продавец (устаревший параметр; при наличии seller_ids не отправляйте). */
     seller_id?: number;
     /** Несколько продавцов — фильтр на бэкенде whereIn */
@@ -1220,10 +1240,13 @@ export const adminSystemProductsApi = {
   }) => {
     const q = new URLSearchParams();
     if (params) {
-      const { seller_ids, ...rest } = params;
+      const { seller_ids, category_ids, ...rest } = params;
       Object.entries(rest).forEach(([k, v]) => {
         if (v !== undefined && v !== null) q.set(k, String(v));
       });
+      if (category_ids?.length) {
+        q.set('category_ids', category_ids.join(','));
+      }
       if (seller_ids?.length) {
         q.set('seller_ids', seller_ids.join(','));
       }

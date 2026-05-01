@@ -5,6 +5,7 @@ import { PageHeader } from "../components/PageHeader";
 import { DataTable, Column } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { CrmSellerMultiSelect } from "../components/CrmSellerMultiSelect";
+import { CrmCategoryMultiSelect } from "../components/CrmCategoryMultiSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,12 +13,13 @@ import {
   adminCatalogApi,
   sellersApi,
   type SystemProductItem,
-  type CatalogCategoryItem,
 } from "@/lib/api";
 import { Search, CheckCircle, XCircle, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 const QK = ["admin-system-products-moderation"];
+
+const QK_CATEGORY_TREE_STATS = ["catalog-categories-crm-tree-stats"] as const;
 
 function donorSourceLabel(item: SystemProductItem): string {
   const donorSrcs = item.donor_sources ?? [];
@@ -46,43 +48,6 @@ function formatDate(s: string | undefined): string {
   }
 }
 
-function buildCategoryTreeOptions(cats: CatalogCategoryItem[]): { id: number; label: string }[] {
-  const byParent = new Map<number | null, CatalogCategoryItem[]>();
-  cats.forEach((c) => {
-    const pid = c.parent_id ?? null;
-    if (!byParent.has(pid)) byParent.set(pid, []);
-    byParent.get(pid)!.push(c);
-  });
-  const out: { id: number; label: string }[] = [];
-  function walk(pid: number | null, depth: number) {
-    const arr = byParent.get(pid) ?? [];
-    arr.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-    for (const c of arr) {
-      const pad = depth > 0 ? `${"—".repeat(depth)} ` : "";
-      out.push({ id: c.id, label: `${pad}${c.name}` });
-      walk(c.id, depth + 1);
-    }
-  }
-  walk(null, 0);
-  return out;
-}
-
-async function fetchAllCatalogCategoriesForModerationList(): Promise<CatalogCategoryItem[]> {
-  const first = await adminCatalogApi.catalogCategoriesList({ per_page: 100, page: 1 });
-  const total = first.meta?.total ?? first.data.length;
-  const perPage = first.meta?.per_page ?? 100;
-  if (total <= perPage) return first.data;
-
-  const pages = Math.ceil(total / perPage);
-  const rest = await Promise.all(
-    Array.from({ length: pages - 1 }, (_, i) =>
-      adminCatalogApi.catalogCategoriesList({ per_page: perPage, page: i + 2 })
-    )
-  );
-
-  return [...first.data, ...rest.flatMap((r) => r.data)];
-}
-
 const PER_PAGE = 25;
 
 export default function CrmModerationPage() {
@@ -90,7 +55,7 @@ export default function CrmModerationPage() {
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "needs_review">("pending");
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [categoryIdsFilter, setCategoryIdsFilter] = useState<number[]>([]);
   const [sellerIdsFilter, setSellerIdsFilter] = useState<number[]>([]);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -102,18 +67,19 @@ export default function CrmModerationPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, categoryFilter, sellerIdsFilter, debouncedSearch]);
+  }, [statusFilter, categoryIdsFilter, sellerIdsFilter, debouncedSearch]);
 
   const sellerIdsFilterKey = useMemo(() => [...sellerIdsFilter].sort((a, b) => a - b).join("|"), [sellerIdsFilter]);
-
-  const { data: categoriesRes } = useQuery({
-    queryKey: ["catalog-categories-flat", "moderation-list"],
-    queryFn: fetchAllCatalogCategoriesForModerationList,
-  });
-  const categoryOptions = useMemo(
-    () => buildCategoryTreeOptions(categoriesRes ?? []),
-    [categoriesRes]
+  const categoryIdsFilterKey = useMemo(
+    () => [...categoryIdsFilter].sort((a, b) => a - b).join("|"),
+    [categoryIdsFilter],
   );
+
+  const { data: categoryTreeRes } = useQuery({
+    queryKey: QK_CATEGORY_TREE_STATS,
+    queryFn: async () => adminCatalogApi.catalogCategoriesTreeProductStats(),
+  });
+  const categoryTreeRoots = categoryTreeRes?.data ?? [];
 
   const { data: sellersRes } = useQuery({
     queryKey: ["crm-sellers-dd", "moderation"],
@@ -121,12 +87,12 @@ export default function CrmModerationPage() {
   });
 
   const { data, isPending, isFetching, isError, error } = useQuery({
-    queryKey: [QK[0], statusFilter, debouncedSearch, categoryFilter, sellerIdsFilterKey, page],
+    queryKey: [QK[0], statusFilter, debouncedSearch, categoryIdsFilterKey, sellerIdsFilterKey, page],
     queryFn: () =>
       adminSystemProductsApi.list({
         status: statusFilter === "all" ? undefined : statusFilter,
         search: debouncedSearch.trim() || undefined,
-        category_id: categoryFilter ? Number(categoryFilter) : undefined,
+        category_ids: categoryIdsFilter.length > 0 ? categoryIdsFilter : undefined,
         seller_ids: sellerIdsFilter.length > 0 ? sellerIdsFilter : undefined,
         page,
         per_page: PER_PAGE,
@@ -139,6 +105,7 @@ export default function CrmModerationPage() {
       adminSystemProductsApi.moderate(id, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK });
+      queryClient.invalidateQueries({ queryKey: [...QK_CATEGORY_TREE_STATS] });
       toast.success("Статус обновлён");
     },
     onError: (e: Error) => {
@@ -257,19 +224,7 @@ export default function CrmModerationPage() {
           <option value="approved">Одобрены</option>
           <option value="needs_review">Отклонены</option>
         </select>
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="h-8 min-w-[160px] max-w-[220px] rounded-md border border-input bg-background px-3 text-sm truncate"
-          title="Категория витрины"
-        >
-          <option value="">Все категории</option>
-          {categoryOptions.map((c) => (
-            <option key={c.id} value={String(c.id)}>
-              {c.label}
-            </option>
-          ))}
-        </select>
+        <CrmCategoryMultiSelect roots={categoryTreeRoots} value={categoryIdsFilter} onChange={setCategoryIdsFilter} />
         <CrmSellerMultiSelect
           sellers={sellersRes?.data ?? []}
           value={sellerIdsFilter}

@@ -5,6 +5,7 @@ import { PageHeader } from "../components/PageHeader";
 import { DataTable, Column } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { CrmSellerMultiSelect } from "../components/CrmSellerMultiSelect";
+import { CrmCategoryMultiSelect } from "../components/CrmCategoryMultiSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,7 +22,6 @@ import {
   resolveCrmMediaAssetUrl,
   type SystemProductItem,
   type SystemProductStatus,
-  type CatalogCategoryItem,
 } from "@/lib/api";
 import { Plus, Search, Download, Loader2, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -74,44 +74,9 @@ const QUICK_STATUSES: { value: SystemProductStatus; label: string }[] = [
   { value: "draft", label: "Черновик" },
 ];
 
-async function fetchAllCatalogCategoriesForProducts(): Promise<CatalogCategoryItem[]> {
-  const first = await adminCatalogApi.catalogCategoriesList({ per_page: 100, page: 1 });
-  const total = first.meta?.total ?? first.data.length;
-  const perPage = first.meta?.per_page ?? 100;
-  if (total <= perPage) return first.data;
-
-  const pages = Math.ceil(total / perPage);
-  const rest = await Promise.all(
-    Array.from({ length: pages - 1 }, (_, i) =>
-      adminCatalogApi.catalogCategoriesList({ per_page: perPage, page: i + 2 })
-    )
-  );
-
-  return [...first.data, ...rest.flatMap((r) => r.data)];
-}
-
-function buildCategoryTreeOptions(cats: CatalogCategoryItem[]): { id: number; label: string }[] {
-  const byParent = new Map<number | null, CatalogCategoryItem[]>();
-  cats.forEach((c) => {
-    const pid = c.parent_id ?? null;
-    if (!byParent.has(pid)) byParent.set(pid, []);
-    byParent.get(pid)!.push(c);
-  });
-  const out: { id: number; label: string }[] = [];
-  function walk(pid: number | null, depth: number) {
-    const arr = byParent.get(pid) ?? [];
-    arr.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-    for (const c of arr) {
-      const pad = depth > 0 ? `${"—".repeat(depth)} ` : "";
-      out.push({ id: c.id, label: `${pad}${c.name}` });
-      walk(c.id, depth + 1);
-    }
-  }
-  walk(null, 0);
-  return out;
-}
-
 const PER_PAGE = 50;
+
+const QK_CATEGORY_TREE_STATS = ["catalog-categories-crm-tree-stats"] as const;
 
 function ThumbCell({ url }: { url: string | null | undefined }) {
   const src = thumbnailSrc(url || "");
@@ -138,7 +103,7 @@ export default function CrmProductsPage() {
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState(readStoredStatusFilter);
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [categoryIdsFilter, setCategoryIdsFilter] = useState<number[]>([]);
   const [sellerIdsFilter, setSellerIdsFilter] = useState<number[]>([]);
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -150,18 +115,19 @@ export default function CrmProductsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, categoryFilter, sellerIdsFilter, debouncedSearch]);
+  }, [statusFilter, categoryIdsFilter, sellerIdsFilter, debouncedSearch]);
 
   const sellerIdsFilterKey = useMemo(() => [...sellerIdsFilter].sort((a, b) => a - b).join("|"), [sellerIdsFilter]);
-
-  const { data: categoriesRes } = useQuery({
-    queryKey: ["catalog-categories-flat", "products-list"],
-    queryFn: fetchAllCatalogCategoriesForProducts,
-  });
-  const categoryOptions = useMemo(
-    () => buildCategoryTreeOptions(categoriesRes ?? []),
-    [categoriesRes]
+  const categoryIdsFilterKey = useMemo(
+    () => [...categoryIdsFilter].sort((a, b) => a - b).join("|"),
+    [categoryIdsFilter],
   );
+
+  const { data: categoryTreeRes } = useQuery({
+    queryKey: QK_CATEGORY_TREE_STATS,
+    queryFn: async () => adminCatalogApi.catalogCategoriesTreeProductStats(),
+  });
+  const categoryTreeRoots = categoryTreeRes?.data ?? [];
 
   const { data: sellersRes } = useQuery({
     queryKey: ["crm-sellers-dd", "products"],
@@ -169,12 +135,12 @@ export default function CrmProductsPage() {
   });
 
   const { data, isPending, isFetching, isError, error } = useQuery({
-    queryKey: [QK[0], statusFilter, debouncedSearch, categoryFilter, sellerIdsFilterKey, page],
+    queryKey: [QK[0], statusFilter, debouncedSearch, categoryIdsFilterKey, sellerIdsFilterKey, page],
     queryFn: () =>
       adminSystemProductsApi.list({
         status: statusFilter === "all" ? undefined : statusFilter,
         search: debouncedSearch.trim() || undefined,
-        category_id: categoryFilter ? Number(categoryFilter) : undefined,
+        category_ids: categoryIdsFilter.length > 0 ? categoryIdsFilter : undefined,
         seller_ids: sellerIdsFilter.length > 0 ? sellerIdsFilter : undefined,
         page,
         per_page: PER_PAGE,
@@ -191,6 +157,7 @@ export default function CrmProductsPage() {
       adminSystemProductsApi.moderate(id, { status }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QK });
+      qc.invalidateQueries({ queryKey: [...QK_CATEGORY_TREE_STATS] });
       toast.success("Статус обновлён");
     },
     onError: (e: Error) => toast.error(e.message || "Не удалось сменить статус"),
@@ -330,19 +297,7 @@ export default function CrmProductsPage() {
             <SelectItem value="needs_review">На проверке</SelectItem>
           </SelectContent>
         </Select>
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="h-8 min-w-[160px] max-w-[220px] rounded-md border border-input bg-background px-3 text-sm truncate"
-          title="Категория витрины"
-        >
-          <option value="">Все категории</option>
-          {categoryOptions.map((c) => (
-            <option key={c.id} value={String(c.id)}>
-              {c.label}
-            </option>
-          ))}
-        </select>
+        <CrmCategoryMultiSelect roots={categoryTreeRoots} value={categoryIdsFilter} onChange={setCategoryIdsFilter} />
         <CrmSellerMultiSelect
           sellers={sellersRes?.data ?? []}
           value={sellerIdsFilter}
