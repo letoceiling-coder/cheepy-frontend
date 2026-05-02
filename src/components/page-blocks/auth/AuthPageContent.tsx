@@ -3,12 +3,13 @@ import { Eye, EyeOff, Mail, Phone, Lock, User as UserIcon } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { publicSmsAuthApi, publicSocialAuthApi, type SocialAuthMetaProvider } from "@/lib/api";
+import { publicApi, publicSmsAuthApi, publicSocialAuthApi, type SocialAuthMetaProvider } from "@/lib/api";
 import { toast } from "sonner";
 import { SOCIAL_ORDER, SOCIAL_UI } from "@/components/auth/storefrontSocial";
 
 type AuthMode = "login" | "register" | "recovery";
 type LoginTab = "email" | "phone";
+type AccountType = "customer" | "seller";
 
 export default function AuthPageContent() {
   const [mode, setMode] = useState<AuthMode>("login");
@@ -18,20 +19,23 @@ export default function AuthPageContent() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [accountType, setAccountType] = useState<AccountType>("customer");
   const { login, register } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [socialProviders, setSocialProviders] = useState<SocialAuthMetaProvider[]>([]);
   const [phoneAuthEnabled, setPhoneAuthEnabled] = useState(false);
+  const [sellerRegistrationEnabled, setSellerRegistrationEnabled] = useState(true);
   const [authMetaLoaded, setAuthMetaLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([publicSocialAuthApi.meta(), publicSmsAuthApi.meta()])
-      .then(([soc, sms]) => {
+    Promise.all([publicSocialAuthApi.meta(), publicSmsAuthApi.meta(), publicApi.marketplaceSettings()])
+      .then(([soc, sms, market]) => {
         if (cancelled) return;
         setSocialProviders(soc.providers ?? []);
         setPhoneAuthEnabled(sms.phone_auth_enabled === true);
+        setSellerRegistrationEnabled(market.data.seller_registration_enabled === true);
         setAuthMetaLoaded(true);
       })
       .catch(() => {
@@ -129,7 +133,7 @@ export default function AuthPageContent() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await register(name, email.trim(), phoneAuthEnabled ? phone.trim() : "", password);
+      await register(name, email.trim(), phoneAuthEnabled ? phone.trim() : "", password, accountType);
       navigate("/");
     } catch {
       /* toast в AuthContext */
@@ -244,10 +248,28 @@ export default function AuthPageContent() {
         <div className="bg-card rounded-2xl p-6 border border-border">
           <h1 className="text-2xl font-bold text-foreground mb-6 text-center">Регистрация</h1>
           <div className="bg-primary/10 text-primary text-sm rounded-lg p-3 mb-6 text-center font-medium">
-            Получите приветственную скидку 10% после регистрации!
+            {accountType === "seller" ? "Заявка продавца будет отправлена на модерацию." : "Получите приветственную скидку 10% после регистрации!"}
           </div>
 
           <form onSubmit={handleRegister} className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 rounded-xl bg-secondary p-1">
+              <button
+                type="button"
+                onClick={() => setAccountType("customer")}
+                className={`rounded-lg py-2 text-sm font-medium ${accountType === "customer" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+              >
+                Покупатель
+              </button>
+              <button
+                type="button"
+                disabled={!sellerRegistrationEnabled}
+                onClick={() => setAccountType("seller")}
+                className={`rounded-lg py-2 text-sm font-medium disabled:opacity-50 ${accountType === "seller" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+              >
+                Продавец
+              </button>
+            </div>
+            {!sellerRegistrationEnabled ? <p className="text-xs text-muted-foreground">Регистрация продавцов временно закрыта.</p> : null}
             <div className="relative">
               <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input

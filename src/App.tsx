@@ -1,11 +1,13 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { FavoritesProvider } from "@/contexts/FavoritesContext";
+import { publicApi } from "@/lib/api";
 import ScrollToTop from "@/components/ScrollToTop";
 import PageTransition from "@/components/PageTransition";
 import { AnimatePresence } from "framer-motion";
@@ -131,10 +133,59 @@ import MappingPage from "@/pages/admin/catalog/MappingPage";
 
 const queryClient = new QueryClient();
 
-function AnimatedRoutes() {
-  const location = useLocation();
+function MaintenanceScreen({ activeAt }: { activeAt?: string | null }) {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="max-w-lg rounded-3xl border bg-card p-8 text-center shadow-sm">
+        <p className="text-sm font-semibold text-primary mb-2">Cheepy</p>
+        <h1 className="text-2xl font-bold text-foreground mb-3">Витрина на обслуживании</h1>
+        <p className="text-sm text-muted-foreground">
+          Мы обновляем маркетплейс. Страница станет доступна после окончания технических работ.
+        </p>
+        {activeAt ? <p className="mt-4 text-xs text-muted-foreground">Режим обслуживания активен с {new Date(activeAt).toLocaleString("ru-RU")}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function MaintenanceCountdownBanner({ activeAt }: { activeAt: string }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const left = Math.max(0, new Date(activeAt).getTime() - now);
+  const min = Math.floor(left / 60000);
+  const sec = Math.floor((left % 60000) / 1000);
 
   return (
+    <div className="fixed bottom-4 left-1/2 z-[1000] -translate-x-1/2 rounded-full border bg-background px-4 py-2 text-xs shadow-lg">
+      Режим обслуживания включится через <span className="font-mono font-bold">{String(min).padStart(2, "0")}:{String(sec).padStart(2, "0")}</span>
+    </div>
+  );
+}
+
+function AnimatedRoutes() {
+  const location = useLocation();
+  const isSystemRoute = /^\/(crm|admin|constructor)(\/|$)/.test(location.pathname);
+  const { data: marketplaceSettings } = useQuery({
+    queryKey: ["public-marketplace-settings"],
+    queryFn: () => publicApi.marketplaceSettings(),
+    staleTime: 30_000,
+    retry: false,
+  });
+  const maintenance = marketplaceSettings?.data.maintenance;
+  const activeAt = maintenance?.active_at ?? null;
+  const maintenanceActive = !isSystemRoute && maintenance?.enabled && activeAt && Date.now() >= new Date(activeAt).getTime();
+  const maintenanceCountdown = !isSystemRoute && maintenance?.enabled && activeAt && Date.now() < new Date(activeAt).getTime();
+
+  if (maintenanceActive) {
+    return <MaintenanceScreen activeAt={activeAt} />;
+  }
+
+  return (
+    <>
+    {maintenanceCountdown ? <MaintenanceCountdownBanner activeAt={activeAt} /> : null}
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<PageTransition><Index /></PageTransition>} />
@@ -289,6 +340,7 @@ function AnimatedRoutes() {
         <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
       </Routes>
     </AnimatePresence>
+    </>
   );
 }
 

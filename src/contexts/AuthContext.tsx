@@ -8,7 +8,7 @@ interface AuthContextType {
   user: UserProfile | null;
   refreshProfile: () => Promise<void>;
   login: (login: string, password: string) => Promise<void>;
-  register: (name: string, email: string, phone: string, password: string) => Promise<void>;
+  register: (name: string, email: string, phone: string, password: string, accountType?: "customer" | "seller") => Promise<void>;
   logout: () => void;
 }
 
@@ -88,12 +88,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const register = async (name: string, email: string, phone: string, password: string) => {
+  const register = async (name: string, email: string, phone: string, password: string, accountType: "customer" | "seller" = "customer") => {
     try {
-      const payload: { name: string; email: string; password: string; phone?: string } = {
+      const payload: { name: string; email: string; password: string; phone?: string; account_type?: "customer" | "seller" } = {
         name: name.trim(),
         email: email.trim(),
         password,
+        account_type: accountType,
       };
       const ph = phone.trim();
       if (ph) payload.phone = ph;

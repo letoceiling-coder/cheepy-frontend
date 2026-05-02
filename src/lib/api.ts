@@ -1451,11 +1451,74 @@ export const settingsApi = {
     put(`/settings/${key}`, { value, group }),
 };
 
+export interface MarketplaceContact {
+  email?: string;
+  phone?: string;
+  description: string;
+}
+
+export interface MarketplaceCurrencyRate {
+  code: string;
+  name: string;
+  nominal: number;
+  value: number;
+}
+
+export interface MarketplaceSettingsData {
+  marketplace_name: string;
+  support_emails: MarketplaceContact[];
+  support_phones: MarketplaceContact[];
+  default_currency: string;
+  maintenance_enabled: boolean;
+  maintenance_delay_minutes: number;
+  maintenance_started_at: string | null;
+  seller_registration_enabled: boolean;
+  default_commission_percent: number;
+  category_commissions: Record<string, number>;
+  currency_rates: {
+    date: string | null;
+    source?: string;
+    base: string;
+    rates: MarketplaceCurrencyRate[];
+  };
+}
+
+export interface MarketplaceCategoryNode {
+  id: number;
+  name: string;
+  slug: string;
+  parent_id: number | null;
+  children: MarketplaceCategoryNode[];
+}
+
+export interface PublicMarketplaceSettings {
+  marketplace_name: string;
+  support_emails: MarketplaceContact[];
+  support_phones: MarketplaceContact[];
+  default_currency: string;
+  seller_registration_enabled: boolean;
+  maintenance: {
+    enabled: boolean;
+    delay_minutes: number;
+    started_at: string | null;
+    active_at: string | null;
+  };
+  currency_rates: MarketplaceSettingsData['currency_rates'];
+}
+
+export const marketplaceSettingsApi = {
+  get: () => get<{ data: MarketplaceSettingsData; categories: MarketplaceCategoryNode[] }>('/marketplace-settings'),
+  update: (payload: Partial<MarketplaceSettingsData>) =>
+    put<{ message: string; data: MarketplaceSettingsData; categories: MarketplaceCategoryNode[] }>('/marketplace-settings', payload),
+  refreshCurrencies: () => post<{ data: MarketplaceSettingsData['currency_rates'] }>('/marketplace-settings/currencies/refresh', {}),
+};
+
 // ──────────────────────────────────────────────
 // PUBLIC API (user-facing pages)
 // ──────────────────────────────────────────────
 
 export const publicApi = {
+  marketplaceSettings: () => get<{ data: PublicMarketplaceSettings }>('/public/marketplace-settings', true),
   menu: () => get<{ categories: Category[] }>('/public/menu', true),
   categoriesByIds: (ids: number[]) => {
     const list = Array.isArray(ids) ? ids.map((x) => Number(x)).filter((x) => Number.isFinite(x) && x > 0) : [];
@@ -1917,6 +1980,8 @@ export interface StorefrontUser {
   name: string;
   email: string | null;
   phone: string | null;
+  account_role?: "customer" | "seller";
+  seller_status?: "pending" | "active" | "rejected" | null;
   linked_social_providers?: string[];
 }
 
@@ -1956,7 +2021,7 @@ async function storefrontRequest<T>(
 export const storefrontAuthApi = {
   login: (login: string, password: string) =>
     storefrontRequest<{ token: string; user: StorefrontUser }>("POST", "/store/auth/login", { login, password }, false),
-  register: (payload: { name: string; email: string; password: string; phone?: string }) =>
+  register: (payload: { name: string; email: string; password: string; phone?: string; account_type?: "customer" | "seller" }) =>
     storefrontRequest<{ token: string; user: StorefrontUser }>("POST", "/store/auth/register", payload, false),
   me: () => storefrontRequest<{ user: StorefrontUser }>("GET", "/store/auth/me", undefined, true),
   refresh: () => storefrontRequest<{ token: string }>("POST", "/store/auth/refresh", {}, true),
