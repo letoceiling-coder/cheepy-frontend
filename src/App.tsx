@@ -215,7 +215,10 @@ function AnimatedRoutes() {
     retry: false,
   });
   const maintenance = marketplaceSettings?.data.maintenance;
-  const activeAt = maintenance?.active_at ?? null;
+  const computedActiveAt = maintenance?.started_at
+    ? new Date(new Date(maintenance.started_at).getTime() + maintenance.delay_minutes * 60_000).toISOString()
+    : null;
+  const activeAt = maintenance?.active_at ?? computedActiveAt;
   const activeAtMs = activeAt ? new Date(activeAt).getTime() : 0;
   const maintenanceActive = !isSystemRoute && maintenance?.enabled && activeAtMs > 0 && now >= activeAtMs;
   const maintenanceCountdown = !isSystemRoute && maintenance?.enabled && activeAtMs > 0 && now < activeAtMs;
