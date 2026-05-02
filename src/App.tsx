@@ -190,11 +190,20 @@ function MaintenanceCountdownBanner({ activeAt }: { activeAt: string }) {
     : `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 
   return (
-    <div className="fixed inset-x-0 top-0 z-[1000] border-b border-amber-300 bg-amber-50 px-4 py-3 text-amber-950 shadow-lg">
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-center gap-1 text-center sm:flex-row sm:gap-3">
-        <span className="text-sm font-semibold">Внимание: скоро техническое обслуживание</span>
-        <span className="text-xs sm:text-sm">Сайт перейдёт в режим обслуживания через</span>
-        <span className="rounded-full bg-amber-600 px-3 py-1 font-mono text-sm font-bold text-white">{timeLeft}</span>
+    <div className="fixed inset-0 z-[2000] flex items-start justify-center bg-slate-950/35 px-4 pt-24 backdrop-blur-sm" role="alertdialog" aria-live="assertive">
+      <div className="w-full max-w-lg animate-fade-in rounded-3xl border border-amber-300 bg-white p-6 text-center shadow-2xl shadow-amber-900/20">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-2xl">
+          !
+        </div>
+        <p className="text-sm font-semibold uppercase tracking-wide text-amber-700">Внимание</p>
+        <h2 className="mt-2 text-xl font-bold text-foreground">Скоро техническое обслуживание</h2>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          Сайт перейдёт в режим обслуживания. Завершите текущие действия заранее, чтобы не потерять изменения.
+        </p>
+        <div className="mt-5 rounded-2xl bg-amber-50 px-4 py-3 text-amber-950">
+          <p className="text-xs font-medium">До перехода осталось</p>
+          <p className="mt-1 font-mono text-3xl font-bold tabular-nums">{timeLeft}</p>
+        </div>
       </div>
     </div>
   );
