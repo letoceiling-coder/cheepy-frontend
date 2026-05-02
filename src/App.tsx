@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { FavoritesProvider } from "@/contexts/FavoritesContext";
-import { publicApi, type MarketplaceContact } from "@/lib/api";
+import { BASE_URL, publicApi, type MarketplaceContact, type PublicMarketplaceSettings } from "@/lib/api";
 import ScrollToTop from "@/components/ScrollToTop";
 import PageTransition from "@/components/PageTransition";
 import { AnimatePresence } from "framer-motion";
@@ -202,6 +202,7 @@ function MaintenanceCountdownBanner({ activeAt }: { activeAt: string }) {
 function AnimatedRoutes() {
   const location = useLocation();
   const [now, setNow] = useState(Date.now());
+  const [liveMarketplaceSettings, setLiveMarketplaceSettings] = useState<PublicMarketplaceSettings | null>(null);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
@@ -211,10 +212,49 @@ function AnimatedRoutes() {
     queryKey: ["public-marketplace-settings"],
     queryFn: () => publicApi.marketplaceSettings(),
     staleTime: 5_000,
-    refetchInterval: 10_000,
+    refetchInterval: 5_000,
+    refetchIntervalInBackground: true,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
     retry: false,
   });
-  const maintenance = marketplaceSettings?.data.maintenance;
+
+  useEffect(() => {
+    if (isSystemRoute) return;
+
+    let cancelled = false;
+    const loadMaintenanceSettings = async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/public/marketplace-settings?_=${Date.now()}`, {
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as { data?: PublicMarketplaceSettings };
+        if (!cancelled && json.data) {
+          setLiveMarketplaceSettings(json.data);
+        }
+      } catch {
+        // React Query keeps the normal path; this watchdog is only a no-cache safety net.
+      }
+    };
+
+    loadMaintenanceSettings();
+    const timer = window.setInterval(loadMaintenanceSettings, 5_000);
+    const onWake = () => loadMaintenanceSettings();
+    window.addEventListener("focus", onWake);
+    document.addEventListener("visibilitychange", onWake);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onWake);
+      document.removeEventListener("visibilitychange", onWake);
+    };
+  }, [isSystemRoute]);
+
+  const publicSettings = liveMarketplaceSettings ?? marketplaceSettings?.data;
+  const maintenance = publicSettings?.maintenance;
   const computedActiveAt = maintenance?.started_at
     ? new Date(new Date(maintenance.started_at).getTime() + maintenance.delay_minutes * 60_000).toISOString()
     : null;
@@ -227,9 +267,9 @@ function AnimatedRoutes() {
     return (
       <MaintenanceScreen
         activeAt={activeAt}
-        marketplaceName={marketplaceSettings?.data.marketplace_name}
-        supportEmails={marketplaceSettings?.data.support_emails}
-        supportPhones={marketplaceSettings?.data.support_phones}
+        marketplaceName={publicSettings?.marketplace_name}
+        supportEmails={publicSettings?.support_emails}
+        supportPhones={publicSettings?.support_phones}
       />
     );
   }
