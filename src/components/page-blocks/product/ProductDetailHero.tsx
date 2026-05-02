@@ -111,24 +111,31 @@ export default function ProductDetailHero() {
   const selectedAttributes = (storefront.attributes ?? [])
     .filter((attr) => attr.name && attr.value)
     .map((attr) => ({ name: attr.name, value: attr.value }));
-  const cartPromotion: CartPromotionSnapshot | undefined = activeDeal && !dealCountdown.expired
+  const activeDealWithCommission = activeDeal && !dealCountdown.expired
     ? {
-        id: activeDeal.id,
+        ...activeDeal,
+        originalPrice: storefront.price,
+        salePrice: Math.max(1, Math.round(storefront.price * (1 - activeDeal.discountPercent / 100))),
+      }
+    : null;
+  const cartPromotion: CartPromotionSnapshot | undefined = activeDealWithCommission
+    ? {
+        id: activeDealWithCommission.id,
         type: "hot_deal",
         title: "Горячее предложение",
         label: "Горячее предложение",
         source: {
           kind: "constructor_block",
-          id: activeDeal.id,
+          id: activeDealWithCommission.id,
           blockType: "HotDeals",
-          windowId: activeDeal.windowId,
-          itemId: String(activeDeal.productId),
+          windowId: activeDealWithCommission.windowId,
+          itemId: String(activeDealWithCommission.productId),
         },
-        discountPercent: activeDeal.discountPercent,
-        originalUnitPrice: activeDeal.originalPrice,
-        promotionalUnitPrice: activeDeal.salePrice,
-        startsAt: activeDeal.startsAt,
-        endsAt: activeDeal.endsAt,
+        discountPercent: activeDealWithCommission.discountPercent,
+        originalUnitPrice: activeDealWithCommission.originalPrice,
+        promotionalUnitPrice: activeDealWithCommission.salePrice,
+        startsAt: activeDealWithCommission.startsAt,
+        endsAt: activeDealWithCommission.endsAt,
         priority: 50,
         stackable: false,
         capturedAt: new Date().toISOString(),
@@ -136,9 +143,9 @@ export default function ProductDetailHero() {
     : undefined;
 
   const seller = full.seller;
-  const shownPrice = activeDeal && !dealCountdown.expired ? activeDeal.salePrice : storefront.price;
-  const shownOldPrice = activeDeal && !dealCountdown.expired ? activeDeal.originalPrice : storefront.oldPrice;
-  const shownDiscount = activeDeal && !dealCountdown.expired ? activeDeal.discountPercent : discount;
+  const shownPrice = activeDealWithCommission ? activeDealWithCommission.salePrice : storefront.price;
+  const shownOldPrice = activeDealWithCommission ? activeDealWithCommission.originalPrice : storefront.oldPrice;
+  const shownDiscount = activeDealWithCommission ? activeDealWithCommission.discountPercent : discount;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10 md:items-start">

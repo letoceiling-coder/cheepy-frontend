@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { useStorefrontProductCards } from "@/hooks/useStorefrontProductCards";
 import { publicCrmMediaFileUrl, resolveCrmMediaAssetUrl } from "@/lib/api";
 import product1 from "@/assets/product-1.jpg";
 
@@ -162,8 +163,23 @@ const HeroProductPromo = (props: HeroProductPromoProps) => {
     };
     return [legacy];
   }, [props]);
+  const promoProductIds = useMemo(() => normalizedItems.map((i) => i.productId), [normalizedItems]);
+  const { data: storefrontById = {} } = useStorefrontProductCards(promoProductIds);
+  const displayItems = useMemo(
+    () =>
+      normalizedItems.map((item) => {
+        const key = String(item.productId ?? "");
+        const row = key ? storefrontById[key] : undefined;
+        if (!row) return item;
+        return {
+          ...item,
+          priceText: row.price || item.priceText,
+        };
+      }),
+    [normalizedItems, storefrontById],
+  );
 
-  const total = normalizedItems.length;
+  const total = displayItems.length;
   const [active, setActive] = useState(0);
   const [hovered, setHovered] = useState(false);
   const timerRef = useRef<number | null>(null);
@@ -211,7 +227,7 @@ const HeroProductPromo = (props: HeroProductPromoProps) => {
             className="flex transition-transform duration-500 ease-out"
             style={{ transform: `translateX(-${active * 100}%)` }}
           >
-            {normalizedItems.map((item, idx) => (
+            {displayItems.map((item, idx) => (
               <div key={item.id ?? idx} className="w-full shrink-0">
                 <HeroProductCard item={item} isActive={idx === active} />
               </div>
@@ -238,7 +254,7 @@ const HeroProductPromo = (props: HeroProductPromoProps) => {
               <ChevronRight size={20} />
             </button>
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
-              {normalizedItems.map((_, i) => (
+              {displayItems.map((_, i) => (
                 <button
                   key={i}
                   type="button"

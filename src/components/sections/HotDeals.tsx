@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, ShoppingCart } from "lucide-react";
 import { useDragScroll } from "@/hooks/useDragScroll";
+import { useStorefrontProductCards } from "@/hooks/useStorefrontProductCards";
 import { Link } from "react-router-dom";
 import { hotDeals, type HotDeal } from "@/data/marketplaceData";
 import type { BlockScheduleSetting, HotDealProductSetting } from "@/constructor/settingsProfiles";
@@ -87,12 +88,29 @@ type HotDealsProps = {
 const HotDeals = ({ title, subtitle, dealItems, schedule }: HotDealsProps) => {
   const scrollRef = useDragScroll<HTMLDivElement>();
   const configuredDeals = useMemo(() => getActiveHotDeals({ dealItems, schedule }), [dealItems, schedule]);
+  const dealProductIds = useMemo(() => configuredDeals.map((d) => d.productId), [configuredDeals]);
+  const { data: storefrontById = {} } = useStorefrontProductCards(dealProductIds);
+  const commissionedDeals = useMemo(
+    () =>
+      configuredDeals.map((deal) => {
+        const key = String(deal.productId ?? "");
+        const price = key ? storefrontById[key]?.price_raw : undefined;
+        if (price == null || price <= 0) return deal;
+        const salePrice = Math.max(1, Math.round(price * (1 - deal.discountPercent / 100)));
+        return {
+          ...deal,
+          originalPrice: price,
+          salePrice,
+        };
+      }),
+    [configuredDeals, storefrontById],
+  );
   const hasConfiguredDeals = Boolean(
     (dealItems?.length ?? 0) > 0 ||
     (schedule?.windows ?? []).some((window) => (window.dealItems?.length ?? 0) > 0),
   );
-  const deals: ActiveHotDeal[] = configuredDeals.length > 0
-    ? configuredDeals
+  const deals: ActiveHotDeal[] = commissionedDeals.length > 0
+    ? commissionedDeals
     : hasConfiguredDeals
       ? []
     : hotDeals.map((deal: HotDeal) => ({

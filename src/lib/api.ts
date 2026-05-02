@@ -317,6 +317,19 @@ export interface Product {
   parsed_at: string | null;
 }
 
+/** Ответ батча POST /public/products/storefront-cards — цены уже с комиссией. */
+export interface StorefrontProductCardPayload {
+  id: string;
+  title: string;
+  price: string | null;
+  price_raw: number;
+  thumbnail?: string | null;
+  photos_count?: number;
+  list_position?: number;
+  category?: { name: string; slug: string } | null;
+  seller?: { name: string; slug: string } | null;
+}
+
 export interface ProductFull extends Product {
   source_url: string | null;
   description: string | null;
@@ -1578,6 +1591,10 @@ export const publicApi = {
 
   product: (externalId: string) =>
     get<{ product: ProductFull; seller_products: Product[] }>(`/public/products/${externalId}`, true),
+
+  /** Батч карточек с ценой витрины (комиссия уже в price_raw); id — как в /product/{id}. */
+  productsStorefrontCards: (ids: string[]) =>
+    post<{ by_id: Record<string, StorefrontProductCardPayload> }>("/public/products/storefront-cards", { ids }, true),
 
   seller: (slug: string, params?: { page?: number; per_page?: number; sort_by?: string }) => {
     const q = new URLSearchParams();
