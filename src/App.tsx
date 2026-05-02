@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { FavoritesProvider } from "@/contexts/FavoritesContext";
 import { BASE_URL, publicApi, type MarketplaceContact, type PublicMarketplaceSettings } from "@/lib/api";
+import { getEcho } from "@/lib/echo";
 import ScrollToTop from "@/components/ScrollToTop";
 import PageTransition from "@/components/PageTransition";
 import { AnimatePresence } from "framer-motion";
@@ -211,8 +212,8 @@ function AnimatedRoutes() {
   const { data: marketplaceSettings } = useQuery({
     queryKey: ["public-marketplace-settings"],
     queryFn: () => publicApi.marketplaceSettings(),
-    staleTime: 5_000,
-    refetchInterval: 5_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
     refetchIntervalInBackground: true,
     refetchOnMount: "always",
     refetchOnWindowFocus: "always",
@@ -240,7 +241,7 @@ function AnimatedRoutes() {
     };
 
     loadMaintenanceSettings();
-    const timer = window.setInterval(loadMaintenanceSettings, 5_000);
+    const timer = window.setInterval(loadMaintenanceSettings, 60_000);
     const onWake = () => loadMaintenanceSettings();
     window.addEventListener("focus", onWake);
     document.addEventListener("visibilitychange", onWake);
@@ -250,6 +251,23 @@ function AnimatedRoutes() {
       window.clearInterval(timer);
       window.removeEventListener("focus", onWake);
       document.removeEventListener("visibilitychange", onWake);
+    };
+  }, [isSystemRoute]);
+
+  useEffect(() => {
+    if (isSystemRoute) return;
+    const echo = getEcho();
+    if (!echo) return;
+
+    const channel = echo.channel("marketplace");
+    channel.listen(".MarketplaceSettingsUpdated", (data: { settings?: PublicMarketplaceSettings }) => {
+      if (data.settings) {
+        setLiveMarketplaceSettings(data.settings);
+      }
+    });
+
+    return () => {
+      echo.leave("marketplace");
     };
   }, [isSystemRoute]);
 
