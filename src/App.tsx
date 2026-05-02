@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { FavoritesProvider } from "@/contexts/FavoritesContext";
-import { publicApi } from "@/lib/api";
+import { publicApi, type MarketplaceContact } from "@/lib/api";
 import ScrollToTop from "@/components/ScrollToTop";
 import PageTransition from "@/components/PageTransition";
 import { AnimatePresence } from "framer-motion";
@@ -133,16 +133,42 @@ import MappingPage from "@/pages/admin/catalog/MappingPage";
 
 const queryClient = new QueryClient();
 
-function MaintenanceScreen({ activeAt }: { activeAt?: string | null }) {
+function MaintenanceScreen({
+  activeAt,
+  marketplaceName,
+  supportEmails,
+  supportPhones,
+}: {
+  activeAt?: string | null;
+  marketplaceName?: string;
+  supportEmails?: MarketplaceContact[];
+  supportPhones?: MarketplaceContact[];
+}) {
+  const primaryEmail = supportEmails?.find((row) => row.email)?.email ?? "support@cheepy.ru";
+  const primaryPhone = supportPhones?.find((row) => row.phone)?.phone ?? null;
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="max-w-lg rounded-3xl border bg-card p-8 text-center shadow-sm">
-        <p className="text-sm font-semibold text-primary mb-2">Cheepy</p>
-        <h1 className="text-2xl font-bold text-foreground mb-3">Витрина на обслуживании</h1>
-        <p className="text-sm text-muted-foreground">
-          Мы обновляем маркетплейс. Страница станет доступна после окончания технических работ.
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-violet-50 via-white to-amber-50 px-4">
+      <div className="absolute -left-24 top-16 h-56 w-56 animate-pulse rounded-full bg-primary/10 blur-3xl" />
+      <div className="absolute -right-24 bottom-12 h-64 w-64 animate-pulse rounded-full bg-amber-300/20 blur-3xl [animation-delay:700ms]" />
+      <div className="relative w-full max-w-xl animate-fade-in rounded-[2rem] border bg-white/90 p-8 text-center shadow-2xl shadow-primary/10 backdrop-blur">
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+          <span className="relative flex h-8 w-8">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/40 opacity-75" />
+            <span className="relative inline-flex h-8 w-8 rounded-full bg-primary" />
+          </span>
+        </div>
+        <p className="text-sm font-semibold text-primary mb-2">{marketplaceName || "Cheepy"}</p>
+        <h1 className="text-2xl font-bold text-foreground mb-3">Витрина на техническом обслуживании</h1>
+        <p className="mx-auto max-w-md text-sm leading-6 text-muted-foreground">
+          Мы обновляем маркетплейс и скоро вернём доступ к покупкам. Если вопрос срочный, свяжитесь с поддержкой.
         </p>
-        {activeAt ? <p className="mt-4 text-xs text-muted-foreground">Режим обслуживания активен с {new Date(activeAt).toLocaleString("ru-RU")}</p> : null}
+        <div className="mt-6 rounded-2xl border bg-muted/30 p-4 text-sm">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Контакты поддержки</p>
+          <a className="font-medium text-primary hover:underline" href={`mailto:${primaryEmail}`}>{primaryEmail}</a>
+          {primaryPhone ? <p className="mt-1 text-muted-foreground">{primaryPhone}</p> : null}
+        </div>
+        {activeAt ? <p className="mt-5 text-xs text-muted-foreground">Режим обслуживания активен с {new Date(activeAt).toLocaleString("ru-RU")}</p> : null}
       </div>
     </div>
   );
@@ -195,7 +221,14 @@ function AnimatedRoutes() {
   const maintenanceCountdown = !isSystemRoute && maintenance?.enabled && activeAtMs > 0 && now < activeAtMs;
 
   if (maintenanceActive) {
-    return <MaintenanceScreen activeAt={activeAt} />;
+    return (
+      <MaintenanceScreen
+        activeAt={activeAt}
+        marketplaceName={marketplaceSettings?.data.marketplace_name}
+        supportEmails={marketplaceSettings?.data.support_emails}
+        supportPhones={marketplaceSettings?.data.support_phones}
+      />
+    );
   }
 
   return (
