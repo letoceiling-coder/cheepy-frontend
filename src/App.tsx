@@ -155,29 +155,44 @@ function MaintenanceCountdownBanner({ activeAt }: { activeAt: string }) {
     return () => window.clearInterval(timer);
   }, []);
   const left = Math.max(0, new Date(activeAt).getTime() - now);
-  const min = Math.floor(left / 60000);
-  const sec = Math.floor((left % 60000) / 1000);
+  const hours = Math.floor(left / 3_600_000);
+  const min = Math.floor((left % 3_600_000) / 60_000);
+  const sec = Math.floor((left % 60_000) / 1000);
+  const timeLeft = hours > 0
+    ? `${String(hours).padStart(2, "0")}:${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`
+    : `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-[1000] -translate-x-1/2 rounded-full border bg-background px-4 py-2 text-xs shadow-lg">
-      Режим обслуживания включится через <span className="font-mono font-bold">{String(min).padStart(2, "0")}:{String(sec).padStart(2, "0")}</span>
+    <div className="fixed inset-x-0 top-0 z-[1000] border-b border-amber-300 bg-amber-50 px-4 py-3 text-amber-950 shadow-lg">
+      <div className="mx-auto flex max-w-6xl flex-col items-center justify-center gap-1 text-center sm:flex-row sm:gap-3">
+        <span className="text-sm font-semibold">Внимание: скоро техническое обслуживание</span>
+        <span className="text-xs sm:text-sm">Сайт перейдёт в режим обслуживания через</span>
+        <span className="rounded-full bg-amber-600 px-3 py-1 font-mono text-sm font-bold text-white">{timeLeft}</span>
+      </div>
     </div>
   );
 }
 
 function AnimatedRoutes() {
   const location = useLocation();
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
   const isSystemRoute = /^\/(crm|admin|constructor)(\/|$)/.test(location.pathname);
   const { data: marketplaceSettings } = useQuery({
     queryKey: ["public-marketplace-settings"],
     queryFn: () => publicApi.marketplaceSettings(),
-    staleTime: 30_000,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
     retry: false,
   });
   const maintenance = marketplaceSettings?.data.maintenance;
   const activeAt = maintenance?.active_at ?? null;
-  const maintenanceActive = !isSystemRoute && maintenance?.enabled && activeAt && Date.now() >= new Date(activeAt).getTime();
-  const maintenanceCountdown = !isSystemRoute && maintenance?.enabled && activeAt && Date.now() < new Date(activeAt).getTime();
+  const activeAtMs = activeAt ? new Date(activeAt).getTime() : 0;
+  const maintenanceActive = !isSystemRoute && maintenance?.enabled && activeAtMs > 0 && now >= activeAtMs;
+  const maintenanceCountdown = !isSystemRoute && maintenance?.enabled && activeAtMs > 0 && now < activeAtMs;
 
   if (maintenanceActive) {
     return <MaintenanceScreen activeAt={activeAt} />;
