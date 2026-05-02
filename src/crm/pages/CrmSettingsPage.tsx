@@ -1,5 +1,5 @@
 import { PageHeader } from "../components/PageHeader";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -78,13 +78,18 @@ export default function CrmSettingsPage() {
     queryKey: QK_MARKETPLACE_SETTINGS,
     queryFn: () => marketplaceSettingsApi.get(),
   });
-  const settings = data?.data ?? emptySettings();
+  const [draft, setDraft] = useState<MarketplaceSettingsData>(() => emptySettings());
+  useEffect(() => {
+    if (data?.data) setDraft(data.data);
+  }, [data?.data]);
+  const settings = draft;
   const categories = data?.categories ?? [];
   const currencies = useMemo(() => settings.currency_rates.rates ?? [], [settings.currency_rates.rates]);
 
   const saveMutation = useMutation({
     mutationFn: (payload: Partial<MarketplaceSettingsData>) => marketplaceSettingsApi.update(payload),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      setDraft(res.data);
       toast.success("Настройки сохранены");
       qc.invalidateQueries({ queryKey: QK_MARKETPLACE_SETTINGS });
     },
@@ -99,7 +104,8 @@ export default function CrmSettingsPage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось обновить курсы"),
   });
 
-  const update = (patch: Partial<MarketplaceSettingsData>) => saveMutation.mutate({ ...settings, ...patch });
+  const update = (patch: Partial<MarketplaceSettingsData>) => setDraft((prev) => ({ ...prev, ...patch }));
+  const saveSettings = () => saveMutation.mutate(settings);
   const updateContact = (kind: "support_emails" | "support_phones", index: number, field: "email" | "phone" | "description", value: string) => {
     const rows = [...(settings[kind] ?? [])];
     rows[index] = { ...rows[index], [field]: value };
@@ -173,16 +179,35 @@ export default function CrmSettingsPage() {
             </div>
             <div className="grid grid-cols-[1fr_120px] gap-3">
               <div className="flex items-center justify-between"><span className="text-sm">Режим обслуживания</span><Switch checked={settings.maintenance_enabled} onCheckedChange={(v) => update({ maintenance_enabled: v })} /></div>
-              <Input type="number" min={1} value={settings.maintenance_delay_minutes} onChange={(e) => update({ maintenance_delay_minutes: Number(e.target.value) })} className="h-8 text-sm" />
+              <Input
+                type="number"
+                min={1}
+                value={settings.maintenance_delay_minutes}
+                onChange={(e) => update({ maintenance_delay_minutes: Math.max(1, Number(e.target.value) || 1) })}
+                className="h-8 text-sm"
+              />
             </div>
             <p className="text-xs text-muted-foreground">При включении запускается таймер. После указанного времени витрина перейдёт на страницу обслуживания.</p>
             <div className="flex items-center justify-between"><span className="text-sm">Регистрация продавцов</span><Switch checked={settings.seller_registration_enabled} onCheckedChange={(v) => update({ seller_registration_enabled: v })} /></div>
+            <Button size="sm" onClick={saveSettings} disabled={saveMutation.isPending}>
+              {saveMutation.isPending ? "Сохранение..." : "Сохранить"}
+            </Button>
           </div>
         </TabsContent>
 
         <TabsContent value="commission" className="mt-4">
           <div className="rounded-lg border border-border bg-card p-6 space-y-4 max-w-3xl">
-            <div><Label className="text-xs">Комиссия по умолчанию (%)</Label><Input type="number" min={0} step="0.1" value={settings.default_commission_percent} onChange={(e) => update({ default_commission_percent: Number(e.target.value) })} className="h-8 text-sm mt-1" /></div>
+            <div>
+              <Label className="text-xs">Комиссия по умолчанию (%)</Label>
+              <Input
+                type="number"
+                min={0}
+                step="0.1"
+                value={settings.default_commission_percent}
+                onChange={(e) => update({ default_commission_percent: Math.max(0, Number(e.target.value) || 0) })}
+                className="h-8 text-sm mt-1"
+              />
+            </div>
             <h3 className="text-sm font-medium pt-2">По категориям</h3>
             <p className="text-xs text-muted-foreground">Если поле категории пустое, используется комиссия родителя или комиссия по умолчанию.</p>
             <CategoryCommissionRows
@@ -198,6 +223,9 @@ export default function CrmSettingsPage() {
                 update({ category_commissions: next });
               }}
             />
+            <Button size="sm" onClick={saveSettings} disabled={saveMutation.isPending}>
+              {saveMutation.isPending ? "Сохранение..." : "Сохранить комиссии"}
+            </Button>
           </div>
         </TabsContent>
 
