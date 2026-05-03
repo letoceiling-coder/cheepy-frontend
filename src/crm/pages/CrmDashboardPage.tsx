@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Pause, Play, Square, RotateCcw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
 import {
   adminCatalogApi,
@@ -133,10 +133,21 @@ export default function CrmDashboardPage() {
   const [currentItem, setCurrentItem] = useState<{ id: number; name: string } | null>(null);
   const [logs, setLogs] = useState<LogRow[]>([]);
   const startedAtRef = useRef<number | null>(null);
+  /** После завершения/остановке — фиксируем конец отрезка, чтобы «Время» не росло на каждом рендере. */
+  const elapsedEndAtRef = useRef<number | null>(null);
   const stopRef = useRef(false);
   const pauseRef = useRef(false);
 
-  const elapsedMs = startedAtRef.current ? Date.now() - startedAtRef.current : 0;
+  function freezeElapsed() {
+    const start = startedAtRef.current;
+    if (start === null || elapsedEndAtRef.current !== null) return;
+    elapsedEndAtRef.current = Date.now();
+  }
+
+  const elapsedMs =
+    startedAtRef.current !== null
+      ? (elapsedEndAtRef.current ?? Date.now()) - startedAtRef.current
+      : 0;
   const avgMs = processed > 0 ? elapsedMs / processed : 0;
   const etaMs = total !== null && processed > 0 ? Math.max(0, (total - processed) * avgMs) : 0;
   const progressPct = total ? Math.min(100, Math.round((processed / total) * 100)) : 0;
@@ -145,19 +156,18 @@ export default function CrmDashboardPage() {
     setLogs((prev) => [{ at: new Date().toLocaleTimeString("ru-RU"), level, message }, ...prev].slice(0, 200));
   };
 
-  useEffect(() => {
-    let mounted = true;
-    adminCatalogApi
-      .catalogCategoriesTreeProductStats()
-      .then((res) => {
-        if (!mounted) return;
-        setCategoryRoots(Array.isArray(res.data) ? res.data : []);
-      })
-      .catch(() => setCategoryRoots([]));
-    return () => {
-      mounted = false;
-    };
+  const refreshCategoryStats = useCallback(async () => {
+    try {
+      const res = await adminCatalogApi.catalogCategoriesTreeProductStats();
+      setCategoryRoots(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      /* оставляем предыдущее дерево */
+    }
   }, []);
+
+  useEffect(() => {
+    void refreshCategoryStats();
+  }, [refreshCategoryStats]);
 
   const toggleCategory = (id: number, on: boolean) => {
     setSelectedCategoryIds((prev) => {
@@ -206,6 +216,7 @@ export default function CrmDashboardPage() {
     setCurrentItem(null);
     setLogs([]);
     startedAtRef.current = null;
+    elapsedEndAtRef.current = null;
     stopRef.current = false;
     pauseRef.current = false;
   };
@@ -227,6 +238,7 @@ export default function CrmDashboardPage() {
   const stop = () => {
     stopRef.current = true;
     pauseRef.current = false;
+    freezeElapsed();
     setState("stopped");
     pushLog("warn", "Остановлено пользователем");
   };
@@ -239,6 +251,7 @@ export default function CrmDashboardPage() {
     }
     stopRef.current = false;
     pauseRef.current = false;
+    elapsedEndAtRef.current = null;
     startedAtRef.current = Date.now();
     setProcessed(0);
     setSuccess(0);
@@ -277,7 +290,12 @@ export default function CrmDashboardPage() {
             if (stopRef.current) break;
           }
 
-          const list = await adminSystemProductsApi.list({ category_id: cid, page, per_page: perPage });
+          const list = await adminSystemProductsApi.list({
+            category_id: cid,
+            page,
+            per_page: perPage,
+            ...(excludeApproved ? { exclude_approved: true } : {}),
+          });
           lastPage = Number(list.meta?.last_page ?? 1);
           const items = Array.isArray(list.data) ? (list.data as SystemProductItem[]) : [];
 
@@ -350,6 +368,7 @@ export default function CrmDashboardPage() {
               pushLog("error", `FAIL #${row.id}: ${msg}`);
               if (e instanceof ApiError && e.status === 401) {
                 pushLog("error", "Авторизация истекла (401). Прогон остановлен.");
+                freezeElapsed();
                 setState("error");
                 return;
               }
@@ -363,14 +382,22 @@ export default function CrmDashboardPage() {
       }
 
       setCurrentItem(null);
-      if (stopRef.current) return;
+      if (stopRef.current) {
+        freezeElapsed();
+        void refreshCategoryStats();
+        return;
+      }
+      freezeElapsed();
+      await refreshCategoryStats();
       setState("completed");
       pushLog("info", "Готово");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Ошибка";
+      freezeElapsed();
       setState("error");
       pushLog("error", msg);
       toast.error(msg);
+      void refreshCategoryStats();
     }
   };
 
