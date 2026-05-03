@@ -90,6 +90,38 @@ function fmtTime(ms: number): string {
   return `${h}h ${mm}m`;
 }
 
+function findCategoryNode(roots: CatalogCategoryTreeNode[], id: number): CatalogCategoryTreeNode | null {
+  for (const n of roots) {
+    if (n.id === id) return n;
+    const nested = findCategoryNode(n.children ?? [], id);
+    if (nested) return nested;
+  }
+  return null;
+}
+
+/** Узел + все потомки (соответствует агрегатам счётчиков в дереве). */
+function collectSubtreeCategoryIds(node: CatalogCategoryTreeNode): number[] {
+  const out = [node.id];
+  for (const c of node.children ?? []) {
+    out.push(...collectSubtreeCategoryIds(c));
+  }
+  return out;
+}
+
+/** Объединение поддеревьев выбранных категорий для фильтра system_products.category_id. */
+function mergedBulkCategoryFilterIds(roots: CatalogCategoryTreeNode[], selectedIds: number[]): number[] {
+  const merged = new Set<number>();
+  for (const sid of selectedIds) {
+    const node = findCategoryNode(roots, sid);
+    if (node) {
+      for (const cid of collectSubtreeCategoryIds(node)) merged.add(cid);
+    } else {
+      merged.add(sid);
+    }
+  }
+  return Array.from(merged).sort((a, b) => a - b);
+}
+
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -249,6 +281,7 @@ export default function CrmDashboardPage() {
       toast.error("Выберите хотя бы одну категорию");
       return;
     }
+    const categoryFilterIds = mergedBulkCategoryFilterIds(categoryRoots, selectedCategoryIds);
     stopRef.current = false;
     pauseRef.current = false;
     elapsedEndAtRef.current = null;
@@ -262,25 +295,20 @@ export default function CrmDashboardPage() {
     setState("running");
     pushLog(
       "info",
-      `Старт. Категорий: ${selectedCategoryIds.length}${excludeApproved ? "; без одобренных/опубликованных" : ""}`,
+      `Старт. Выбрано узлов: ${selectedCategoryIds.length}; id категорий в запросе (узел + потомки): ${categoryFilterIds.length}${excludeApproved ? "; без одобренных/опубликованных" : ""}`,
     );
 
     try {
-      // Pre-calc total to show ETA
-      let totalApprox = 0;
-      for (const cid of selectedCategoryIds) {
-        const res = await adminSystemProductsApi.list({
-          category_id: cid,
-          page: 1,
-          per_page: 1,
-          ...(excludeApproved ? { exclude_approved: true } : {}),
-        });
-        totalApprox += Number(res.meta?.total ?? 0);
-      }
-      setTotal(totalApprox);
+      const resHead = await adminSystemProductsApi.list({
+        category_ids: categoryFilterIds,
+        page: 1,
+        per_page: 1,
+        ...(excludeApproved ? { exclude_approved: true } : {}),
+      });
+      setTotal(Number(resHead.meta?.total ?? 0));
 
-      const listParams = (cid: number, page: number) => ({
-        category_id: cid,
+      const listParams = (page: number) => ({
+        category_ids: categoryFilterIds,
         page,
         per_page: perPage,
         ...(excludeApproved ? { exclude_approved: true as const } : {}),
@@ -366,50 +394,46 @@ export default function CrmDashboardPage() {
         return anyNonSkip;
       };
 
-      for (const cid of selectedCategoryIds) {
-        if (stopRef.current) break;
-
-        if (excludeApproved) {
-          /* Товары уходят из выборки после approve — нумерация страниц «плывёт». Всегда берём первую страницу, пока не опустеет. */
-          while (!stopRef.current) {
-            while (pauseRef.current) {
-              await sleep(250);
-              if (stopRef.current) break;
-            }
+      if (excludeApproved) {
+        /* Товары уходят из выборки после approve — нумерация страниц «плывёт». Всегда берём первую страницу, пока не опустеет. */
+        while (!stopRef.current) {
+          while (pauseRef.current) {
+            await sleep(250);
             if (stopRef.current) break;
-
-            const list = await adminSystemProductsApi.list(listParams(cid, 1));
-            const items = Array.isArray(list.data) ? (list.data as SystemProductItem[]) : [];
-            if (items.length === 0) break;
-
-            const progressed = await processItems(items);
-            if (!progressed) {
-              pushLog(
-                "warn",
-                "Пачка без обработки (все пропущены по фильтру описаний) — остановка, чтобы не зациклиться.",
-              );
-              break;
-            }
           }
-        } else {
-          let page = 1;
-          let lastPage = 1;
-          do {
-            if (stopRef.current) break;
-            while (pauseRef.current) {
-              await sleep(250);
-              if (stopRef.current) break;
-            }
+          if (stopRef.current) break;
 
-            const list = await adminSystemProductsApi.list(listParams(cid, page));
-            lastPage = Number(list.meta?.last_page ?? 1);
-            const items = Array.isArray(list.data) ? (list.data as SystemProductItem[]) : [];
+          const list = await adminSystemProductsApi.list(listParams(1));
+          const items = Array.isArray(list.data) ? (list.data as SystemProductItem[]) : [];
+          if (items.length === 0) break;
 
-            await processItems(items);
-
-            page += 1;
-          } while (page <= lastPage);
+          const progressed = await processItems(items);
+          if (!progressed) {
+            pushLog(
+              "warn",
+              "Пачка без обработки (все пропущены по фильтру описаний) — остановка, чтобы не зациклиться.",
+            );
+            break;
+          }
         }
+      } else {
+        let page = 1;
+        let lastPage = 1;
+        do {
+          if (stopRef.current) break;
+          while (pauseRef.current) {
+            await sleep(250);
+            if (stopRef.current) break;
+          }
+
+          const list = await adminSystemProductsApi.list(listParams(page));
+          lastPage = Number(list.meta?.last_page ?? 1);
+          const items = Array.isArray(list.data) ? (list.data as SystemProductItem[]) : [];
+
+          await processItems(items);
+
+          page += 1;
+        } while (page <= lastPage);
       }
 
       setCurrentItem(null);
@@ -483,7 +507,7 @@ export default function CrmDashboardPage() {
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Категории</Label>
               <p className="text-[10px] text-muted-foreground leading-snug">
-                Справа от названия три числа для поддерева: всего · одобрено/опубликовано · модерация (ожидают или нужна проверка).
+                Прогон обходит узел и все его дочерние категории (как суммы в счётчиках справа), а не только товары с category_id этого узла.
               </p>
             </div>
             <div className="rounded-md border border-border p-2 max-h-64 overflow-auto">
