@@ -963,6 +963,8 @@ export interface CatalogCategoryTreeNode {
   sort_order?: number;
   is_active?: boolean;
   counts: {
+    /** Все CRM-товары в категории и потомках (system_products по поддереву). */
+    total: number;
     approved: number;
     review: number;
   };

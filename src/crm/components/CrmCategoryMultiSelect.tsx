@@ -137,11 +137,14 @@ function CategoryTreeRow({
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
             <span className="font-medium text-sm">{cat.name}</span>
             <span className="inline-flex flex-wrap gap-1 shrink-0">
+              <span className="rounded bg-muted/80 text-foreground/80 px-1 py-px text-[10px] tabular-nums leading-none">
+                Всего {cat.counts.total}
+              </span>
               <span className="rounded bg-emerald-500/15 text-emerald-900 dark:text-emerald-200 px-1 py-px text-[10px] tabular-nums leading-none">
                 Одобр. {cat.counts.approved}
               </span>
               <span className="rounded bg-amber-500/15 text-amber-950 dark:text-amber-200 px-1 py-px text-[10px] tabular-nums leading-none">
-                Проверка {cat.counts.review}
+                Модер. {cat.counts.review}
               </span>
             </span>
           </div>

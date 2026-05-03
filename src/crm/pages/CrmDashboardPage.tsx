@@ -5,14 +5,14 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Pause, Play, Square, RotateCcw } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   adminCatalogApi,
   adminSiteAlApi,
   adminSystemProductsApi,
   ApiError,
-  type CatalogCategoryItem,
+  type CatalogCategoryTreeNode,
   type SystemProductItem,
 } from "@/lib/api";
 
@@ -78,18 +78,6 @@ function normalizeAgentDescription(raw: string): string {
   return t;
 }
 
-async function fetchAllCatalogCategories(): Promise<CatalogCategoryItem[]> {
-  const first = await adminCatalogApi.catalogCategoriesList({ per_page: 100, page: 1 });
-  const total = first.meta?.total ?? first.data.length;
-  const perPage = first.meta?.per_page ?? 100;
-  if (total <= perPage) return first.data;
-  const pages = Math.ceil(total / perPage);
-  const rest = await Promise.all(
-    Array.from({ length: pages - 1 }, (_, i) => adminCatalogApi.catalogCategoriesList({ per_page: perPage, page: i + 2 }))
-  );
-  return [...first.data, ...rest.flatMap((r) => r.data)];
-}
-
 function fmtTime(ms: number): string {
   if (!Number.isFinite(ms) || ms <= 0) return "—";
   const s = Math.round(ms / 1000);
@@ -127,7 +115,7 @@ type RunState = "idle" | "running" | "paused" | "stopped" | "completed" | "error
 type LogRow = { at: string; level: "info" | "warn" | "error"; message: string };
 
 export default function CrmDashboardPage() {
-  const [categories, setCategories] = useState<CatalogCategoryItem[]>([]);
+  const [categoryRoots, setCategoryRoots] = useState<CatalogCategoryTreeNode[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
   const [onlyEmptyDescription, setOnlyEmptyDescription] = useState(true);
   const [overwriteExisting, setOverwriteExisting] = useState(false);
@@ -157,30 +145,17 @@ export default function CrmDashboardPage() {
 
   useEffect(() => {
     let mounted = true;
-    fetchAllCatalogCategories()
-      .then((rows) => {
+    adminCatalogApi
+      .catalogCategoriesTreeProductStats()
+      .then((res) => {
         if (!mounted) return;
-        setCategories(rows);
+        setCategoryRoots(Array.isArray(res.data) ? res.data : []);
       })
-      .catch(() => setCategories([]));
+      .catch(() => setCategoryRoots([]));
     return () => {
       mounted = false;
     };
   }, []);
-
-  const categoriesByParent = useMemo(() => {
-    const m = new Map<number | null, CatalogCategoryItem[]>();
-    for (const c of categories) {
-      const pid = c.parent_id ?? null;
-      if (!m.has(pid)) m.set(pid, []);
-      m.get(pid)!.push(c);
-    }
-    for (const [k, arr] of m) {
-      arr.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-      m.set(k, arr);
-    }
-    return m;
-  }, [categories]);
 
   const toggleCategory = (id: number, on: boolean) => {
     setSelectedCategoryIds((prev) => {
@@ -189,21 +164,35 @@ export default function CrmDashboardPage() {
     });
   };
 
-  const renderCatTree = (pid: number | null, depth = 0): JSX.Element[] => {
-    const arr = categoriesByParent.get(pid) ?? [];
-    return arr.flatMap((c) => {
+  const renderCatTree = (nodes: CatalogCategoryTreeNode[], depth = 0): JSX.Element[] =>
+    nodes.flatMap((c) => {
       const checked = selectedCategoryIds.includes(c.id);
+      const { total, approved, review } = c.counts;
       const row = (
-        <label key={c.id} className="flex items-center gap-2 text-xs py-1">
-          <input type="checkbox" checked={checked} onChange={(e) => toggleCategory(c.id, e.target.checked)} />
-          <span className="truncate" style={{ paddingLeft: depth ? depth * 10 : 0 }}>
+        <label
+          key={c.id}
+          className="flex items-center gap-2 text-xs py-1 w-full min-w-0"
+          title="Поддерево категории: всего CRM-товаров · одобрено или опубликовано · на модерации или проверке"
+        >
+          <input type="checkbox" checked={checked} onChange={(e) => toggleCategory(c.id, e.target.checked)} className="shrink-0" />
+          <span className="truncate flex-1 min-w-0" style={{ paddingLeft: depth ? depth * 10 : 0 }}>
             {c.name}
+          </span>
+          <span className="inline-flex flex-wrap shrink-0 gap-0.5 justify-end">
+            <span className="rounded bg-muted/80 text-foreground/80 px-1 py-px text-[10px] font-mono tabular-nums whitespace-nowrap">
+              {total}
+            </span>
+            <span className="rounded bg-emerald-500/15 text-emerald-900 dark:text-emerald-200 px-1 py-px text-[10px] font-mono tabular-nums whitespace-nowrap">
+              {approved}
+            </span>
+            <span className="rounded bg-amber-500/15 text-amber-950 dark:text-amber-200 px-1 py-px text-[10px] font-mono tabular-nums whitespace-nowrap">
+              {review}
+            </span>
           </span>
         </label>
       );
-      return [row, ...renderCatTree(c.id, depth + 1)];
+      return [row, ...renderCatTree(c.children ?? [], depth + 1)];
     });
-  };
 
   const resetRun = () => {
     setState("idle");
@@ -423,10 +412,15 @@ export default function CrmDashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-1 space-y-2">
-            <Label className="text-xs text-muted-foreground">Категории</Label>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Категории</Label>
+              <p className="text-[10px] text-muted-foreground leading-snug">
+                Справа от названия три числа для поддерева: всего · одобрено/опубликовано · модерация (ожидают или нужна проверка).
+              </p>
+            </div>
             <div className="rounded-md border border-border p-2 max-h-64 overflow-auto">
-              {categories.length ? (
-                renderCatTree(null, 0)
+              {categoryRoots.length ? (
+                renderCatTree(categoryRoots)
               ) : (
                 <div className="text-xs text-muted-foreground flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" /> Загрузка категорий…
