@@ -279,106 +279,137 @@ export default function CrmDashboardPage() {
       }
       setTotal(totalApprox);
 
-      for (const cid of selectedCategoryIds) {
-        if (stopRef.current) break;
-        let page = 1;
-        let lastPage = 1;
-        do {
+      const listParams = (cid: number, page: number) => ({
+        category_id: cid,
+        page,
+        per_page: perPage,
+        ...(excludeApproved ? { exclude_approved: true as const } : {}),
+      });
+
+      /**
+       * Обработка выборки. Возвращает false, если все строки были только SKIP (без генерации) —
+       * иначе при режиме «всегда page 1» зациклимся на тех же карточках.
+       */
+      const processItems = async (items: SystemProductItem[]): Promise<boolean> => {
+        let anyNonSkip = false;
+        for (const row of items) {
           if (stopRef.current) break;
           while (pauseRef.current) {
             await sleep(250);
             if (stopRef.current) break;
           }
 
-          const list = await adminSystemProductsApi.list({
-            category_id: cid,
-            page,
-            per_page: perPage,
-            ...(excludeApproved ? { exclude_approved: true } : {}),
-          });
-          lastPage = Number(list.meta?.last_page ?? 1);
-          const items = Array.isArray(list.data) ? (list.data as SystemProductItem[]) : [];
+          const name = String(row.name || "").trim() || `ID ${row.id}`;
+          setCurrentItem({ id: row.id, name });
 
-          for (const row of items) {
+          try {
+            const full = await retry(() => adminSystemProductsApi.get(row.id), 3);
+            const currentDesc = String(full.description ?? "").trim();
+
+            const shouldSkip = !overwriteExisting && onlyEmptyDescription && !!currentDesc;
+            if (shouldSkip) {
+              setSkipped((x) => x + 1);
+              pushLog("info", `SKIP #${row.id}: описание уже заполнено`);
+              continue;
+            }
+
+            anyNonSkip = true;
+
+            const message = `${prompt.trim()}\n\n---\n\nТекущее описание товара для правки:\n\n${currentDesc || "(пусто)"}\n\n---\nФинальное требование: выведи только русское описание для покупателя; без иероглифов и без просьб сменить язык.`;
+
+            let normalized = "";
+            let lastGenErr: Error | null = null;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              const attemptMsg =
+                attempt === 1
+                  ? message
+                  : `${message}\n\n---\n\nПовторная попытка №${attempt}:\n— Ответ строго на русском.\n— Если предыдущая попытка дала не-русский текст или пустоту, переформулируй заново по фактам.\n— Не вставляй цену, ссылки, мусор, и не используй Markdown.\n`;
+              try {
+                const chatRes = await retry(() => adminSiteAlApi.chat({ message: attemptMsg }), 3);
+                const reply = typeof chatRes.reply === "string" ? chatRes.reply.trim() : "";
+                if (!reply) throw new Error("Агент не вернул текст");
+                if (siteAlDescriptionReplyViolatesRussianOnly(reply)) {
+                  throw new Error("Агент вернул недопустимый (не русский) текст");
+                }
+                const n = normalizeAgentDescription(reply);
+                if (!n) throw new Error("Нормализованный текст пустой");
+                normalized = n;
+                lastGenErr = null;
+                break;
+              } catch (e: unknown) {
+                const msg = e instanceof Error ? e.message : "Ошибка генерации";
+                lastGenErr = new Error(msg);
+                pushLog("warn", `RETRY #${row.id}: попытка ${attempt}/3 неудачна — ${msg}`);
+                await sleep(250 + attempt * 250);
+              }
+            }
+            if (!normalized) {
+              throw lastGenErr ?? new Error("Не удалось сгенерировать описание");
+            }
+
+            await retry(() => adminSystemProductsApi.update(row.id, { description: normalized }), 3);
+            await retry(() => adminSystemProductsApi.moderate(row.id, { status: "approved" }), 3);
+            setSuccess((x) => x + 1);
+            pushLog("info", `OK #${row.id}: описание обновлено и статус = approved`);
+          } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "Ошибка";
+            setFailed((x) => x + 1);
+            pushLog("error", `FAIL #${row.id}: ${msg}`);
+            if (e instanceof ApiError && e.status === 401) {
+              pushLog("error", "Авторизация истекла (401). Прогон остановлен.");
+              throw e;
+            }
+          } finally {
+            setProcessed((x) => x + 1);
+          }
+        }
+        return anyNonSkip;
+      };
+
+      for (const cid of selectedCategoryIds) {
+        if (stopRef.current) break;
+
+        if (excludeApproved) {
+          /* Товары уходят из выборки после approve — нумерация страниц «плывёт». Всегда берём первую страницу, пока не опустеет. */
+          while (!stopRef.current) {
+            while (pauseRef.current) {
+              await sleep(250);
+              if (stopRef.current) break;
+            }
+            if (stopRef.current) break;
+
+            const list = await adminSystemProductsApi.list(listParams(cid, 1));
+            const items = Array.isArray(list.data) ? (list.data as SystemProductItem[]) : [];
+            if (items.length === 0) break;
+
+            const progressed = await processItems(items);
+            if (!progressed) {
+              pushLog(
+                "warn",
+                "Пачка без обработки (все пропущены по фильтру описаний) — остановка, чтобы не зациклиться.",
+              );
+              break;
+            }
+          }
+        } else {
+          let page = 1;
+          let lastPage = 1;
+          do {
             if (stopRef.current) break;
             while (pauseRef.current) {
               await sleep(250);
               if (stopRef.current) break;
             }
 
-            const name = String(row.name || "").trim() || `ID ${row.id}`;
-            setCurrentItem({ id: row.id, name });
+            const list = await adminSystemProductsApi.list(listParams(cid, page));
+            lastPage = Number(list.meta?.last_page ?? 1);
+            const items = Array.isArray(list.data) ? (list.data as SystemProductItem[]) : [];
 
-            try {
-              const full = await retry(() => adminSystemProductsApi.get(row.id), 3);
-              const currentDesc = String(full.description ?? "").trim();
+            await processItems(items);
 
-              // Skip logic:
-              // - if overwriteExisting=true -> always process (even if description exists)
-              // - else if onlyEmptyDescription=true -> process only when description is empty
-              // - else -> process all items (even if description exists)
-              const shouldSkip =
-                !overwriteExisting && onlyEmptyDescription && !!currentDesc;
-              if (shouldSkip) {
-                setSkipped((x) => x + 1);
-                pushLog("info", `SKIP #${row.id}: описание уже заполнено`);
-                continue;
-              }
-
-              const message = `${prompt.trim()}\n\n---\n\nТекущее описание товара для правки:\n\n${currentDesc || "(пусто)"}\n\n---\nФинальное требование: выведи только русское описание для покупателя; без иероглифов и без просьб сменить язык.`;
-
-              // Retry *generation quality* up to 3 times (not only network errors).
-              let normalized = "";
-              let lastGenErr: Error | null = null;
-              for (let attempt = 1; attempt <= 3; attempt++) {
-                const attemptMsg =
-                  attempt === 1
-                    ? message
-                    : `${message}\n\n---\n\nПовторная попытка №${attempt}:\n— Ответ строго на русском.\n— Если предыдущая попытка дала не-русский текст или пустоту, переформулируй заново по фактам.\n— Не вставляй цену, ссылки, мусор, и не используй Markdown.\n`;
-                try {
-                  const chatRes = await retry(() => adminSiteAlApi.chat({ message: attemptMsg }), 3);
-                  const reply = typeof chatRes.reply === "string" ? chatRes.reply.trim() : "";
-                  if (!reply) throw new Error("Агент не вернул текст");
-                  if (siteAlDescriptionReplyViolatesRussianOnly(reply)) {
-                    throw new Error("Агент вернул недопустимый (не русский) текст");
-                  }
-                  const n = normalizeAgentDescription(reply);
-                  if (!n) throw new Error("Нормализованный текст пустой");
-                  normalized = n;
-                  lastGenErr = null;
-                  break;
-                } catch (e: unknown) {
-                  const msg = e instanceof Error ? e.message : "Ошибка генерации";
-                  lastGenErr = new Error(msg);
-                  pushLog("warn", `RETRY #${row.id}: попытка ${attempt}/3 неудачна — ${msg}`);
-                  await sleep(250 + attempt * 250);
-                }
-              }
-              if (!normalized) {
-                throw lastGenErr ?? new Error("Не удалось сгенерировать описание");
-              }
-
-              await retry(() => adminSystemProductsApi.update(row.id, { description: normalized }), 3);
-              await retry(() => adminSystemProductsApi.moderate(row.id, { status: "approved" }), 3);
-              setSuccess((x) => x + 1);
-              pushLog("info", `OK #${row.id}: описание обновлено и статус = approved`);
-            } catch (e: unknown) {
-              const msg = e instanceof Error ? e.message : "Ошибка";
-              setFailed((x) => x + 1);
-              pushLog("error", `FAIL #${row.id}: ${msg}`);
-              if (e instanceof ApiError && e.status === 401) {
-                pushLog("error", "Авторизация истекла (401). Прогон остановлен.");
-                freezeElapsed();
-                setState("error");
-                return;
-              }
-            } finally {
-              setProcessed((x) => x + 1);
-            }
-          }
-
-          page += 1;
-        } while (page <= lastPage);
+            page += 1;
+          } while (page <= lastPage);
+        }
       }
 
       setCurrentItem(null);
@@ -495,6 +526,9 @@ export default function CrmDashboardPage() {
                 onChange={(e) => setPerPage(Math.max(10, Math.min(100, Number(e.target.value) || 50)))}
                 className="h-8 text-xs"
               />
+              <p className="text-[10px] text-muted-foreground leading-snug">
+                Сколько товаров за один запрос к списку (между генерациями). Это не лимит всего прогона — строки обрабатываются все, порциями.
+              </p>
             </label>
           </div>
 
