@@ -2102,6 +2102,12 @@ export interface AiTokenUsageListResponse {
   };
 }
 
+/** GET /crm/ai-providers/ollama/models */
+export interface OllamaModelsListResponse {
+  data: AiProviderModelOption[];
+  endpoint?: string;
+}
+
 export const crmAiProvidersApi = {
   list: () => get<AiProvidersListResponse>('/crm/ai-providers'),
   update: (
@@ -2118,6 +2124,8 @@ export const crmAiProvidersApi = {
     get<AiTokenUsageListResponse>(
       `/crm/ai-providers/token-usage?page=${encodeURIComponent(String(page))}&per_page=${encodeURIComponent(String(perPage))}`
     ),
+  /** Список моделей с Ollama (сервер дергает сохранённые Base URL + Token). */
+  ollamaModels: () => get<OllamaModelsListResponse>('/crm/ai-providers/ollama/models'),
 };
 
 // ──────────────────────────────────────────────

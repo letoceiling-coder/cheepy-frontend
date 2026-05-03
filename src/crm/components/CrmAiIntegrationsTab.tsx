@@ -3,7 +3,9 @@ import {
   crmAiProvidersApi,
   type AiActiveAgentOption,
   type AiProviderItem,
+  type AiProviderModelOption,
   type AiTokenUsageRow,
+  ApiError,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +49,36 @@ export default function CrmAiIntegrationsTab() {
   const [usageRows, setUsageRows] = useState<AiTokenUsageRow[]>([]);
   const [usageMeta, setUsageMeta] = useState({ page: 1, lastPage: 1, total: 0 });
   const [usageLoading, setUsageLoading] = useState(false);
+
+  const [ollamaRemoteModels, setOllamaRemoteModels] = useState<AiProviderModelOption[]>([]);
+  const [ollamaModelsLoading, setOllamaModelsLoading] = useState(false);
+
+  const ollamaProvider = useMemo(() => items.find((i) => i.name === "ollama"), [items]);
+  const ollamaDraft = drafts["ollama"];
+
+  const ollamaSelectOptions = useMemo(() => {
+    const fallback = ollamaProvider?.models ?? [];
+    const opts = ollamaRemoteModels.length > 0 ? ollamaRemoteModels : fallback;
+    const dm = ollamaDraft?.default_model?.trim();
+    if (dm && !opts.some((o) => o.id === dm)) {
+      return [...opts, { id: dm, label: `${dm} (текущая)` }];
+    }
+    return opts;
+  }, [ollamaProvider, ollamaRemoteModels, ollamaDraft?.default_model]);
+
+  const refreshOllamaModels = useCallback(async () => {
+    setOllamaModelsLoading(true);
+    try {
+      const res = await crmAiProvidersApi.ollamaModels();
+      setOllamaRemoteModels(res.data);
+    } catch (e) {
+      setOllamaRemoteModels([]);
+      const msg = e instanceof ApiError ? e.message : "Не удалось загрузить список моделей Ollama";
+      toast.error(msg);
+    } finally {
+      setOllamaModelsLoading(false);
+    }
+  }, []);
 
   const providerTitle = useMemo(() => {
     const m = new Map<string, string>();
@@ -108,6 +140,14 @@ export default function CrmAiIntegrationsTab() {
   useEffect(() => {
     void loadUsage(1);
   }, [loadUsage]);
+
+  useEffect(() => {
+    if (ollamaProvider?.has_api_key) {
+      void refreshOllamaModels();
+    } else {
+      setOllamaRemoteModels([]);
+    }
+  }, [ollamaProvider?.has_api_key, refreshOllamaModels]);
 
   const setDraft = (name: string, partial: Partial<Draft>) => {
     setDrafts((prev) => ({
@@ -258,18 +298,38 @@ export default function CrmAiIntegrationsTab() {
                 <Label className="text-xs">Модель по умолчанию</Label>
                 {p.name === "ollama" ? (
                   <>
-                    <Input
-                      className="font-mono text-sm h-9"
-                      list={`ollama-model-picks-${p.name}`}
-                      value={d.default_model}
-                      onChange={(e) => setDraft(p.name, { default_model: e.target.value })}
-                      placeholder="например qwen2.5-coder:7b"
-                    />
-                    <datalist id={`ollama-model-picks-${p.name}`}>
-                      {p.models.map((m) => (
-                        <option key={m.id} value={m.id} label={m.label} />
-                      ))}
-                    </datalist>
+                    <div className="flex gap-2 items-stretch sm:items-center">
+                      <select
+                        className="flex h-9 flex-1 min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-sm font-mono shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        value={d.default_model}
+                        onChange={(e) => setDraft(p.name, { default_model: e.target.value })}
+                      >
+                        {ollamaSelectOptions.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.label}
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-9 shrink-0 px-3"
+                        onClick={() => void refreshOllamaModels()}
+                        disabled={!p.has_api_key || ollamaModelsLoading}
+                        title={
+                          !p.has_api_key
+                            ? "Сначала сохраните Token для Ollama"
+                            : "Запросить список с GET …/v1/models"
+                        }
+                      >
+                        {ollamaModelsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Обновить"}
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Выпадающий список строится по ответу Ollama (сохранённые Base URL и Token). Если список
+                      пустой — проверьте токен и нажмите «Обновить».
+                    </p>
                   </>
                 ) : (
                   <select
@@ -286,7 +346,7 @@ export default function CrmAiIntegrationsTab() {
                 )}
                 {p.name === "ollama" ? (
                   <p className="text-[11px] text-muted-foreground">
-                    Имя модели должно совпадать с <code className="text-[10px]">id</code> из{" "}
+                    Имя модели — как <code className="text-[10px]">id</code> в ответе{" "}
                     <code className="text-[10px]">GET /v1/models</code>.
                   </p>
                 ) : null}
