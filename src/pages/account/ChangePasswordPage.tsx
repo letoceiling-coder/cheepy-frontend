@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Lock, Eye, EyeOff } from "lucide-react";
+import { Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { storeAccountApi } from "@/lib/api";
+import { toast } from "sonner";
 
 const ChangePasswordPage = () => {
   const [current, setCurrent] = useState("");
@@ -8,9 +10,23 @@ const ChangePasswordPage = () => {
   const [confirm, setConfirm] = useState("");
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (newPass !== confirm) return;
+    setSaving(true);
+    try {
+      await storeAccountApi.changePassword({ current_password: current, password: newPass, password_confirmation: confirm });
+      setCurrent("");
+      setNewPass("");
+      setConfirm("");
+      toast.success("Пароль изменён");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось изменить пароль");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -52,7 +68,9 @@ const ChangePasswordPage = () => {
           {confirm && newPass !== confirm && <p className="text-xs text-destructive mt-1">Пароли не совпадают</p>}
         </div>
 
-        <Button type="submit" className="gradient-primary text-primary-foreground rounded-lg">Сменить пароль</Button>
+        <Button type="submit" disabled={saving || !current || !newPass || newPass !== confirm} className="gradient-primary text-primary-foreground rounded-lg">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}Сменить пароль
+        </Button>
       </form>
     </div>
   );

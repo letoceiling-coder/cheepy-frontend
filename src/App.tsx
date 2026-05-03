@@ -32,6 +32,7 @@ import CouponsPage from "./pages/account/CouponsPage";
 import ReceiptsPage from "./pages/account/ReceiptsPage";
 import ReferralPage from "./pages/account/ReferralPage";
 import ChangePasswordPage from "./pages/account/ChangePasswordPage";
+import RequireAccountAuth from "./pages/account/RequireAccountAuth";
 import PersonLayout from "./pages/person/PersonLayout";
 import PersonDashboard from "./pages/person/PersonDashboard";
 import PersonProfile from "./pages/person/PersonProfile";
@@ -110,6 +111,7 @@ import CrmPayoutsPage from "./crm/pages/CrmPayoutsPage";
 import CrmDeliveryPage from "./crm/pages/CrmDeliveryPage";
 import CrmRegionsPage from "./crm/pages/CrmRegionsPage";
 import CrmCouponsPage from "./crm/pages/CrmCouponsPage";
+import CrmBonusRulesPage from "./crm/pages/CrmBonusRulesPage";
 import CrmMarketingPage from "./crm/pages/CrmMarketingPage";
 import CrmTemplatesPage from "./crm/pages/CrmTemplatesPage";
 import CrmNotificationsPage from "./crm/pages/CrmNotificationsPage";
@@ -318,17 +320,17 @@ function AnimatedRoutes() {
         <Route path="/seller" element={<PageTransition><SellersListPage /></PageTransition>} />
         <Route path="/seller/:slug" element={<PageTransition><SellerPage /></PageTransition>} />
 
-        {/* Account routes — public, no auth redirect (demo mode) */}
+        {/* Account routes — profile entry is public; sensitive sections require customer auth. */}
         <Route path="/account" element={<PageTransition><AccountLayout /></PageTransition>}>
           <Route index element={<PersonalDataPage />} />
-          <Route path="orders" element={<OrdersPage />} />
-          <Route path="payment" element={<PaymentMethodsPage />} />
-          <Route path="balance" element={<BalancePage />} />
-          <Route path="favorites" element={<FavoritesPage />} />
-          <Route path="coupons" element={<CouponsPage />} />
-          <Route path="receipts" element={<ReceiptsPage />} />
-          <Route path="referral" element={<ReferralPage />} />
-          <Route path="password" element={<ChangePasswordPage />} />
+          <Route path="orders" element={<RequireAccountAuth><OrdersPage /></RequireAccountAuth>} />
+          <Route path="payment" element={<RequireAccountAuth><PaymentMethodsPage /></RequireAccountAuth>} />
+          <Route path="balance" element={<RequireAccountAuth><BalancePage /></RequireAccountAuth>} />
+          <Route path="favorites" element={<RequireAccountAuth><FavoritesPage /></RequireAccountAuth>} />
+          <Route path="coupons" element={<RequireAccountAuth><CouponsPage /></RequireAccountAuth>} />
+          <Route path="receipts" element={<RequireAccountAuth><ReceiptsPage /></RequireAccountAuth>} />
+          <Route path="referral" element={<RequireAccountAuth><ReferralPage /></RequireAccountAuth>} />
+          <Route path="password" element={<RequireAccountAuth><ChangePasswordPage /></RequireAccountAuth>} />
         </Route>
 
         {/* Person — без авторизации */}
@@ -434,6 +436,7 @@ function AnimatedRoutes() {
           <Route path="payouts" element={<CrmPayoutsPage />} />
           <Route path="promotions" element={<CrmPromotionsPage />} />
           <Route path="coupons" element={<CrmCouponsPage />} />
+          <Route path="bonus-rules" element={<CrmBonusRulesPage />} />
           <Route path="marketing" element={<CrmMarketingPage />} />
           <Route path="templates" element={<CrmTemplatesPage />} />
           <Route path="users" element={<CrmUsersPage />} />

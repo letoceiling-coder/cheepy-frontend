@@ -1,11 +1,20 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { toast } from "sonner";
-import { mockUser, type UserProfile } from "@/data/mock-data";
 import { ApiError, storefrontAuthApi, type StorefrontUser } from "@/lib/api";
+
+export interface AuthUserProfile {
+  id?: number;
+  name: string;
+  email: string;
+  phone: string;
+  account_role?: "customer" | "seller";
+  seller_status?: "pending" | "active" | "rejected" | null;
+  linked_social_providers?: string[];
+}
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: UserProfile | null;
+  user: AuthUserProfile | null;
   refreshProfile: () => Promise<void>;
   login: (login: string, password: string) => Promise<void>;
   register: (name: string, email: string, phone: string, password: string, accountType?: "customer" | "seller") => Promise<void>;
@@ -14,21 +23,22 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function mapStoreUserToProfile(u: StorefrontUser): UserProfile {
+function mapStoreUserToProfile(u: StorefrontUser): AuthUserProfile {
   const providers = u.linked_social_providers ?? [];
   return {
-    ...mockUser,
     id: u.id,
     name: u.name,
     email: u.email ?? "",
     phone: u.phone ?? "",
+    account_role: u.account_role,
+    seller_status: u.seller_status,
     linked_social_providers: providers.length ? providers : undefined,
   };
 }
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const [user, setUser] = useState<AuthUserProfile | null>(null);
 
   const refreshProfile = useCallback(async () => {
     const token = localStorage.getItem("customer_token");

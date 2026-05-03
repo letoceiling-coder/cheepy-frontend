@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, type ComponentType } from "react";
-import { Search, User, Heart, ShoppingCart, Grid2X2, ChevronDown, Send, X, Circle } from "lucide-react";
+import { Search, User, Heart, ShoppingCart, Grid2X2, X, Circle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import MegaMenu from "./MegaMenu";
 import type { PublicMenuCategory } from "./MegaMenu";
@@ -103,8 +103,6 @@ const Header = ({ settings }: HeaderProps) => {
 
   const [isCompact, setIsCompact] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
-  const [showCurrency, setShowCurrency] = useState(false);
-  const [showCity, setShowCity] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [menuCategories, setMenuCategories] = useState<PublicMenuCategory[]>([]);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -124,18 +122,11 @@ const Header = ({ settings }: HeaderProps) => {
     const handleClickOutside = (e: MouseEvent) => {
       if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
         setShowCategories(false);
-        setShowCurrency(false);
-        setShowCity(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const currencies = ["RUB", "USD", "EUR", "KZT"];
-  const cities = ["Москва", "Санкт-Петербург", "Новосибирск", "Екатеринбург", "Казань"];
-  const [selectedCurrency, setSelectedCurrency] = useState("RUB");
-  const [selectedCity, setSelectedCity] = useState("Москва");
 
   useEffect(() => {
     let mounted = true;
@@ -199,49 +190,7 @@ const Header = ({ settings }: HeaderProps) => {
         >
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-4">
-              {/* Currency */}
-              <div className="relative">
-                <button
-                  onClick={() => { setShowCurrency(!showCurrency); setShowCity(false); }}
-                  className="flex items-center gap-1 px-3 py-1 rounded-full border border-border text-foreground hover:border-primary transition-colors"
-                >
-                  {selectedCurrency}
-                  <ChevronDown className="w-3 h-3" />
-                </button>
-                {showCurrency && (
-                  <div className="absolute top-full left-0 mt-1 bg-popover border border-border rounded-lg py-1 z-[1100] min-w-[80px]" style={{ position: 'absolute' }}>
-                    {currencies.map(c => (
-                      <button key={c} onClick={() => { setSelectedCurrency(c); setShowCurrency(false); }}
-                        className="block w-full text-left px-3 py-1.5 hover:bg-secondary transition-colors text-popover-foreground">
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* City */}
-              <div className="relative">
-                <button
-                  onClick={() => { setShowCity(!showCity); setShowCurrency(false); }}
-                  className="flex items-center gap-1 text-foreground hover:text-primary transition-colors"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  {selectedCity}
-                </button>
-                {showCity && (
-                  <div className="absolute top-full left-0 mt-1 bg-popover border border-border rounded-lg py-1 z-[1100] min-w-[180px]">
-                    {cities.map(c => (
-                      <button key={c} onClick={() => { setSelectedCity(c); setShowCity(false); }}
-                        className="block w-full text-left px-3 py-1.5 hover:bg-secondary transition-colors text-popover-foreground">
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <button className="text-primary hover:underline transition-colors">
+              <button onClick={() => navigate("/account")} className="text-primary hover:underline transition-colors">
                 {mergedSettings.deliveryCtaText}
               </button>
               {topLinks.map((link) => (

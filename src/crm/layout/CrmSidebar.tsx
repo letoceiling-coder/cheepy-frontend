@@ -79,6 +79,7 @@ const sections: NavSection[] = [
     items: [
       { title: "Акции", url: "/crm/promotions", icon: Megaphone, permission: "marketing.create" },
       { title: "Промокоды", url: "/crm/coupons", icon: Ticket, permission: "marketing.create" },
+      { title: "Бонусная система", url: "/crm/bonus-rules", icon: Wallet, permission: "marketing.create" },
       { title: "Рассылки", url: "/crm/marketing", icon: Mail, permission: "marketing.send" },
       { title: "Шаблоны", url: "/crm/templates", icon: FileText, permission: "content.manage" },
     ],

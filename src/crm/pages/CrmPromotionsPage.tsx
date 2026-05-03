@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "../components/PageHeader";
 import { DataTable, Column } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
@@ -7,8 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { crmPromotions, CrmPromotion } from "../data/mock-data";
-import { Plus } from "lucide-react";
+import { crmCouponsApi, type CrmCouponItem } from "@/lib/api";
+import { Plus, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const fmt = (n: number) => new Intl.NumberFormat('ru-RU').format(n);
 
@@ -22,24 +23,33 @@ const typeLabels: Record<string, string> = {
 
 export default function CrmPromotionsPage() {
   const [typeFilter, setTypeFilter] = useState("all");
+  const [items, setItems] = useState<CrmCouponItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = crmPromotions.filter(p => typeFilter === "all" || p.type === typeFilter);
+  useEffect(() => {
+    crmCouponsApi.list()
+      .then((r) => setItems(r.data))
+      .catch((e) => toast.error(e instanceof Error ? e.message : "Не удалось загрузить акции"))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const columns: Column<CrmPromotion>[] = [
+  const filtered = items.filter(p => typeFilter === "all" || typeFilter === "coupon");
+
+  const columns: Column<CrmCouponItem>[] = [
     { key: "name", title: "Название", render: p => <span className="font-medium text-sm">{p.name}</span> },
-    { key: "type", title: "Тип", render: p => <span className="text-xs">{typeLabels[p.type]}</span> },
-    { key: "status", title: "Статус", render: p => <StatusBadge status={p.status} /> },
-    { key: "discount", title: "Скидка", render: p => p.discount > 0 ? `${p.discount}${p.discountType === 'percent' ? '%' : ' RUB'}` : '-' },
+    { key: "type", title: "Тип", render: () => <span className="text-xs">{typeLabels.coupon}</span> },
+    { key: "is_active", title: "Статус", render: p => <StatusBadge status={p.is_active ? "active" : "inactive"} /> },
+    { key: "discount_value", title: "Скидка", render: p => p.discount_value > 0 ? `${p.discount_value}${p.discount_type === 'percent' ? '%' : ' RUB'}` : '-' },
     { key: "code", title: "Код", render: p => p.code ? <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{p.code}</code> : '-' },
-    { key: "dates", title: "Период", render: p => `${p.startDate} — ${p.endDate}` },
-    { key: "usage", title: "Использовано", render: p => p.usageLimit > 0 ? `${p.usageCount} / ${p.usageLimit}` : '-' },
+    { key: "expires_at", title: "Период", render: p => `${p.starts_at ? new Date(p.starts_at).toLocaleDateString("ru-RU") : "сейчас"} — ${p.expires_at ? new Date(p.expires_at).toLocaleDateString("ru-RU") : "без срока"}` },
+    { key: "usage", title: "Использовано", render: p => p.max_uses ? `${p.used_count} / ${p.max_uses}` : String(p.used_count) },
   ];
 
   return (
     <div className="space-y-4 animate-fade-in">
       <PageHeader
         title="Акции и промо"
-        description={`${crmPromotions.length} акций`}
+        description={`${items.length} активных промо-механик из БД`}
         actions={
           <Dialog>
             <DialogTrigger asChild>
@@ -89,7 +99,13 @@ export default function CrmPromotionsPage() {
         </SelectContent>
       </Select>
 
-      <DataTable data={filtered} columns={columns} />
+      {loading ? (
+        <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" /> Загрузка акций…
+        </div>
+      ) : (
+        <DataTable data={filtered} columns={columns} />
+      )}
     </div>
   );
 }

@@ -1,12 +1,21 @@
 import { Users, Copy, Check, Gift } from "lucide-react";
-import { mockUser } from "@/data/mock-data";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { storeAccountApi } from "@/lib/api";
+import { toast } from "sonner";
 
 const ReferralPage = () => {
   const [copied, setCopied] = useState(false);
+  const [referral, setReferral] = useState<{ code: string; link: string; stats: { clicks: number; registrations: number; rewarded_amount: number } } | null>(null);
+
+  useEffect(() => {
+    storeAccountApi.referral()
+      .then(setReferral)
+      .catch((e) => toast.error(e instanceof Error ? e.message : "Не удалось загрузить реферальные данные"));
+  }, []);
 
   const copyCode = () => {
-    navigator.clipboard.writeText(mockUser.referralCode);
+    if (!referral) return;
+    navigator.clipboard.writeText(referral.link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -25,7 +34,7 @@ const ReferralPage = () => {
         </div>
 
         <div className="bg-background/20 backdrop-blur-sm rounded-xl p-4 flex items-center justify-between">
-          <span className="font-mono text-lg font-bold">{mockUser.referralCode}</span>
+          <span className="font-mono text-lg font-bold">{referral?.code ?? "—"}</span>
           <button onClick={copyCode} className="flex items-center gap-1 bg-background text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
             {copied ? <><Check className="w-4 h-4" />Скопировано</> : <><Copy className="w-4 h-4" />Копировать</>}
           </button>
@@ -51,8 +60,8 @@ const ReferralPage = () => {
         <div className="flex items-center gap-3">
           <Users className="w-5 h-5 text-primary" />
           <div>
-            <p className="text-sm font-medium text-foreground">Приглашено друзей: 3</p>
-            <p className="text-xs text-muted-foreground">Заработано: 1 500 ₽</p>
+            <p className="text-sm font-medium text-foreground">Переходов: {referral?.stats.clicks ?? 0}</p>
+            <p className="text-xs text-muted-foreground">Регистраций: {referral?.stats.registrations ?? 0} · Заработано: {(referral?.stats.rewarded_amount ?? 0).toLocaleString()} ₽</p>
           </div>
         </div>
       </div>

@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 
-const navItems = [
+const authNavItems = [
   { to: "/account", icon: User, label: "Личные данные", end: true },
   { to: "/account/orders", icon: Package, label: "Мои заказы" },
   { to: "/account/payment", icon: CreditCard, label: "Способы оплаты" },
@@ -17,8 +17,13 @@ const navItems = [
   { to: "/account/password", icon: Lock, label: "Смена пароля" },
 ];
 
+const guestNavItems = [
+  { to: "/account", icon: User, label: "Вход и профиль", end: true },
+];
+
 const AccountLayout = () => {
   const { isAuthenticated, user, logout } = useAuth();
+  const navItems = isAuthenticated ? authNavItems : guestNavItems;
 
   return (
     <div className="min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
@@ -60,6 +65,11 @@ const AccountLayout = () => {
                   </NavLink>
                 )}
               </nav>
+              {!isAuthenticated && (
+                <p className="mt-3 px-4 text-xs leading-relaxed text-muted-foreground">
+                  Заказы, оплата, баланс, купоны и реферальная программа доступны после входа.
+                </p>
+              )}
             </div>
           </aside>
 

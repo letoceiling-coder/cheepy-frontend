@@ -1929,6 +1929,53 @@ export const crmDeliveryIntegrationsApi = {
     ),
 };
 
+export interface CrmCouponItem {
+  id: number;
+  code: string;
+  name: string;
+  description?: string | null;
+  discount_type: "percent" | "fixed";
+  discount_value: number;
+  min_order_amount: number;
+  max_uses?: number | null;
+  max_uses_per_user: number;
+  used_count: number;
+  target: string;
+  is_active: boolean;
+  starts_at?: string | null;
+  expires_at?: string | null;
+  redemptions_count: number;
+  discount_amount: number;
+}
+
+export interface CrmCouponAnalytics {
+  total: number;
+  active: number;
+  used_count: number;
+  discount_amount: number;
+}
+
+export const crmCouponsApi = {
+  list: () => get<{ data: CrmCouponItem[]; analytics: CrmCouponAnalytics; meta: unknown }>('/crm/coupons'),
+  create: (payload: Partial<CrmCouponItem>) => post<CrmCouponItem>('/crm/coupons', payload),
+  update: (id: number, payload: Partial<CrmCouponItem>) => patch<CrmCouponItem>(`/crm/coupons/${id}`, payload),
+  analytics: () => get<CrmCouponAnalytics>('/crm/coupons-analytics'),
+};
+
+export interface CrmBonusRuleItem {
+  id: number;
+  key: string;
+  title: string;
+  is_active: boolean;
+  config: Record<string, unknown>;
+}
+
+export const crmBonusRulesApi = {
+  list: () => get<{ data: CrmBonusRuleItem[] }>('/crm/bonus-rules'),
+  update: (key: string, payload: { title?: string; is_active?: boolean; config?: Record<string, unknown> }) =>
+    patch<CrmBonusRuleItem>(`/crm/bonus-rules/${key}`, payload),
+};
+
 /** SMS шлюз (тот же контракт полей, что и delivery-integrations). */
 export const crmSmsIntegrationsApi = {
   list: () => get<DeliveryIntegrationItem[]>('/crm/sms-integrations'),
@@ -2053,6 +2100,201 @@ export const storefrontAuthApi = {
   refresh: () => storefrontRequest<{ token: string }>("POST", "/store/auth/refresh", {}, true),
   socialLinkSession: (provider: string) =>
     storefrontRequest<{ redirect_url: string }>("POST", "/store/auth/social/link-session", { provider }, true),
+};
+
+export interface AccountProfile {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  birthday: string | null;
+  marketing_opt_in: boolean;
+  linked_social_providers: string[];
+}
+
+export interface AccountAddress {
+  id: number;
+  label?: string | null;
+  country: string;
+  region?: string | null;
+  city: string;
+  postal_code?: string | null;
+  line1: string;
+  line2?: string | null;
+  lat?: string | number | null;
+  lng?: string | number | null;
+  source: string;
+  is_default: boolean;
+}
+
+export interface AccountPickupPoint {
+  id: number;
+  provider: string;
+  office_code: string;
+  name?: string | null;
+  city?: string | null;
+  address: string;
+  lat?: string | number | null;
+  lng?: string | number | null;
+  work_time?: string | null;
+  is_default: boolean;
+  raw?: unknown;
+}
+
+export interface AccountPaymentMethod {
+  id: number;
+  provider: string;
+  method_type: string;
+  brand?: string | null;
+  last4?: string | null;
+  exp_month?: number | null;
+  exp_year?: number | null;
+  is_default: boolean;
+}
+
+export interface AccountOrderItem {
+  id: number;
+  product_name: string;
+  product_image?: string | null;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  attributes?: Record<string, unknown> | null;
+}
+
+export interface AccountOrder {
+  id: number;
+  number: string;
+  status: string;
+  total_amount: number;
+  discount_amount: number;
+  delivery_amount: number;
+  currency: string;
+  payment_status: string;
+  delivery_snapshot?: Record<string, unknown> | null;
+  created_at: string;
+  items: AccountOrderItem[];
+}
+
+export interface AccountReceipt {
+  id: number;
+  number: string;
+  order_id?: number | null;
+  amount: number;
+  currency: string;
+  fiscal_url?: string | null;
+  issued_at?: string | null;
+}
+
+export interface AccountWalletLedger {
+  id: number;
+  amount: number;
+  balance_after?: number | null;
+  kind: string;
+  description: string;
+  created_at: string;
+}
+
+export interface AccountCoupon {
+  id: number;
+  code: string;
+  name: string;
+  description?: string | null;
+  discount_type: "percent" | "fixed";
+  discount_value: number;
+  min_order_amount: number;
+  max_uses?: number | null;
+  max_uses_per_user: number;
+  used_count: number;
+  user_used_count: number;
+  target: string;
+  is_active: boolean;
+  expires_at?: string | null;
+}
+
+export interface AccountSummary {
+  profile: AccountProfile;
+  addresses: AccountAddress[];
+  pickup_points: AccountPickupPoint[];
+  wallet: { balance: number; currency: string };
+  referral: { code: string; link: string; stats: { clicks: number; registrations: number; rewarded_amount: number } };
+  integrations: { delivery: string[]; payments: string[]; social: string[] };
+}
+
+export interface AddressSuggestion {
+  title: string;
+  subtitle: string;
+  address: string;
+  uri?: string;
+  raw?: unknown;
+}
+
+export const storeAccountApi = {
+  summary: () => storefrontRequest<AccountSummary>("GET", "/store/account/summary", undefined, true),
+  updateProfile: (payload: Partial<AccountProfile>) =>
+    storefrontRequest<{ profile: AccountProfile }>("PATCH", "/store/account/profile", payload, true),
+  changePassword: (payload: { current_password: string; password: string; password_confirmation: string }) =>
+    storefrontRequest<{ ok: boolean }>("POST", "/store/account/password", payload, true),
+  addresses: () => storefrontRequest<{ data: AccountAddress[] }>("GET", "/store/account/addresses", undefined, true),
+  createAddress: (payload: Partial<AccountAddress>) =>
+    storefrontRequest<{ data: AccountAddress }>("POST", "/store/account/addresses", payload, true),
+  updateAddress: (id: number, payload: Partial<AccountAddress>) =>
+    storefrontRequest<{ data: AccountAddress }>("PATCH", `/store/account/addresses/${id}`, payload, true),
+  deleteAddress: (id: number) => storefrontRequest<void>("DELETE", `/store/account/addresses/${id}`, undefined, true),
+  addressSuggest: (text: string) =>
+    storefrontRequest<{ enabled: boolean; data: AddressSuggestion[]; message?: string }>(
+      "GET",
+      `/store/account/address-suggest?text=${encodeURIComponent(text)}`,
+      undefined,
+      true
+    ),
+  pickupPoints: () => storefrontRequest<{ data: AccountPickupPoint[] }>("GET", "/store/account/pickup-points", undefined, true),
+  searchPickupPoints: (params: { city_code?: string; postal_code?: string; weight_max?: number }) => {
+    const q = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && String(v) !== "") q.set(k, String(v));
+    });
+    return storefrontRequest<{ enabled: boolean; data: AccountPickupPoint[]; message?: string }>(
+      "GET",
+      `/store/account/pickup-points/search?${q.toString()}`,
+      undefined,
+      true
+    );
+  },
+  createPickupPoint: (payload: Partial<AccountPickupPoint>) =>
+    storefrontRequest<{ data: AccountPickupPoint }>("POST", "/store/account/pickup-points", payload, true),
+  deletePickupPoint: (id: number) => storefrontRequest<void>("DELETE", `/store/account/pickup-points/${id}`, undefined, true),
+  paymentMethods: () =>
+    storefrontRequest<{ data: AccountPaymentMethod[]; providers: { name: string; is_active: boolean }[] }>(
+      "GET",
+      "/store/account/payment-methods",
+      undefined,
+      true
+    ),
+  deletePaymentMethod: (id: number) => storefrontRequest<void>("DELETE", `/store/account/payment-methods/${id}`, undefined, true),
+  orders: () => storefrontRequest<{ data: AccountOrder[] }>("GET", "/store/account/orders", undefined, true),
+  receipts: () => storefrontRequest<{ data: AccountReceipt[] }>("GET", "/store/account/receipts", undefined, true),
+  wallet: () =>
+    storefrontRequest<{ balance: number; currency: string; ledger: AccountWalletLedger[] }>(
+      "GET",
+      "/store/account/wallet",
+      undefined,
+      true
+    ),
+  coupons: () => storefrontRequest<{ data: AccountCoupon[] }>("GET", "/store/account/coupons", undefined, true),
+  referral: () =>
+    storefrontRequest<{ code: string; link: string; stats: { clicks: number; registrations: number; rewarded_amount: number } }>(
+      "GET",
+      "/store/account/referral",
+      undefined,
+      true
+    ),
+  socialProviders: () => storefrontRequest<{ providers: { id: string; title: string; enabled: boolean }[] }>(
+    "GET",
+    "/store/account/social-providers",
+    undefined,
+    true
+  ),
 };
 
 export interface AiProviderModelOption {
