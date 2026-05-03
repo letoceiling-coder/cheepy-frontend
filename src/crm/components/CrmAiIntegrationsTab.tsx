@@ -18,6 +18,8 @@ type Draft = {
   base_url: string;
 };
 
+const OLLAMA_DEFAULT_BASE_URL = "https://ollama.siteaacess.store/v1";
+
 function formatTs(iso: string | null): string {
   if (!iso) return "—";
   try {
@@ -68,7 +70,7 @@ export default function CrmAiIntegrationsTab() {
           next[p.name] = {
             default_model: p.default_model,
             api_key: "",
-            base_url: p.base_url || "",
+            base_url: p.base_url || (p.name === "ollama" ? OLLAMA_DEFAULT_BASE_URL : ""),
           };
         }
         setDrafts(next);
@@ -146,7 +148,7 @@ export default function CrmAiIntegrationsTab() {
         payload.api_key = trimmed;
       }
       if (name === "ollama" || name === "openai" || name === "xai") {
-        payload.base_url = d.base_url.trim();
+        payload.base_url = name === "ollama" && d.base_url.trim() === "" ? OLLAMA_DEFAULT_BASE_URL : d.base_url.trim();
       }
 
       await crmAiProvidersApi.update(name, payload);
@@ -261,7 +263,7 @@ export default function CrmAiIntegrationsTab() {
                       list={`ollama-model-picks-${p.name}`}
                       value={d.default_model}
                       onChange={(e) => setDraft(p.name, { default_model: e.target.value })}
-                      placeholder="например llama3.2 или qwen2.5:latest"
+                      placeholder="например qwen2.5-coder:7b"
                     />
                     <datalist id={`ollama-model-picks-${p.name}`}>
                       {p.models.map((m) => (
@@ -284,7 +286,8 @@ export default function CrmAiIntegrationsTab() {
                 )}
                 {p.name === "ollama" ? (
                   <p className="text-[11px] text-muted-foreground">
-                    Укажите тег из <code className="text-[10px]">ollama list</code> на сервере с Ollama.
+                    Имя модели должно совпадать с <code className="text-[10px]">id</code> из{" "}
+                    <code className="text-[10px]">GET /v1/models</code>.
                   </p>
                 ) : null}
               </div>
@@ -292,12 +295,12 @@ export default function CrmAiIntegrationsTab() {
               {showBaseUrl ? (
                 <div className="space-y-1.5">
                   <Label className="text-xs">
-                    {p.name === "ollama" ? "Базовый URL Ollama" : "Свой base URL (необязательно)"}
+                    {p.name === "ollama" ? "Base URL" : "Свой base URL (необязательно)"}
                   </Label>
                   <Input
                     type="url"
                     placeholder={
-                      p.name === "ollama" ? "http://127.0.0.1:11434" : "Пусто — дефолт провайдера"
+                      p.name === "ollama" ? OLLAMA_DEFAULT_BASE_URL : "Пусто — дефолт провайдера"
                     }
                     className="font-mono text-xs h-8"
                     value={d.base_url}
@@ -307,24 +310,33 @@ export default function CrmAiIntegrationsTab() {
               ) : null}
 
               <div className="space-y-1.5">
-                <Label className="text-xs">API ключ</Label>
+                <Label className="text-xs">{p.name === "ollama" ? "Token" : "API ключ"}</Label>
                 <Input
                   type="password"
                   autoComplete="new-password"
                   className="font-mono text-sm"
                   placeholder={
-                    p.has_api_key ? "Оставьте пустым, чтобы не менять ключ" : "Вставьте ключ"
+                    p.has_api_key
+                      ? p.name === "ollama"
+                        ? "Оставьте пустым, чтобы не менять token"
+                        : "Оставьте пустым, чтобы не менять ключ"
+                      : p.name === "ollama"
+                        ? "Вставьте Bearer token"
+                        : "Вставьте ключ"
                   }
                   value={d.api_key}
                   onChange={(e) => setDraft(p.name, { api_key: e.target.value })}
                 />
                 {p.has_api_key && p.api_key_hint ? (
                   <p className="text-xs text-muted-foreground">
-                    Сохранённый ключ: {p.api_key_hint}
+                    {p.name === "ollama" ? "Сохранённый token" : "Сохранённый ключ"}: {p.api_key_hint}
                   </p>
                 ) : null}
                 {p.name === "ollama" ? (
-                  <p className="text-[11px] text-muted-foreground">Для локального Ollama ключ часто не нужен.</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Токен отправляется как <code className="text-[10px]">Authorization: Bearer ...</code>.
+                    Без токена публичный endpoint Ollama возвращает 401.
+                  </p>
                 ) : null}
               </div>
 

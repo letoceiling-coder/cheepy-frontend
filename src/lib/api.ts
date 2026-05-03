@@ -2062,7 +2062,7 @@ export interface AiProviderItem {
   has_api_key: boolean;
   api_key_hint: string | null;
   default_model: string;
-  /** Опционально: свой endpoint (OpenAI-совместимые), для Ollama — база вида http://127.0.0.1:11434 */
+  /** Опционально: свой endpoint (OpenAI-совместимые), для Ollama — https://ollama.siteaacess.store/v1 */
   base_url: string;
   models: AiProviderModelOption[];
   catalog_updated_at: string;
