@@ -1240,6 +1240,8 @@ export interface SystemProductItem {
 export const adminSystemProductsApi = {
   list: (params?: {
     status?: string;
+    /** Исключить одобренные и опубликованные (только если не задан status). */
+    exclude_approved?: boolean;
     search?: string;
     page?: number;
     per_page?: number;
@@ -1257,7 +1259,12 @@ export const adminSystemProductsApi = {
     if (params) {
       const { seller_ids, category_ids, ...rest } = params;
       Object.entries(rest).forEach(([k, v]) => {
-        if (v !== undefined && v !== null) q.set(k, String(v));
+        if (v === undefined || v === null) return;
+        if (k === "exclude_approved") {
+          if (v === true) q.set("exclude_approved", "1");
+          return;
+        }
+        q.set(k, String(v));
       });
       if (category_ids?.length) {
         q.set('category_ids', category_ids.join(','));

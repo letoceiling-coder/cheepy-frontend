@@ -119,6 +119,8 @@ export default function CrmDashboardPage() {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
   const [onlyEmptyDescription, setOnlyEmptyDescription] = useState(true);
   const [overwriteExisting, setOverwriteExisting] = useState(false);
+  /** Не брать в прогон товары в статусах approved / published (учитывается в списках API и в оценке «всего»). */
+  const [excludeApproved, setExcludeApproved] = useState(true);
   const [perPage, setPerPage] = useState(50);
   const [prompt, setPrompt] = useState(DEFAULT_DESCRIPTION_AGENT_PROMPT);
 
@@ -245,13 +247,21 @@ export default function CrmDashboardPage() {
     setLogs([]);
     setCurrentItem(null);
     setState("running");
-    pushLog("info", `Старт. Категорий: ${selectedCategoryIds.length}`);
+    pushLog(
+      "info",
+      `Старт. Категорий: ${selectedCategoryIds.length}${excludeApproved ? "; без одобренных/опубликованных" : ""}`,
+    );
 
     try {
       // Pre-calc total to show ETA
       let totalApprox = 0;
       for (const cid of selectedCategoryIds) {
-        const res = await adminSystemProductsApi.list({ category_id: cid, page: 1, per_page: 1 });
+        const res = await adminSystemProductsApi.list({
+          category_id: cid,
+          page: 1,
+          per_page: 1,
+          ...(excludeApproved ? { exclude_approved: true } : {}),
+        });
         totalApprox += Number(res.meta?.total ?? 0);
       }
       setTotal(totalApprox);
@@ -427,7 +437,7 @@ export default function CrmDashboardPage() {
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <label className="flex items-center justify-between gap-2 text-xs">
                 <span className="text-muted-foreground">Только пустые описания</span>
                 <Switch checked={onlyEmptyDescription} onCheckedChange={setOnlyEmptyDescription} />
@@ -435,6 +445,17 @@ export default function CrmDashboardPage() {
               <label className="flex items-center justify-between gap-2 text-xs">
                 <span className="text-muted-foreground">Перезаписывать</span>
                 <Switch checked={overwriteExisting} onCheckedChange={setOverwriteExisting} />
+              </label>
+              <label
+                className="flex items-center justify-between gap-2 text-xs sm:col-span-2"
+                title="Не обрабатывать карточки в статусах «одобрен» и «опубликован». Снимите, чтобы проходили все статусы."
+              >
+                <span className="text-muted-foreground">Исключать одобренные и опубликованные</span>
+                <Switch
+                  checked={excludeApproved}
+                  onCheckedChange={setExcludeApproved}
+                  disabled={state === "running" || state === "paused"}
+                />
               </label>
             </div>
             <label className="block space-y-1">
