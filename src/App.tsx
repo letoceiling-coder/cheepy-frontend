@@ -91,6 +91,7 @@ import AttributeRulesPage from "./admin/pages/AttributeRulesPage";
 import { CrmLayout } from "./crm/layout/CrmLayout";
 import CrmAuthGuard from "@/crm/layout/CrmAuthGuard";
 import CrmDashboardPage from "./crm/pages/CrmDashboardPage";
+import CrmGenerateDescriptionPage from "./crm/pages/CrmGenerateDescriptionPage";
 import CrmContentPage from "./crm/pages/CrmContentPage";
 import CrmProductsPage from "./crm/pages/CrmProductsPage";
 import CrmCategoriesPage from "./crm/pages/CrmCategoriesPage";
@@ -412,6 +413,7 @@ function AnimatedRoutes() {
         >
           <Route index element={<CrmDashboardPage />} />
           <Route path="dashboard" element={<CrmDashboardPage />} />
+          <Route path="generate-description" element={<CrmGenerateDescriptionPage />} />
           <Route path="content" element={<CrmContentPage />} />
           <Route path="cms/pages" element={<CrmCmsPagesPage />} />
           <Route path="cms/pages/:id" element={<CrmCmsPageDetailPage />} />
