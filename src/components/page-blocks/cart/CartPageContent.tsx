@@ -67,20 +67,22 @@ export default function CartPageContent() {
 
   const grossGoods = totalPrice + totalDiscount;
 
-  const thresholdFreeActive = totalPrice >= FREE_DELIVERY_THRESHOLD_RUB;
+  /** Бесплатно от порога только при сохранённом адресе (котировка пришла с needs_address: false). */
+  const thresholdFreeActive =
+    isAuthenticated &&
+    cartQuote != null &&
+    !deliveryQuoteLoading &&
+    !cartQuote.needs_address &&
+    totalPrice >= FREE_DELIVERY_THRESHOLD_RUB;
 
   let resolvedDeliveryRub: number | undefined;
-  if (thresholdFreeActive) {
+  if (!isAuthenticated || deliveryQuoteLoading || cartQuote === null || cartQuote.needs_address) {
+    resolvedDeliveryRub = undefined;
+  } else if (thresholdFreeActive) {
     resolvedDeliveryRub = 0;
-  } else if (isAuthenticated && cartQuote && !cartQuote.needs_address && cartQuote.cheapest_price_rub != null) {
+  } else if (cartQuote.cheapest_price_rub != null) {
     resolvedDeliveryRub = Math.max(0, Math.round(Number(cartQuote.cheapest_price_rub)));
-  } else if (
-    isAuthenticated &&
-    cartQuote &&
-    !cartQuote.needs_address &&
-    !deliveryQuoteLoading &&
-    cartQuote.quotes.length === 0
-  ) {
+  } else if (cartQuote.quotes.length === 0) {
     resolvedDeliveryRub = FALLBACK_DELIVERY_RUB;
   }
 
@@ -302,9 +304,7 @@ export default function CartPageContent() {
                   <div className="flex justify-between items-start gap-3 pt-0.5">
                     <span className="text-muted-foreground shrink-0">Доставка</span>
                     <span className="text-right text-foreground min-h-[1.25rem]">
-                      {thresholdFreeActive ? (
-                        <span className="text-green-600">Бесплатно</span>
-                      ) : deliveryQuoteLoading ? (
+                      {deliveryQuoteLoading ? (
                         <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                           <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                           Считаем…
@@ -315,6 +315,8 @@ export default function CartPageContent() {
                             Укажите адрес
                           </Link>
                         </span>
+                      ) : thresholdFreeActive ? (
+                        <span className="text-green-600">Бесплатно</span>
                       ) : typeof resolvedDeliveryRub === "number" ? (
                         resolvedDeliveryRub === 0 ? (
                           <span className="text-green-600">Бесплатно</span>
@@ -372,7 +374,10 @@ export default function CartPageContent() {
                   <Button
                     type="button"
                     className="w-full gradient-primary text-primary-foreground rounded-xl py-3 h-auto text-sm font-semibold inline-flex items-center justify-center gap-2"
-                    disabled={checkoutLoading}
+                    disabled={
+                      checkoutLoading ||
+                      (Boolean(isAuthenticated && cartQuote?.needs_address))
+                    }
                     onClick={handleCheckout}
                   >
                     {checkoutLoading ? (
