@@ -398,11 +398,6 @@ export default function ProductDetailHero() {
               <span className="text-xs text-muted-foreground">Возврат по правилам площадки</span>
             </div>
           </div>
-          {deliveryQuote?.warnings?.length ? (
-            <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground leading-snug">
-              {deliveryQuote.warnings.join(" · ")}
-            </div>
-          ) : null}
         </div>
       </div>
     </div>
