@@ -2,6 +2,47 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import type { StorefrontProduct } from "@/types/storefront-product";
 import { resolveCartLinePricing, type CartLinePricing, type CartPromotionSnapshot } from "@/lib/cartPricing";
 
+const CART_STORAGE_KEY = "cheepy_cart_v1";
+
+function isRecord(x: unknown): x is Record<string, unknown> {
+  return typeof x === "object" && x !== null;
+}
+
+function isStorefrontProductShape(x: unknown): x is StorefrontProduct {
+  if (!isRecord(x)) return false;
+  const idOk = typeof x.id === "string" || typeof x.id === "number";
+  const nameOk = typeof x.name === "string";
+  const priceOk = typeof x.price === "number";
+  const imagesOk = Array.isArray(x.images) && x.images.every((i: unknown) => typeof i === "string");
+  return idOk && nameOk && priceOk && imagesOk;
+}
+
+function isCartItemShape(x: unknown): x is CartItem {
+  if (!isRecord(x)) return false;
+  if (typeof x.lineId !== "string") return false;
+  if (!isStorefrontProductShape(x.product)) return false;
+  if (typeof x.quantity !== "number" || x.quantity < 1) return false;
+  if (typeof x.color !== "string") return false;
+  if (typeof x.size !== "string") return false;
+  if (!Array.isArray(x.selectedAttributes)) return false;
+  if (!Array.isArray(x.promotions)) return false;
+  if (typeof x.addedAt !== "string") return false;
+  return true;
+}
+
+function loadPersistedCart(): CartItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isCartItemShape);
+  } catch {
+    return [];
+  }
+}
+
 export type CartSelectedAttribute = {
   name: string;
   value: string;
@@ -42,8 +83,13 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItem[]>(() => loadPersistedCart());
   const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  }, [items]);
 
   useEffect(() => {
     if (!items.some((item) => item.promotions.some((promotion) => now < promotion.endsAt))) return;
