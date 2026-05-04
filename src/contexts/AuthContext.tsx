@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { toast } from "sonner";
-import { ApiError, storefrontAuthApi, type StorefrontUser } from "@/lib/api";
+import { ApiError, authApi, storefrontAuthApi, type StorefrontUser } from "@/lib/api";
 
 export interface AuthUserProfile {
   id?: number;
@@ -8,6 +8,7 @@ export interface AuthUserProfile {
   email: string;
   phone: string;
   account_role?: "customer" | "seller";
+  system_role?: "admin";
   seller_status?: "pending" | "active" | "rejected" | null;
   linked_social_providers?: string[];
 }
@@ -43,6 +44,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const refreshProfile = useCallback(async () => {
     const token = localStorage.getItem("customer_token");
     if (!token) {
+      const adminToken = localStorage.getItem("admin_token");
+      if (adminToken) {
+        try {
+          const r = await authApi.me();
+          setUser({
+            id: r.user.id,
+            name: r.user.name,
+            email: r.user.email,
+            phone: "",
+            account_role: "customer",
+            system_role: r.user.role === "admin" ? "admin" : undefined,
+          });
+          setIsAuthenticated(r.user.role === "admin");
+          return;
+        } catch {
+          localStorage.removeItem("admin_token");
+        }
+      }
       setIsAuthenticated(false);
       setUser(null);
       return;

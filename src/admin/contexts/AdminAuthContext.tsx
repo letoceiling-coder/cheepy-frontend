@@ -65,14 +65,17 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     const fromQuery =
       typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("next") : null;
     const fromSession =
-      typeof window !== "undefined" ? sessionStorage.getItem("crm_auth_next") : null;
+      typeof window !== "undefined"
+        ? sessionStorage.getItem("system_auth_next") || sessionStorage.getItem("crm_auth_next")
+        : null;
+    sessionStorage.removeItem("system_auth_next");
     sessionStorage.removeItem("crm_auth_next");
     const raw = fromQuery || fromSession;
     const isSafe =
       raw &&
       raw.startsWith("/") &&
       !raw.startsWith("//") &&
-      (raw.startsWith("/crm") || raw.startsWith("/admin"));
+      (raw.startsWith("/crm") || raw.startsWith("/admin") || raw.startsWith("/constructor") || raw.startsWith("/account"));
     navigate(isSafe ? raw : "/admin", { replace: true });
 
     // Auto sync categories if last sync > 24h

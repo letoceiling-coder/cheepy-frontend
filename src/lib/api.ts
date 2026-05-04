@@ -2069,7 +2069,9 @@ async function storefrontRequest<T>(
     Accept: "application/json",
   };
   if (withAuth) {
-    const tok = typeof localStorage !== "undefined" ? localStorage.getItem("customer_token") : null;
+    const tok = typeof localStorage !== "undefined"
+      ? localStorage.getItem("customer_token") || localStorage.getItem("admin_token")
+      : null;
     if (tok) headers.Authorization = `Bearer ${tok}`;
   }
   const url = `${BASE_URL}${path}`;

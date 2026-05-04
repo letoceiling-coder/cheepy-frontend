@@ -69,6 +69,7 @@ import CmsDynamicPage from "./pages/CmsDynamicPage";
 import ConstructorPage from "./constructor/pages/ConstructorPage";
 import { AdminLayout } from "./admin/components/AdminLayout";
 import { AdminAuthGuard } from "./admin/components/AdminAuthGuard";
+import SystemAuthGuard from "./admin/components/SystemAuthGuard";
 import { AdminAuthProvider } from "./admin/contexts/AdminAuthContext";
 import AdminLoginPage from "./admin/pages/AdminLoginPage";
 import DashboardPage from "./admin/pages/DashboardPage";
@@ -375,8 +376,8 @@ function AnimatedRoutes() {
         <Route path="/p/:slug" element={<PageTransition><CmsDynamicPage /></PageTransition>} />
 
         {/* Constructor */}
-        <Route path="/constructor" element={<PageTransition><ConstructorPage /></PageTransition>} />
-        <Route path="/constructor/*" element={<PageTransition><ConstructorPage /></PageTransition>} />
+        <Route path="/constructor" element={<SystemAuthGuard><PageTransition><ConstructorPage /></PageTransition></SystemAuthGuard>} />
+        <Route path="/constructor/*" element={<SystemAuthGuard><PageTransition><ConstructorPage /></PageTransition></SystemAuthGuard>} />
 
         {/* Admin routes — НЕ ТРОГАТЬ, парсер работает */}
         <Route path="/admin" element={<AdminAuthProvider><Outlet /></AdminAuthProvider>}>

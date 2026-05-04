@@ -3,7 +3,7 @@ import { useAdminAuth } from "../contexts/AdminAuthContext";
 import { Loader2 } from "lucide-react";
 
 export function AdminAuthGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAdminAuth();
+  const { isAuthenticated, isLoading, user } = useAdminAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -16,6 +16,10 @@ export function AdminAuthGuard({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" state={{ from: location }} replace />;
+  }
+
+  if (user?.role !== "admin") {
+    return <Navigate to="/admin/login" replace />;
   }
 
   return <>{children}</>;
