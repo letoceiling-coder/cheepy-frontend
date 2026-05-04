@@ -3,13 +3,21 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStorefrontAuthToken, storeDeliveryQuoteApi } from "@/lib/api";
 
+/** Из публичного API id приходит числом или строкой — нужна нормализация для условий enabled. */
+function parseStorefrontProductNumericId(id: string | number | undefined | null): number | undefined {
+  if (id == null || id === "") return undefined;
+  const n = typeof id === "number" ? id : Number(String(id).trim().replace(/^#/, ""));
+  if (!Number.isFinite(n) || n <= 0) return undefined;
+  return Math.trunc(n);
+}
+
 /**
  * Общий запрос котировки доставки для карточки товара (геро-блок и вкладка «Доставка»).
  * Одинаковый queryKey — один запрос в кеш React Query.
  */
 export function useProductDeliveryQuote(
   productRouteId: string | undefined,
-  productNumericId: number | undefined,
+  productId: string | number | undefined,
   quantity: number,
 ) {
   const { isAuthenticated } = useAuth();
@@ -20,15 +28,14 @@ export function useProductDeliveryQuote(
   }, [isAuthenticated, productRouteId]);
 
   const hasStoreToken = typeof window !== "undefined" && Boolean(getStorefrontAuthToken());
+  const productNumericId = parseStorefrontProductNumericId(productId);
 
   const deliveryQuoteEnabled =
     Boolean(
       isAuthenticated &&
         hasStoreToken &&
         productRouteId &&
-        productNumericId &&
-        Number.isFinite(productNumericId) &&
-        productNumericId > 0 &&
+        productNumericId != null &&
         /^\d+$/.test(String(productRouteId).trim()),
     );
 
