@@ -19,15 +19,15 @@ const MAPS_SLUGS = ["yandex_maps"] as const;
 
 const YANDEX_MAPS_DOCS = `По официальной документации Яндекс Карт HTTP API:
 
-1. Возьмите API‑ключ в [Кабинете разработчика Яндекс](https://developer.tech.yandex.ru/) — нужен ключ с доступом к продукту **JavaScript API и HTTP Геокодер** (для нашего сервера также используются **Suggest API** HTTPS и **Geocoder** HTTPS endpoints).
+1. В [Кабинете разработчика](https://developer.tech.yandex.ru/) для сервера нужны два разных по смыслу доступа: **HTTP Geocoder** (часто в продукте «JavaScript API и HTTP Геокодер») и **HTTP‑подсказки адреса** — отдельный продукт **«Геосаджест»** ([обзор](https://yandex.ru/dev/maps/geosuggest/)). Ключ может быть «активен» и при этом отдавать **403** на \`suggest-maps.yandex.ru\`, если к нему не подключён именно Геосаджест.
 
 2. Вставьте ключ в поле ниже и включите интеграцию.
 
-3. Сохраните настройки, затем «Проверить Suggest API» — выполняется реальный HTTPS‑запрос к \`suggest-maps.yandex.ru/v1/suggest\` (официально: [Suggest API](https://yandex.ru/maps-api/docs/suggest-api/)).
+3. Сохраните настройки, затем «Проверить ключ» — сначала запрос к Suggest, при ошибке дополнительно проверяется Geocoder с тем же ключом.
 
-4. Тот же ключ использует бекенд для **геокодера** \`geocode-maps.yandex.ru/1.x\` ([Geocoder API](https://yandex.ru/maps-api/docs/geocoder-api/)) при автоматической подстановке почтовых индексов в адресе клиента — в кабинете должен быть разрешён Geocoder для этого ключа.
+4. Бекенд для **индекса и уточнения адреса** использует **Geocoder** \`geocode-maps.yandex.ru/1.x\` ([Geocoder API](https://yandex.ru/maps-api/docs/geocoder-api/)).
 
-5. Поле только для чтения «Endpoint подсказок» — эталонный URL Suggest HTTPS; параметры запросов соответствуют документации.` as const;
+5. **Подсказки в поле ввода** на витрине идут через Suggest (\`suggest-maps.yandex.ru/v1/suggest\`) — без Геосаджеста в кабинете часто будет HTTP 403, хотя геокодер уже работает.` as const;
 
 export default function CrmMapsIntegrationPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -180,7 +180,7 @@ export default function CrmMapsIntegrationPage() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-primary hover:underline"
           >
-            Документация Яндекс Suggest API <ExternalLink className="h-3.5 w-3.5" />
+            Геосаджест (подсказки по адресу) <ExternalLink className="h-3.5 w-3.5" />
           </a>
           <span className="text-muted-foreground mx-2">·</span>
           <a
@@ -278,18 +278,15 @@ export default function CrmMapsIntegrationPage() {
       </section>
 
       <section className="rounded-lg border border-border bg-card p-4">
-        <h2 className="text-sm font-medium mb-3">Проверка ключа по документации Suggest</h2>
+        <h2 className="text-sm font-medium mb-3">Проверка ключа (Suggest и Geocoder)</h2>
         <p className="text-xs text-muted-foreground mb-3">
-          HTTP GET на официальный endpoint <code className="text-foreground">suggest-maps.yandex.ru/v1/suggest</code> с параметром{" "}
-          <code className="text-foreground">apikey</code> — как в{" "}
-          <a href="https://yandex.ru/maps-api/docs/suggest-api/" target="_blank" rel="noopener noreferrer" className="text-primary underline">
-            руководстве Suggest API
-          </a>
-          .
+          Сначала HTTP GET <code className="text-foreground">suggest-maps.yandex.ru/v1/suggest</code> с{" "}
+          <code className="text-foreground">apikey</code>. Если Suggest недоступен (часто ответ 403 без подключённого в кабинете продукта «Геосаджест»), выполняется проверка{" "}
+          <code className="text-foreground">geocode-maps.yandex.ru/1.x</code> — тот же ключ для подстановки индекса на сервере.
         </p>
         <Button variant="outline" onClick={() => void handleTest()} disabled={testing}>
           {testing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
-          Проверить Suggest API
+          Проверить ключ
         </Button>
         {testResult && (
           <div

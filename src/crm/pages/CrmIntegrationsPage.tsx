@@ -36,7 +36,7 @@ const DELIVERY_UI: Record<
 const MAPS_UI: Record<string, { icon: string; description: string }> = {
   yandex_maps: {
     icon: "🗺️",
-    description: "Suggest API и Geocoder (подсказки адресов, индекс, координаты) — HTTP API Яндекс.Карт",
+    description: "Geocoder и Suggest (часто нужен отдельный продукт «Геосаджест» в кабинете) — HTTP API Яндекс.Карт",
   },
 };
 
