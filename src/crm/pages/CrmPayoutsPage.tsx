@@ -1,45 +1,71 @@
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "../components/PageHeader";
 import { DataTable, Column } from "../components/DataTable";
-import { StatusBadge } from "../components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { sellerPayouts, payoutHistory, SellerPayout, PayoutRecord } from "../mock/payouts";
-import { fmt } from "../mock/helpers";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { DollarSign, Plus } from "lucide-react";
+import { crmCommerceApi } from "@/lib/api";
+import { Plus, AlertTriangle } from "lucide-react";
+import { useState } from "react";
+
+interface EmptyRow {
+  id: string;
+  note: string;
+}
 
 export default function CrmPayoutsPage() {
   const [createOpen, setCreateOpen] = useState(false);
 
-  const sellerCols: Column<SellerPayout>[] = [
-    { key: "sellerName", title: "Продавец", render: s => <span className="font-medium text-sm">{s.sellerName}</span> },
-    { key: "balance", title: "Баланс", render: s => `${fmt(s.balance)} RUB` },
-    { key: "commission", title: "Комиссия", render: s => `${s.commission}%` },
-    { key: "pendingAmount", title: "К выплате", render: s => <span className="text-primary font-medium">{fmt(s.pendingAmount)} RUB</span> },
-    { key: "totalPaid", title: "Выплачено всего", render: s => `${fmt(s.totalPaid)} RUB`, className: "hidden md:table-cell" },
+  const q = useQuery({
+    queryKey: ["crm", "store-payouts"],
+    queryFn: () => crmCommerceApi.storePayouts(),
+    staleTime: 60_000,
+  });
+
+  const emptyRows: EmptyRow[] = [
+    {
+      id: "—",
+      note: q.data?.message ?? "Ответ API без таблицы выплат в базе данных.",
+    },
   ];
 
-  const historyCols: Column<PayoutRecord>[] = [
-    { key: "id", title: "ID", className: "w-28", render: p => <span className="font-mono text-xs">{p.id}</span> },
-    { key: "sellerName", title: "Продавец" },
-    { key: "amount", title: "Сумма", render: p => `${fmt(p.amount)} RUB` },
-    { key: "commission", title: "Комиссия", render: p => `${p.commission}%`, className: "hidden md:table-cell" },
-    { key: "net", title: "К выплате", render: p => `${fmt(p.net)} RUB` },
-    { key: "status", title: "Статус", render: p => <StatusBadge status={p.status} /> },
-    { key: "method", title: "Метод", className: "hidden lg:table-cell" },
-    { key: "createdAt", title: "Дата" },
+  const sellerCols: Column<EmptyRow>[] = [
+    { key: "id", title: "Продавец / ID", render: () => <span className="text-muted-foreground">нет данных</span> },
+    {
+      key: "note",
+      title: "Состояние",
+      render: (r) => <span className="text-xs text-muted-foreground leading-relaxed">{r.note}</span>,
+    },
   ];
+
+  const historyCols: Column<EmptyRow>[] = sellerCols;
 
   return (
     <div className="space-y-4 animate-fade-in">
       <PageHeader
         title="Выплаты продавцам"
-        description="Балансы и история выплат"
-        actions={<Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}><Plus className="h-3.5 w-3.5" /> Создать выплату</Button>}
+        description="Раздел без моков: бэкенд не отдаёт фиктивные строки, пока нет модели выплат."
+        actions={
+          <Button size="sm" className="gap-1.5" variant="secondary" disabled onClick={() => setCreateOpen(true)}>
+            <Plus className="h-3.5 w-3.5" /> Создать выплату (недоступно)
+          </Button>
+        }
       />
+
+      {q.isLoading ? (
+        <p className="text-sm text-muted-foreground">Проверка API…</p>
+      ) : q.error ? (
+        <p className="text-sm text-destructive">{(q.error as Error).message}</p>
+      ) : (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>
+            Реализовано: <strong>{q.data?.implemented ? "да" : "нет"}</strong>.
+            {" "}
+            {q.data?.message}
+          </span>
+        </div>
+      )}
 
       <Tabs defaultValue="balances">
         <TabsList>
@@ -47,25 +73,19 @@ export default function CrmPayoutsPage() {
           <TabsTrigger value="history">История выплат</TabsTrigger>
         </TabsList>
         <TabsContent value="balances" className="mt-4">
-          <DataTable data={sellerPayouts} columns={sellerCols} />
+          <DataTable data={(q.data?.data.seller_balances as EmptyRow[] | undefined)?.length ? (q.data?.data.seller_balances as EmptyRow[]) : emptyRows} columns={sellerCols} />
         </TabsContent>
         <TabsContent value="history" className="mt-4">
-          <DataTable data={payoutHistory} columns={historyCols} />
+          <DataTable data={(q.data?.data.payout_history as EmptyRow[] | undefined)?.length ? (q.data?.data.payout_history as EmptyRow[]) : emptyRows} columns={historyCols} />
         </TabsContent>
       </Tabs>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Создать выплату</DialogTitle></DialogHeader>
-          <div className="space-y-3 mt-2">
-            <div><Label className="text-xs">Продавец</Label><Input className="h-8 text-sm mt-1" placeholder="Выберите продавца..." /></div>
-            <div><Label className="text-xs">Сумма (RUB)</Label><Input type="number" className="h-8 text-sm mt-1" /></div>
-            <div><Label className="text-xs">Метод выплаты</Label><Input className="h-8 text-sm mt-1" placeholder="Банковский перевод" /></div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" size="sm" onClick={() => setCreateOpen(false)}>Отмена</Button>
-              <Button size="sm">Создать</Button>
-            </div>
-          </div>
+          <DialogHeader><DialogTitle>Создание выплат недоступно</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Нужны миграции и API списания/проведения выплат продавцам. После добавления модели данные автоматически появятся здесь без моков.
+          </p>
         </DialogContent>
       </Dialog>
     </div>

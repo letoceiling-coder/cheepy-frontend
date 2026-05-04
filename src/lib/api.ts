@@ -1908,6 +1908,115 @@ export const crmPaymentProvidersApi = {
     }>('/crm/payment-alerts'),
 };
 
+export interface CrmStoreCommerceMeta {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}
+
+export interface CrmStoreOrderRow {
+  id: number;
+  number: string;
+  user_id: number;
+  user_name?: string | null;
+  user_email?: string | null;
+  seller_label: string;
+  total_amount: number;
+  currency: string;
+  status: string;
+  payment_status: string;
+  delivery_label: string;
+  delivery_provider?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  paid_at?: string | null;
+}
+
+export interface CrmStoreOrderDetail extends CrmStoreOrderRow {
+  delivery_snapshot: Record<string, unknown>;
+  subtotal_amount: number;
+  discount_amount: number;
+  delivery_amount: number;
+  items: Array<{
+    id: number;
+    product_id?: number | null;
+    product_name: string;
+    product_image?: string | null;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+    attributes?: Record<string, string> | null;
+  }>;
+  payments: Array<{
+    id: number;
+    amount: string;
+    provider: string;
+    status: string;
+    provider_id?: string | null;
+    created_at?: string | null;
+  }>;
+}
+
+export interface CrmStorePaymentRow {
+  id: number;
+  provider: string;
+  amount: string;
+  status: string;
+  user_email?: string | null;
+  user_name?: string | null;
+  order_id?: number | null;
+  order_number?: string | null;
+  provider_id?: string | null;
+  created_at?: string | null;
+  kind: string;
+}
+
+export const crmCommerceApi = {
+  storeOrderStats: () =>
+    get<{
+      data: { by_order_status: Record<string, number>; by_payment_status: Record<string, number> };
+    }>('/crm/store-orders/stats'),
+  storeOrders: (params?: {
+    page?: number;
+    per_page?: number;
+    status?: string;
+    payment_status?: string;
+    search?: string;
+  }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set("page", String(params.page));
+    if (params?.per_page) q.set("per_page", String(params.per_page));
+    if (params?.status) q.set("status", params.status);
+    if (params?.payment_status) q.set("payment_status", params.payment_status);
+    if (params?.search) q.set("search", params.search);
+    return get<{ data: CrmStoreOrderRow[]; meta: CrmStoreCommerceMeta }>(
+      `/crm/store-orders${q.toString() ? `?${q}` : ""}`
+    );
+  },
+  storeOrder: (id: number) => get<{ data: CrmStoreOrderDetail }>(`/crm/store-orders/${id}`),
+  storePaymentsSummary: () =>
+    get<{ data: { counts_by_status: Record<string, number>; succeeded_volume_rub: number } }>(
+      '/crm/store-payments/summary'
+    ),
+  storePayments: (params?: { page?: number; per_page?: number; status?: string; search?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set("page", String(params.page));
+    if (params?.per_page) q.set("per_page", String(params.per_page));
+    if (params?.status) q.set("status", params.status);
+    if (params?.search) q.set("search", params.search);
+    return get<{ data: CrmStorePaymentRow[]; meta: CrmStoreCommerceMeta }>(
+      `/crm/store-payments${q.toString() ? `?${q}` : ""}`
+    );
+  },
+  storePayouts: () =>
+    get<{
+      implemented: boolean;
+      message: string;
+      data: { seller_balances: unknown[]; payout_history: unknown[] };
+    }>('/crm/store-payouts'),
+};
+
 export interface DeliveryIntegrationItem {
   name: string;
   title: string;
