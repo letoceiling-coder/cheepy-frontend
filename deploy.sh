@@ -29,9 +29,10 @@ echo "📂 FRONTEND: $CHEEPY_FRONTEND_ROOT"
 echo "📂 BACKEND:  $CHEEPY_BACKEND_ROOT"
 
 ########################################
-# STEP 1 — PUSH LOCAL
+# STEP 1 — PUSH LOCAL (можно отключить: SKIP_LOCAL_PUSH=1 bash deploy.sh — если уже закоммитили и push в оба репо)
 ########################################
 
+if [[ "${SKIP_LOCAL_PUSH:-0}" != "1" ]]; then
 echo "📦 PUSH FRONTEND"
 cd "$CHEEPY_FRONTEND_ROOT"
 git add .
@@ -43,6 +44,9 @@ cd "$CHEEPY_BACKEND_ROOT"
 git add .
 git commit -m "deploy backend" || echo "no changes backend"
 git push origin main
+else
+  echo "⏭️ SKIP_LOCAL_PUSH=1 — пропуск локального commit/push (ожидается origin/main уже с нужными коммитами)"
+fi
 
 ########################################
 # STEP 2 — SERVER (SSH от root: единый сценарий с prod)

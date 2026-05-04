@@ -1951,6 +1951,7 @@ export interface CrmStoreOrderDetail extends CrmStoreOrderRow {
   payments: Array<{
     id: number;
     amount: string;
+    refunded_amount?: string;
     provider: string;
     status: string;
     provider_id?: string | null;
@@ -1962,6 +1963,7 @@ export interface CrmStorePaymentRow {
   id: number;
   provider: string;
   amount: string;
+  refunded_amount: string;
   status: string;
   user_email?: string | null;
   user_name?: string | null;
@@ -2009,6 +2011,8 @@ export const crmCommerceApi = {
       `/crm/store-payments${q.toString() ? `?${q}` : ""}`
     );
   },
+  refundPayment: (id: number, body?: { amount?: number }) =>
+    post<{ data: CrmStorePaymentRow }>(`/crm/store-payments/${id}/refund`, body ?? {}),
   storePayouts: () =>
     get<{
       implemented: boolean;
