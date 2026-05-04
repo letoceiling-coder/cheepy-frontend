@@ -190,9 +190,9 @@ const Header = ({ settings }: HeaderProps) => {
         >
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-4">
-              <button onClick={() => navigate("/account")} className="text-primary hover:underline transition-colors">
+              <Link to="/account#delivery-addresses" className="text-primary hover:underline transition-colors">
                 {mergedSettings.deliveryCtaText}
-              </button>
+              </Link>
               {topLinks.map((link) => (
                 <span key={link.id} className="text-foreground/80">
                   {renderNavLink(link, "hover:text-primary transition-colors")}

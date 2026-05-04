@@ -142,12 +142,12 @@ export default function ProductDetailTabsSection(props: { quantity?: number } = 
               ) : null}
 
               {!deliveryQuoteLoading && deliveryQuoteEnabled && deliveryQuote?.needs_address ? (
-                <p className="text-sm text-muted-foreground leading-snug">
-                  Чтобы увидеть ориентировочную стоимость доставки СДЭК и Почты России, укажите адрес в{" "}
-                  <Link to="/account" className="text-primary hover:underline font-medium">
-                    личном кабинете
-                  </Link>
-                  .
+                <p className="text-sm text-muted-foreground leading-snug text-balance">
+                  Чтобы увидеть ориентировочную стоимость доставки, задайте адрес в разделе{" "}
+                  <Link to="/account#delivery-addresses" className="text-primary hover:underline font-medium">
+                    «Адреса доставки»
+                  </Link>{" "}
+                  — для расчёта используется адрес по умолчанию.
                 </p>
               ) : null}
 

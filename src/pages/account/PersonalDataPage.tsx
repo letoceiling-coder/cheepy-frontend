@@ -43,6 +43,17 @@ const PersonalDataPage = () => {
     void load();
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    if (loading || typeof window === "undefined") return;
+    if (window.location.hash !== "#delivery-addresses") return;
+    window.requestAnimationFrame(() => {
+      document.getElementById("delivery-addresses")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, [loading, summary?.addresses]);
+
   const saveProfile = async () => {
     setSaving(true);
     try {
@@ -162,15 +173,25 @@ const PersonalDataPage = () => {
         </div>
       </div>
 
-      {/* Addresses */}
-      <div>
-        <h3 className="text-lg font-semibold text-foreground mb-3">Адреса доставки</h3>
+      {/* Addresses: якорь для ссылок из шапки и карточки товара */}
+      <div id="delivery-addresses" className="scroll-mt-28">
+        <h3 className="text-lg font-semibold text-foreground mb-2">Адреса доставки</h3>
+        <p className="text-xs text-muted-foreground mb-3 max-w-2xl leading-relaxed">
+          Для ориентировочного расчёта доставки в карточке товара используется <span className="text-foreground font-medium">основной адрес</span> — с признаком «по умолчанию» ниже или, если такого нет, первый в списке (как на сервере).
+        </p>
         <div className="space-y-2">
           {(summary?.addresses ?? []).map((addr) => (
-            <div key={addr.id} className="flex items-center gap-3 p-3 rounded-xl border border-border">
+            <div key={addr.id} className="flex flex-wrap items-center gap-3 p-3 rounded-xl border border-border">
               <MapPin className="w-4 h-4 text-primary shrink-0" />
-              <span className="text-sm text-foreground flex-1">{addr.city}, {addr.line1}</span>
-              <button onClick={() => void deleteAddress(addr)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></button>
+              <span className="text-sm text-foreground flex-1 min-w-[12rem]">
+                {addr.city}, {addr.line1}
+              </span>
+              {addr.is_default ? (
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-primary shrink-0">По умолчанию</span>
+              ) : null}
+              <button onClick={() => void deleteAddress(addr)} className="text-muted-foreground hover:text-destructive shrink-0">
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
           ))}
           <div className="grid grid-cols-1 md:grid-cols-[180px_1fr_auto] gap-2">

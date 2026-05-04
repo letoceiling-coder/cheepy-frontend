@@ -394,12 +394,12 @@ export default function ProductDetailHero(
                       ))}
                     </div>
                   ) : deliveryQuote?.needs_address && deliveryQuoteEnabled ? (
-                    <p className="text-xs text-muted-foreground leading-snug sm:pl-7">
-                      Укажите адрес доставки в{" "}
-                      <Link to="/account" className="text-primary hover:underline font-medium">
-                        личном кабинете
-                      </Link>
-                      , чтобы увидеть ориентировочную стоимость.
+                    <p className="text-xs text-muted-foreground leading-snug sm:pl-7 text-balance">
+                      Укажите адрес доставки в разделе{" "}
+                      <Link to="/account#delivery-addresses" className="text-primary hover:underline font-medium">
+                        «Адреса доставки»
+                      </Link>{" "}
+                      в личном кабинете. Для расчёта берётся адрес по умолчанию.
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground sm:pl-7 leading-snug">Доставка по договорённости</p>
