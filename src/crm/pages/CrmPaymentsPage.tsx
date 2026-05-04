@@ -218,6 +218,7 @@ export default function CrmPaymentsPage() {
     },
   ];
 
+  const filteredRows = paymentsQ.data?.data ?? [];
   const meta = paymentsQ.data?.meta;
   const err = paymentsQ.error as Error | undefined;
 
