@@ -2093,6 +2093,12 @@ async function storefrontRequest<T>(
   return res.json() as Promise<T>;
 }
 
+/** JWT витрины: покупатель или админ (единая сессия). */
+export function getStorefrontAuthToken(): string | null {
+  if (typeof localStorage === "undefined") return null;
+  return localStorage.getItem("customer_token") || localStorage.getItem("admin_token");
+}
+
 export const storefrontAuthApi = {
   login: (login: string, password: string) =>
     storefrontRequest<{ token: string; user: StorefrontUser }>("POST", "/store/auth/login", { login, password }, false),
@@ -2297,6 +2303,59 @@ export const storeAccountApi = {
     undefined,
     true
   ),
+};
+
+export interface StorefrontDeliveryQuoteAddress {
+  id: number;
+  label?: string | null;
+  city: string;
+  line1: string;
+  postal_code?: string | null;
+}
+
+export interface StorefrontDeliveryQuoteShipment {
+  quantity: number;
+  weight_g: number;
+  length_cm: number;
+  width_cm: number;
+  height_cm: number;
+  declared_value_kopeks: number | null;
+}
+
+export interface StorefrontDeliveryQuoteItem {
+  integration: string;
+  provider_title: string;
+  service_code: string;
+  service_name: string;
+  delivery_mode: string;
+  price_rub: number;
+  period_min_days: number;
+  period_max_days: number;
+  display_service_label: string;
+  date_from: string;
+  date_to: string;
+  date_from_label_ru: string;
+  date_to_label_ru: string;
+  summary_line_ru: string;
+}
+
+export interface StorefrontDeliveryQuoteResponse {
+  needs_address: boolean;
+  message?: string;
+  address: StorefrontDeliveryQuoteAddress | null;
+  shipment: StorefrontDeliveryQuoteShipment;
+  quotes: StorefrontDeliveryQuoteItem[];
+  warnings: string[];
+}
+
+export const storeDeliveryQuoteApi = {
+  get: (productId: string, quantity: number) => {
+    const q = new URLSearchParams({
+      product_id: productId.trim(),
+      quantity: String(Math.max(1, Math.min(99, quantity))),
+    });
+    return storefrontRequest<StorefrontDeliveryQuoteResponse>("GET", `/store/delivery-quote?${q}`, undefined, true);
+  },
 };
 
 export interface AiProviderModelOption {

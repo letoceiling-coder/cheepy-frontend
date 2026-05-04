@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { Clock, Heart, ShoppingCart, Share2, Star, Minus, Plus, Shield, Truck, RotateCcw } from "lucide-react";
+import { Clock, Heart, ShoppingCart, Share2, Star, Minus, Plus, Shield, Truck, RotateCcw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { publicApi } from "@/lib/api";
+import { publicApi, getStorefrontAuthToken, storeDeliveryQuoteApi } from "@/lib/api";
 import { productFullToStorefront } from "@/lib/mapPublicProduct";
 import { extractHotDealsSettingsFromPageLayout, getActiveHotDealForProduct } from "@/lib/hotDeals";
 import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { usePublicProduct } from "@/hooks/usePublicProduct";
 import type { CartPromotionSnapshot } from "@/lib/cartPricing";
+import { useAuth } from "@/contexts/AuthContext";
 
 const RECENT_KEY = "cheepy_recent_product_ids";
 
@@ -62,10 +63,28 @@ export default function ProductDetailHero() {
     getActiveHotDealForProduct(hotDealSettings ?? undefined, Number.isFinite(productNumericId) ? productNumericId : undefined);
   const dealCountdown = useCountdown(activeDeal?.endsAt);
 
+  const { isAuthenticated } = useAuth();
+  const [tokenTick, setTokenTick] = useState(0);
+  useEffect(() => {
+    setTokenTick((t) => t + 1);
+  }, [isAuthenticated, id]);
+
   const [activeImage, setActiveImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedSize, setSelectedSize] = useState("");
   const [quantity, setQuantity] = useState(1);
+
+  const hasStoreToken = typeof window !== "undefined" && Boolean(getStorefrontAuthToken());
+  const deliveryQuoteEnabled =
+    Boolean(isAuthenticated && hasStoreToken && id && full?.id && /^\d+$/.test(String(id).trim()));
+
+  const { data: deliveryQuote, isFetching: deliveryQuoteLoading } = useQuery({
+    queryKey: ["store-delivery-quote", id, quantity, full?.id ?? 0, tokenTick],
+    queryFn: () => storeDeliveryQuoteApi.get(String(id), quantity),
+    enabled: deliveryQuoteEnabled,
+    staleTime: 120_000,
+    retry: false,
+  });
 
   useEffect(() => {
     if (!storefront) return;
@@ -338,17 +357,52 @@ export default function ProductDetailHero() {
           </p>
         ) : null}
 
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { icon: Shield, label: "Гарантия качества" },
-            { icon: Truck, label: "Доставка по договорённости" },
-            { icon: RotateCcw, label: "Возврат по правилам площадки" },
-          ].map((g) => (
-            <div key={g.label} className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-secondary text-center">
-              <g.icon className="w-5 h-5 text-primary" />
-              <span className="text-xs text-muted-foreground">{g.label}</span>
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-secondary text-center">
+              <Shield className="w-5 h-5 text-primary shrink-0" />
+              <span className="text-xs text-muted-foreground">Гарантия качества</span>
             </div>
-          ))}
+            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-secondary text-center md:items-stretch md:text-left">
+              <div className="flex justify-center md:justify-start">
+                <Truck className="w-5 h-5 text-primary shrink-0" />
+              </div>
+              {deliveryQuoteLoading && deliveryQuoteEnabled ? (
+                <span className="flex items-center justify-center md:justify-start gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" aria-hidden />
+                  Доставка: расчёт…
+                </span>
+              ) : deliveryQuote?.quotes?.length ? (
+                <div className="flex flex-col gap-3 w-full text-left pt-0.5">
+                  {deliveryQuote.quotes.map((q) => (
+                    <div key={`${q.integration}-${q.service_code}-${q.summary_line_ru}`} className="space-y-1">
+                      <span className="block text-[11px] font-semibold text-foreground leading-tight">{q.provider_title}</span>
+                      <span className="block text-[11px] text-muted-foreground leading-snug">{q.summary_line_ru}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : deliveryQuote?.needs_address && deliveryQuoteEnabled ? (
+                <span className="text-xs text-muted-foreground leading-snug">
+                  Укажите адрес доставки в{" "}
+                  <Link to="/account" className="text-primary hover:underline font-medium">
+                    личном кабинете
+                  </Link>
+                  , чтобы увидеть ориентировочную стоимость.
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground">Доставка по договорённости</span>
+              )}
+            </div>
+            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-secondary text-center">
+              <RotateCcw className="w-5 h-5 text-primary shrink-0" />
+              <span className="text-xs text-muted-foreground">Возврат по правилам площадки</span>
+            </div>
+          </div>
+          {deliveryQuote?.warnings?.length ? (
+            <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground leading-snug">
+              {deliveryQuote.warnings.join(" · ")}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
