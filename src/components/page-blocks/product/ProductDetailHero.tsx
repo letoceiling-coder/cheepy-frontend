@@ -3,14 +3,16 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { Clock, Heart, ShoppingCart, Share2, Star, Minus, Plus, Shield, Truck, RotateCcw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { publicApi, getStorefrontAuthToken, storeDeliveryQuoteApi } from "@/lib/api";
+import { publicApi } from "@/lib/api";
 import { productFullToStorefront } from "@/lib/mapPublicProduct";
 import { extractHotDealsSettingsFromPageLayout, getActiveHotDealForProduct } from "@/lib/hotDeals";
 import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { usePublicProduct } from "@/hooks/usePublicProduct";
+import { useProductDeliveryQuote } from "@/hooks/useProductDeliveryQuote";
 import type { CartPromotionSnapshot } from "@/lib/cartPricing";
 import { useAuth } from "@/contexts/AuthContext";
+import DeliveryQuoteEntry from "@/components/page-blocks/product/DeliveryQuoteEntry";
 
 const RECENT_KEY = "cheepy_recent_product_ids";
 
@@ -41,7 +43,18 @@ function useCountdown(endsAt: number | undefined) {
   };
 }
 
-export default function ProductDetailHero() {
+export default function ProductDetailHero(
+  props: {
+    quantity?: number;
+    onQuantityChange?: (n: number) => void;
+  } = {},
+) {
+  const { quantity: quantityProp, onQuantityChange } = props;
+
+  const [quantityLocal, setQuantityLocal] = useState(1);
+  const controlled = typeof quantityProp === "number" && typeof onQuantityChange === "function";
+  const quantity = controlled ? quantityProp : quantityLocal;
+  const setQuantity = controlled ? onQuantityChange : setQuantityLocal;
   const { id } = useParams();
   const { data, isLoading, isError, error } = usePublicProduct(id);
   const { addToCart } = useCart();
@@ -64,27 +77,16 @@ export default function ProductDetailHero() {
   const dealCountdown = useCountdown(activeDeal?.endsAt);
 
   const { isAuthenticated } = useAuth();
-  const [tokenTick, setTokenTick] = useState(0);
-  useEffect(() => {
-    setTokenTick((t) => t + 1);
-  }, [isAuthenticated, id]);
 
   const [activeImage, setActiveImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedSize, setSelectedSize] = useState("");
-  const [quantity, setQuantity] = useState(1);
 
-  const hasStoreToken = typeof window !== "undefined" && Boolean(getStorefrontAuthToken());
-  const deliveryQuoteEnabled =
-    Boolean(isAuthenticated && hasStoreToken && id && full?.id && /^\d+$/.test(String(id).trim()));
-
-  const { data: deliveryQuote, isFetching: deliveryQuoteLoading } = useQuery({
-    queryKey: ["store-delivery-quote", id, quantity, full?.id ?? 0, tokenTick],
-    queryFn: () => storeDeliveryQuoteApi.get(String(id), quantity),
-    enabled: deliveryQuoteEnabled,
-    staleTime: 120_000,
-    retry: false,
-  });
+  const { deliveryQuoteEnabled, deliveryQuote, deliveryQuoteLoading } = useProductDeliveryQuote(
+    id,
+    full?.id,
+    quantity,
+  );
 
   useEffect(() => {
     if (!storefront) return;
@@ -92,7 +94,7 @@ export default function ProductDetailHero() {
     setSelectedSize(storefront.sizes[0] ?? "");
     setActiveImage(0);
     setQuantity(1);
-  }, [storefront?.id]);
+  }, [storefront?.id, setQuantity]);
 
   useEffect(() => {
     if (full?.id) pushRecentProductId(full.id);
@@ -358,42 +360,54 @@ export default function ProductDetailHero() {
         ) : null}
 
         <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-secondary text-center">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2.4fr)_minmax(0,1fr)]">
+            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-secondary text-center sm:items-center">
               <Shield className="w-5 h-5 text-primary shrink-0" />
               <span className="text-xs text-muted-foreground">Гарантия качества</span>
             </div>
-            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-secondary text-center md:items-stretch md:text-left">
-              <div className="flex justify-center md:justify-start">
-                <Truck className="w-5 h-5 text-primary shrink-0" />
-              </div>
+            <div className="flex flex-col gap-2 p-3 sm:p-4 rounded-xl bg-secondary text-left min-w-0">
               {deliveryQuoteLoading && deliveryQuoteEnabled ? (
-                <span className="flex items-center justify-center md:justify-start gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" aria-hidden />
-                  Доставка: расчёт…
-                </span>
-              ) : deliveryQuote?.quotes?.length ? (
-                <div className="flex flex-col gap-3 w-full text-left pt-0.5">
-                  {deliveryQuote.quotes.map((q) => (
-                    <div key={`${q.integration}-${q.service_code}-${q.summary_line_ru}`} className="space-y-1">
-                      <span className="block text-[11px] font-semibold text-foreground leading-tight">{q.provider_title}</span>
-                      <span className="block text-[11px] text-muted-foreground leading-snug">{q.summary_line_ru}</span>
-                    </div>
-                  ))}
+                <div className="flex items-start gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0 mt-0.5" aria-hidden />
+                  <p className="text-xs text-muted-foreground leading-snug">
+                    Считаем ориентировочную доставку до вашего адреса…
+                  </p>
                 </div>
-              ) : deliveryQuote?.needs_address && deliveryQuoteEnabled ? (
-                <span className="text-xs text-muted-foreground leading-snug">
-                  Укажите адрес доставки в{" "}
-                  <Link to="/account" className="text-primary hover:underline font-medium">
-                    личном кабинете
-                  </Link>
-                  , чтобы увидеть ориентировочную стоимость.
-                </span>
               ) : (
-                <span className="text-xs text-muted-foreground">Доставка по договорённости</span>
+                <>
+                  <div className="flex items-start gap-2">
+                    <Truck className="w-5 h-5 text-primary shrink-0 mt-0.5" aria-hidden />
+                    {deliveryQuote?.quotes?.length ? (
+                      <span className="text-xs font-semibold text-foreground pt-0.5">Доставка до адреса</span>
+                    ) : (
+                      <span className="text-xs font-semibold text-foreground pt-0.5">Доставка</span>
+                    )}
+                  </div>
+                  {deliveryQuote?.quotes?.length ? (
+                    <div className="flex flex-col gap-4 w-full sm:pl-7 min-w-0">
+                      {deliveryQuote.quotes.map((q) => (
+                        <DeliveryQuoteEntry
+                          key={`${q.integration}-${q.service_code}-${q.date_from}-${q.date_to}-${q.service_name}`}
+                          q={q}
+                          variant="compact"
+                        />
+                      ))}
+                    </div>
+                  ) : deliveryQuote?.needs_address && deliveryQuoteEnabled ? (
+                    <p className="text-xs text-muted-foreground leading-snug sm:pl-7">
+                      Укажите адрес доставки в{" "}
+                      <Link to="/account" className="text-primary hover:underline font-medium">
+                        личном кабинете
+                      </Link>
+                      , чтобы увидеть ориентировочную стоимость.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground sm:pl-7 leading-snug">Доставка по договорённости</p>
+                  )}
+                </>
               )}
             </div>
-            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-secondary text-center">
+            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-secondary text-center sm:items-center">
               <RotateCcw className="w-5 h-5 text-primary shrink-0" />
               <span className="text-xs text-muted-foreground">Возврат по правилам площадки</span>
             </div>

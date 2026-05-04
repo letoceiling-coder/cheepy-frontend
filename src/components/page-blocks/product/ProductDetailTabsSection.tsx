@@ -1,17 +1,27 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { Loader2, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReviewModal from "@/components/ReviewModal";
+import DeliveryQuoteEntry from "@/components/page-blocks/product/DeliveryQuoteEntry";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePublicProduct } from "@/hooks/usePublicProduct";
+import { useProductDeliveryQuote } from "@/hooks/useProductDeliveryQuote";
 
-export default function ProductDetailTabsSection() {
+export default function ProductDetailTabsSection(props: { quantity?: number } = {}) {
+  const quantity = props.quantity ?? 1;
   const { id } = useParams();
   const { data, isLoading } = usePublicProduct(id);
   const product = data?.product;
   const { isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<"about" | "reviews" | "delivery">("about");
   const [showReviewModal, setShowReviewModal] = useState(false);
+
+  const { deliveryQuoteEnabled, deliveryQuote, deliveryQuoteLoading } = useProductDeliveryQuote(
+    id,
+    product?.id,
+    quantity,
+  );
 
   if (isLoading) {
     return <div className="mb-10 h-48 bg-muted animate-pulse rounded-xl" />;
@@ -97,10 +107,65 @@ export default function ProductDetailTabsSection() {
 
         {activeTab === "delivery" && (
           <div className="max-w-3xl mb-10 space-y-4">
-            <div className="p-4 rounded-xl border border-border">
-              <h4 className="font-semibold text-foreground mb-2">Доставка</h4>
-              <p className="text-sm text-muted-foreground">
-                Условия и сроки доставки уточняются при оформлении заказа и зависят от продавца и региона.
+            <div className="p-4 rounded-xl border border-border space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Truck className="w-5 h-5 text-primary shrink-0" aria-hidden />
+                <h4 className="font-semibold text-foreground">Доставка</h4>
+              </div>
+
+              {deliveryQuoteLoading && deliveryQuoteEnabled ? (
+                <div className="flex items-start gap-2 rounded-lg bg-muted/60 p-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0 mt-0.5" aria-hidden />
+                  <p className="text-sm text-muted-foreground leading-snug">
+                    Считаем ориентировочную доставку до адреса из личного кабинета…
+                  </p>
+                </div>
+              ) : null}
+
+              {!deliveryQuoteLoading && deliveryQuoteEnabled && deliveryQuote?.quotes?.length ? (
+                <div className="rounded-lg bg-muted/40 border border-border/60 p-4 space-y-4">
+                  <p className="text-sm font-medium text-foreground">Ориентировочно по вашему адресу</p>
+                  <div className="flex flex-col gap-4 min-w-0">
+                    {deliveryQuote.quotes.map((q) => (
+                      <DeliveryQuoteEntry
+                        key={`tab-${q.integration}-${q.service_code}-${q.date_from}-${q.date_to}-${q.service_name}`}
+                        q={q}
+                        variant="comfortable"
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-snug text-balance border-t border-border/60 pt-3">
+                    Цены для количества «{quantity} шт.», как в блоке покупки над вкладками. Итог при оформлении заказа может
+                    отличаться.
+                  </p>
+                </div>
+              ) : null}
+
+              {!deliveryQuoteLoading && deliveryQuoteEnabled && deliveryQuote?.needs_address ? (
+                <p className="text-sm text-muted-foreground leading-snug">
+                  Чтобы увидеть ориентировочную стоимость доставки СДЭК и Почты России, укажите адрес в{" "}
+                  <Link to="/account" className="text-primary hover:underline font-medium">
+                    личном кабинете
+                  </Link>
+                  .
+                </p>
+              ) : null}
+
+              {!deliveryQuoteLoading && deliveryQuoteEnabled && !deliveryQuote?.quotes?.length && !deliveryQuote?.needs_address ? (
+                <p className="text-sm text-muted-foreground leading-snug">
+                  Точный расчёт доставки недоступен сейчас — уточняйте условия при оформлении или в чате с продавцом.
+                </p>
+              ) : null}
+
+              {!deliveryQuoteEnabled ? (
+                <p className="text-sm text-muted-foreground leading-snug">
+                  Войдите в аккаунт магазина, чтобы при необходимости увидеть расчёт доставки по сохранённому адресу в
+                  карточке товара сверху и здесь.
+                </p>
+              ) : null}
+
+              <p className="text-sm text-muted-foreground leading-snug text-balance pt-1 border-t border-border">
+                Условия и сроки доставки при оформлении заказа зависят от продавца, региона и выбранной службы.
               </p>
             </div>
             <div className="p-4 rounded-xl border border-border">
