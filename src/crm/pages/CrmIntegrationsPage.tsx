@@ -30,6 +30,14 @@ const DELIVERY_UI: Record<
   cdek: { icon: "📦", description: "Доставка по России и СНГ (OAuth API v2)" },
   nova_poshta: { icon: "📨", description: "Украинская служба доставки" },
   dhl: { icon: "🚀", description: "Международная доставка" },
+  russian_post: { icon: "📬", description: "Тарифы и отправления (API «Отправка» Почты России)" },
+};
+
+const MAPS_UI: Record<string, { icon: string; description: string }> = {
+  yandex_maps: {
+    icon: "🗺️",
+    description: "Suggest API и Geocoder (подсказки адресов, индекс, координаты) — HTTP API Яндекс.Карт",
+  },
 };
 
 const SMS_UI: Record<string, { icon: string; description: string }> = {
@@ -93,10 +101,11 @@ export default function CrmIntegrationsPage() {
   const [loadingSms, setLoadingSms] = useState(true);
   const [loadingSocial, setLoadingSocial] = useState(true);
 
-  const categories = ["payments", "delivery", "sms", "social", "ai", "crm", "erp"] as const;
+  const categories = ["payments", "delivery", "maps", "sms", "social", "ai", "crm", "erp"] as const;
   const categoryLabels: Record<(typeof categories)[number], string> = {
     payments: "Платежи",
     delivery: "Доставка",
+    maps: "Карты",
     sms: "SMS",
     social: "Соцсети",
     ai: "ИИ",
@@ -137,6 +146,8 @@ export default function CrmIntegrationsPage() {
   }, []);
 
   const paymentList = paymentProviders.filter((p) => ["tinkoff", "sber", "atol"].includes(p.name));
+  const deliveryOnlyRows = deliveryRows.filter((r) => r.name !== "yandex_maps");
+  const mapsRows = deliveryRows.filter((r) => r.name === "yandex_maps");
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -210,7 +221,7 @@ export default function CrmIntegrationsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {deliveryRows.map((row) => {
+              {deliveryOnlyRows.map((row) => {
                 const ui = DELIVERY_UI[row.name] ?? { icon: "📮", description: "" };
                 return (
                   <div
@@ -237,7 +248,7 @@ export default function CrmIntegrationsPage() {
                       ) : (
                         <WifiOff className="h-3 w-3" />
                       )}
-                      OAuth OK: {fmtSync(row.last_successful_auth_at)}
+                      {row.name === "cdek" ? `OAuth OK: ${fmtSync(row.last_successful_auth_at)}` : `Статус: ${row.status === "connected" ? "настроено" : "не настроено"}`}
                     </div>
                     <Button
                       size="sm"
@@ -247,6 +258,64 @@ export default function CrmIntegrationsPage() {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Link to={`/crm/integrations/delivery/${row.name}`}>
+                        <Settings className="h-3.5 w-3.5" />
+                        Настроить
+                      </Link>
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="maps" className="mt-4">
+          {loadingDelivery ? (
+            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+              Загрузка...
+            </div>
+          ) : mapsRows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Карточек карт нет в ответе API.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {mapsRows.map((row) => {
+                const ui = MAPS_UI[row.name] ?? { icon: "🗺️", description: "Карты и геокодирование" };
+                return (
+                  <div
+                    key={row.name}
+                    role="link"
+                    tabIndex={0}
+                    className="p-4 rounded-lg border border-border bg-card space-y-3 cursor-pointer hover:bg-accent/5 transition-colors"
+                    onClick={() => navigate(`/crm/integrations/maps/${row.name}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") navigate(`/crm/integrations/maps/${row.name}`);
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{ui.icon}</span>
+                        <span className="font-medium text-sm">{row.title}</span>
+                      </div>
+                      <StatusBadge status={row.status} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">{ui.description}</p>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      {row.status === "connected" ? (
+                        <Wifi className="h-3 w-3" />
+                      ) : (
+                        <WifiOff className="h-3 w-3" />
+                      )}
+                      Ключ API: {row.status === "connected" ? "указан" : "не указан"}
+                      {row.last_successful_auth_at ? ` · проверка ${fmtSync(row.last_successful_auth_at)}` : ""}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full gap-2"
+                      asChild
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Link to={`/crm/integrations/maps/${row.name}`}>
                         <Settings className="h-3.5 w-3.5" />
                         Настроить
                       </Link>

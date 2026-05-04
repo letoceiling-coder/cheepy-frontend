@@ -14,7 +14,17 @@ import {
 } from "@/lib/api";
 import { ArrowLeft, Loader2, CheckCircle2, XCircle, Zap, ExternalLink } from "lucide-react";
 
-const KNOWN_SLUGS = ["cdek", "nova_poshta", "dhl"] as const;
+const KNOWN_SLUGS = ["cdek", "nova_poshta", "dhl", "russian_post"] as const;
+
+const RUSSIAN_POST_DOCS = `По спецификации API «Отправка» Почты России (otpravka-api.pochta.ru):
+
+1. Получите токен авторизации в личном кабинете отправителя (Authorization: AccessToken …).
+
+2. При необходимости задайте логин/пароль для заголовка X-User-Authorization (см. спецификацию).
+
+3. Укажите индекс места отправления, вид РПО (mail-type), категорию и способ расчёта как в официальной документации.
+
+4. Сохраните настройки и включите интеграцию.`;
 
 function cdekLiveEndpoints(environment: string): { oauth_token_url: string; api_base_url: string } {
   const base = environment === "integration" ? "https://api.edu.cdek.ru" : "https://api.cdek.ru";
@@ -44,7 +54,15 @@ export default function CrmDeliveryIntegrationPage() {
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
-    if (!slug || !KNOWN_SLUGS.includes(slug as (typeof KNOWN_SLUGS)[number])) {
+    if (!slug) {
+      navigate("/crm/integrations");
+      return;
+    }
+    if (slug === "yandex_maps") {
+      navigate("/crm/integrations/maps/yandex_maps", { replace: true });
+      return;
+    }
+    if (!KNOWN_SLUGS.includes(slug as (typeof KNOWN_SLUGS)[number])) {
       navigate("/crm/integrations");
       return;
     }
@@ -68,7 +86,7 @@ export default function CrmDeliveryIntegrationPage() {
       .finally(() => setLoading(false));
   }, [slug, navigate]);
 
-  const SENSITIVE_KEYS = ["client_secret"];
+  const SENSITIVE_KEYS = ["client_secret", "access_token", "auth_password"];
 
   const handleSave = async () => {
     if (!detail) return;
@@ -118,7 +136,8 @@ export default function CrmDeliveryIntegrationPage() {
   };
 
   const handleTest = async () => {
-    if (!detail || detail.name !== "cdek") return;
+    if (!detail) return;
+    if (detail.name !== "cdek" && detail.name !== "russian_post") return;
     setTesting(true);
     setTestResult(null);
     try {
@@ -145,7 +164,12 @@ export default function CrmDeliveryIntegrationPage() {
 
   const schema = detail.config_schema ?? [];
   const isReadonly = (f: ConfigSchemaField) => !!f.readonly;
-  const docsBody = detail.name === "cdek" ? CDEK_DOCS : "Документация будет добавлена при подключении службы.";
+  const docsBody =
+    detail.name === "cdek"
+      ? CDEK_DOCS
+      : detail.name === "russian_post"
+        ? RUSSIAN_POST_DOCS
+        : "Документация будет добавлена при подключении службы.";
   const envForHints = String(form.environment ?? "production");
   const liveCdek =
     detail.name === "cdek" ? cdekLiveEndpoints(envForHints) : null;
@@ -282,15 +306,17 @@ export default function CrmDeliveryIntegrationPage() {
         )}
       </section>
 
-      {detail.name === "cdek" && schema.length > 0 && (
+      {(detail.name === "cdek" || detail.name === "russian_post") && schema.length > 0 && (
         <section className="rounded-lg border border-border bg-card p-4">
           <h2 className="text-sm font-medium mb-3">Проверка подключения</h2>
           <p className="text-xs text-muted-foreground mb-3">
-            Запрос токена OAuth 2.0 (client_credentials) к точке из поля выше; ключи не отображаются в ответе.
+            {detail.name === "cdek"
+              ? "Запрос токена OAuth 2.0 (client_credentials) к точке из поля выше; ключи не отображаются в ответе."
+              : "Проверяется наличие токена и переключатель активности интеграции (расширенные вызовы API см. в спецификации Почты России)."}
           </p>
-          <Button variant="outline" onClick={handleTest} disabled={testing}>
+          <Button variant="outline" onClick={() => void handleTest()} disabled={testing}>
             {testing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
-            Проверить OAuth
+            {detail.name === "cdek" ? "Проверить OAuth" : "Проверить токен"}
           </Button>
           {testResult && (
             <div
