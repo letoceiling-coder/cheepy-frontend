@@ -24,6 +24,8 @@ function emptySettings(): MarketplaceSettingsData {
     maintenance_delay_minutes: 10,
     maintenance_started_at: null,
     seller_registration_enabled: true,
+    free_delivery_threshold_enabled: false,
+    free_delivery_threshold_rub: null,
     default_commission_percent: 10,
     category_commissions: {},
     currency_rates: { date: null, base: "RUB", rates: [{ code: "RUB", name: "Российский рубль", nominal: 1, value: 1 }] },
@@ -80,7 +82,7 @@ export default function CrmSettingsPage() {
   });
   const [draft, setDraft] = useState<MarketplaceSettingsData>(() => emptySettings());
   useEffect(() => {
-    if (data?.data) setDraft(data.data);
+    if (data?.data) setDraft({ ...emptySettings(), ...data.data });
   }, [data?.data]);
   const settings = draft;
   const categories = data?.categories ?? [];
@@ -105,7 +107,16 @@ export default function CrmSettingsPage() {
   });
 
   const update = (patch: Partial<MarketplaceSettingsData>) => setDraft((prev) => ({ ...prev, ...patch }));
-  const saveSettings = () => saveMutation.mutate(settings);
+  const saveSettings = () => {
+    if (settings.free_delivery_threshold_enabled) {
+      const rub = settings.free_delivery_threshold_rub;
+      if (rub == null || rub < 1 || !Number.isFinite(rub)) {
+        toast.error("Укажите порог от 1 ₽ или отключите бесплатную доставку от суммы");
+        return;
+      }
+    }
+    saveMutation.mutate(settings);
+  };
   const updateContact = (kind: "support_emails" | "support_phones", index: number, field: "email" | "phone" | "description", value: string) => {
     const rows = [...(settings[kind] ?? [])];
     rows[index] = { ...rows[index], [field]: value };
@@ -189,6 +200,42 @@ export default function CrmSettingsPage() {
             </div>
             <p className="text-xs text-muted-foreground">При включении запускается таймер. После указанного времени витрина перейдёт на страницу обслуживания.</p>
             <div className="flex items-center justify-between"><span className="text-sm">Регистрация продавцов</span><Switch checked={settings.seller_registration_enabled} onCheckedChange={(v) => update({ seller_registration_enabled: v })} /></div>
+            <div className="rounded-lg border border-border/80 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm">Бесплатная доставка от суммы заказа</span>
+                <Switch
+                  checked={settings.free_delivery_threshold_enabled}
+                  onCheckedChange={(v) => update({ free_delivery_threshold_enabled: v })}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Пока выключено, витрина не показывает и не применяет порог: доставка только по тарифам интеграций или фиксированная подстановка.
+              </p>
+              {settings.free_delivery_threshold_enabled ? (
+                <div>
+                  <Label className="text-xs">Порог (₽), от которого доставка 0 ₽</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={settings.free_delivery_threshold_rub ?? ""}
+                    placeholder="Например, 3000"
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === "") {
+                        update({ free_delivery_threshold_rub: null });
+                        return;
+                      }
+                      const n = Math.floor(Number(raw));
+                      update({
+                        free_delivery_threshold_rub: Number.isFinite(n) ? Math.min(999_999_999, Math.max(1, n)) : null,
+                      });
+                    }}
+                    className="h-8 text-sm mt-1 max-w-[200px]"
+                  />
+                </div>
+              ) : null}
+            </div>
             <Button size="sm" onClick={saveSettings} disabled={saveMutation.isPending}>
               {saveMutation.isPending ? "Сохранение..." : "Сохранить"}
             </Button>

@@ -5,9 +5,8 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
-import { ApiError, storeCartDeliveryQuoteApi, storeCheckoutApi, type StorefrontCartDeliveryQuoteResponse } from "@/lib/api";
-
-const FREE_DELIVERY_THRESHOLD_RUB = 3000;
+import { ApiError, publicApi, storeCartDeliveryQuoteApi, storeCheckoutApi, type StorefrontCartDeliveryQuoteResponse } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
 
 const FALLBACK_DELIVERY_RUB = 299;
 
@@ -24,6 +23,11 @@ export default function CartPageContent() {
     useCart();
   const { isAuthenticated } = useAuth();
   const { toggleFavorite } = useFavorites();
+  const { data: publicMx } = useQuery({
+    queryKey: ["public-marketplace-settings"],
+    queryFn: () => publicApi.marketplaceSettings(),
+    staleTime: 60_000,
+  });
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [cartQuote, setCartQuote] = useState<StorefrontCartDeliveryQuoteResponse | null>(null);
@@ -65,15 +69,25 @@ export default function CartPageContent() {
     };
   }, [isAuthenticated, cartKey]);
 
+  const freeDeliveryEnabled =
+    cartQuote?.free_delivery_threshold_enabled ?? publicMx?.data?.free_delivery_threshold_enabled ?? false;
+  const effectiveThresholdRubRaw =
+    cartQuote?.free_delivery_threshold_rub ?? publicMx?.data?.free_delivery_threshold_rub ?? null;
+  const effectiveThresholdRub =
+    freeDeliveryEnabled && effectiveThresholdRubRaw != null && effectiveThresholdRubRaw >= 1
+      ? effectiveThresholdRubRaw
+      : null;
+
   const grossGoods = totalPrice + totalDiscount;
 
-  /** Бесплатно от порога только при сохранённом адресе (котировка пришла с needs_address: false). */
+  /** Бесплатно от порога только при включённой настройке CRM, сохранённом адресе и сумме ≥ порога. */
   const thresholdFreeActive =
     isAuthenticated &&
     cartQuote != null &&
     !deliveryQuoteLoading &&
     !cartQuote.needs_address &&
-    totalPrice >= FREE_DELIVERY_THRESHOLD_RUB;
+    effectiveThresholdRub != null &&
+    totalPrice >= effectiveThresholdRub;
 
   let resolvedDeliveryRub: number | undefined;
   if (!isAuthenticated || deliveryQuoteLoading || cartQuote === null || cartQuote.needs_address) {
@@ -341,13 +355,13 @@ export default function CartPageContent() {
                   <p className="text-[11px] text-muted-foreground leading-snug">{cartQuote.cheapest_quote.summary_line_ru}</p>
                 )}
 
-              {isAuthenticated && totalPrice < FREE_DELIVERY_THRESHOLD_RUB && (
+              {isAuthenticated && effectiveThresholdRub != null && totalPrice < effectiveThresholdRub && (
                 <div className="flex items-center gap-2 p-3 rounded-xl bg-primary/5 text-sm">
                   <Truck className="w-4 h-4 text-primary shrink-0" />
                   <span className="text-muted-foreground">
                     До бесплатной доставки ещё{" "}
                     <span className="text-primary font-medium">
-                      {(FREE_DELIVERY_THRESHOLD_RUB - totalPrice).toLocaleString()} ₽
+                      {(effectiveThresholdRub - totalPrice).toLocaleString()} ₽
                     </span>
                   </span>
                 </div>

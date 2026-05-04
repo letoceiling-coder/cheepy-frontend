@@ -1495,6 +1495,10 @@ export interface MarketplaceSettingsData {
   maintenance_delay_minutes: number;
   maintenance_started_at: string | null;
   seller_registration_enabled: boolean;
+  /** Включена ли бесплатная доставка от суммы заказа (из CRM, по умолчанию выкл.) */
+  free_delivery_threshold_enabled: boolean;
+  /** Порог в ₽ только при включённой опции и значении ≥ 1; иначе null */
+  free_delivery_threshold_rub: number | null;
   default_commission_percent: number;
   category_commissions: Record<string, number>;
   currency_rates: {
@@ -1519,6 +1523,8 @@ export interface PublicMarketplaceSettings {
   support_phones: MarketplaceContact[];
   default_currency: string;
   seller_registration_enabled: boolean;
+  /** Порог суммы корзины (₽) для бесплатной доставки (CRM и публичный API после обновления бэкенда). */
+  free_delivery_threshold_rub?: number;
   maintenance: {
     enabled: boolean;
     delay_minutes: number;
@@ -2376,6 +2382,8 @@ export interface StorefrontCartDeliveryQuoteResponse {
   cheapest_price_rub: number | null;
   cheapest_quote: StorefrontDeliveryQuoteItem | null;
   warnings: string[];
+  free_delivery_threshold_enabled?: boolean;
+  free_delivery_threshold_rub?: number | null;
 }
 
 export const storeCartDeliveryQuoteApi = {
