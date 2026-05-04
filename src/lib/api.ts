@@ -2088,11 +2088,13 @@ async function storefrontRequest<T>(
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: res.statusText }));
-    const errObj = error as { message?: string; error?: string };
-    const msg =
+    const errObj = error as { message?: string; error?: string; details?: string };
+    let msg =
       (typeof errObj.message === "string" && errObj.message.trim()) ||
       (typeof errObj.error === "string" && errObj.error.trim()) ||
       res.statusText;
+    const detail = typeof errObj.details === "string" ? errObj.details.trim() : "";
+    if (detail) msg = `${msg} (${detail})`;
     throw new ApiError(res.status, msg);
   }
   if (res.status === 204) return undefined as T;
