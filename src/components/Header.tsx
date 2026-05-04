@@ -5,6 +5,7 @@ import MegaMenu from "./MegaMenu";
 import type { PublicMenuCategory } from "./MegaMenu";
 import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { publicApi } from "@/lib/api";
 import { HEADER_DEFAULT_SETTINGS } from "@/shared/layoutDefaults";
 import type { HeaderSettings, NavLinkItem, SocialLinkItem } from "@/constructor/types";
@@ -109,6 +110,9 @@ const Header = ({ settings }: HeaderProps) => {
   const navigate = useNavigate();
   const { totalItems } = useCart();
   const { count: favCount } = useFavorites();
+  const { isAuthenticated } = useAuth();
+
+  const deliveryAddressLink = isAuthenticated ? "/account#delivery-addresses" : "/auth";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -190,7 +194,7 @@ const Header = ({ settings }: HeaderProps) => {
         >
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-4">
-              <Link to="/account#delivery-addresses" className="text-primary hover:underline transition-colors">
+              <Link to={deliveryAddressLink} className="text-primary hover:underline transition-colors">
                 {mergedSettings.deliveryCtaText}
               </Link>
               {topLinks.map((link) => (

@@ -2358,6 +2358,53 @@ export const storeDeliveryQuoteApi = {
   },
 };
 
+export interface StorefrontCartDeliveryQuoteShipment {
+  weight_g: number;
+  length_cm: number;
+  width_cm: number;
+  height_cm: number;
+  declared_value_kopeks: number | null;
+  lines_count: number;
+}
+
+export interface StorefrontCartDeliveryQuoteResponse {
+  needs_address: boolean;
+  message?: string | null;
+  address: StorefrontDeliveryQuoteAddress | null;
+  shipment: StorefrontCartDeliveryQuoteShipment;
+  quotes: StorefrontDeliveryQuoteItem[];
+  cheapest_price_rub: number | null;
+  cheapest_quote: StorefrontDeliveryQuoteItem | null;
+  warnings: string[];
+}
+
+export const storeCartDeliveryQuoteApi = {
+  create: (payload: { items: { product_id: string; quantity: number }[] }) =>
+    storefrontRequest<StorefrontCartDeliveryQuoteResponse>("POST", "/store/cart-delivery-quote", payload, true),
+};
+
+export interface StoreCheckoutItemPayload {
+  product_id: string;
+  quantity: number;
+  color?: string;
+  size?: string;
+}
+
+export interface StoreCheckoutResponse {
+  payment_id: number;
+  return_token: string;
+  provider: string;
+  provider_id: string | null;
+  checkout_url: string | null;
+  order_id: number;
+  order_number: string;
+}
+
+export const storeCheckoutApi = {
+  create: (payload: { items: StoreCheckoutItemPayload[]; provider?: string }) =>
+    storefrontRequest<StoreCheckoutResponse>("POST", "/store/checkout", payload, true),
+};
+
 export interface AiProviderModelOption {
   id: string;
   label: string;

@@ -1,18 +1,122 @@
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Trash2, Heart, Minus, Plus, ShoppingCart, Truck } from "lucide-react";
+import { Trash2, Heart, Loader2, Minus, Plus, ShoppingCart, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
+import { ApiError, storeCartDeliveryQuoteApi, storeCheckoutApi, type StorefrontCartDeliveryQuoteResponse } from "@/lib/api";
+
+const FREE_DELIVERY_THRESHOLD_RUB = 3000;
+
+const FALLBACK_DELIVERY_RUB = 299;
+
+/** Стабильный ключ корзины для запроса расчёта доставки. */
+function cartItemsRequestKey(lines: { product: { id: string | number }; quantity: number }[]): string {
+  return [...lines]
+    .map((l) => `${String(l.product.id)}:${l.quantity}`)
+    .sort()
+    .join("|");
+}
 
 export default function CartPageContent() {
-  const { items, removeFromCart, updateQuantity, updateColor, updateSize, getLinePricing, totalPrice, totalDiscount } = useCart();
+  const { items, removeFromCart, updateQuantity, updateColor, updateSize, getLinePricing, totalPrice, totalDiscount } =
+    useCart();
   const { isAuthenticated } = useAuth();
   const { toggleFavorite } = useFavorites();
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [cartQuote, setCartQuote] = useState<StorefrontCartDeliveryQuoteResponse | null>(null);
+  const [deliveryQuoteLoading, setDeliveryQuoteLoading] = useState(false);
 
-  const freeDeliveryThreshold = 3000;
-  const deliveryCost = totalPrice >= freeDeliveryThreshold ? 0 : 299;
-  const finalTotal = totalPrice + deliveryCost;
+  const cartKey = useMemo(() => cartItemsRequestKey(items), [items]);
+
+  useEffect(() => {
+    if (!isAuthenticated || items.length === 0) {
+      setCartQuote(null);
+      setDeliveryQuoteLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setDeliveryQuoteLoading(true);
+      storeCartDeliveryQuoteApi
+        .create({
+          items: items.map((i) => ({
+            product_id: String(i.product.id),
+            quantity: i.quantity,
+          })),
+        })
+        .then((res) => {
+          if (!cancelled) setCartQuote(res);
+        })
+        .catch(() => {
+          if (!cancelled) setCartQuote(null);
+        })
+        .finally(() => {
+          if (!cancelled) setDeliveryQuoteLoading(false);
+        });
+    }, 450);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [isAuthenticated, cartKey]);
+
+  const grossGoods = totalPrice + totalDiscount;
+
+  const thresholdFreeActive = totalPrice >= FREE_DELIVERY_THRESHOLD_RUB;
+
+  let resolvedDeliveryRub: number | undefined;
+  if (thresholdFreeActive) {
+    resolvedDeliveryRub = 0;
+  } else if (isAuthenticated && cartQuote && !cartQuote.needs_address && cartQuote.cheapest_price_rub != null) {
+    resolvedDeliveryRub = Math.max(0, Math.round(Number(cartQuote.cheapest_price_rub)));
+  } else if (
+    isAuthenticated &&
+    cartQuote &&
+    !cartQuote.needs_address &&
+    !deliveryQuoteLoading &&
+    cartQuote.quotes.length === 0
+  ) {
+    resolvedDeliveryRub = FALLBACK_DELIVERY_RUB;
+  }
+
+  const finalTotal =
+    !isAuthenticated
+      ? totalPrice
+      : thresholdFreeActive
+        ? totalPrice
+        : typeof resolvedDeliveryRub === "number"
+          ? totalPrice + resolvedDeliveryRub
+          : totalPrice;
+
+  const handleCheckout = useCallback(async () => {
+    if (items.length === 0 || checkoutLoading) return;
+    setCheckoutError(null);
+    setCheckoutLoading(true);
+    try {
+      const res = await storeCheckoutApi.create({
+        items: items.map((i) => ({
+          product_id: String(i.product.id),
+          quantity: i.quantity,
+          color: i.color,
+          size: i.size,
+        })),
+      });
+      if (res.checkout_url) {
+        window.location.href = res.checkout_url;
+        return;
+      }
+      setCheckoutError("Не удалось получить ссылку на оплату.");
+    } catch (err) {
+      setCheckoutError(err instanceof ApiError ? err.message : "Не удалось оформить заказ.");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }, [checkoutLoading, items]);
 
   return (
     <>
@@ -179,7 +283,7 @@ export default function CartPageContent() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Товары ({items.reduce((s, i) => s + i.quantity, 0)})</span>
-                  <span className="text-foreground">{(totalPrice + totalDiscount).toLocaleString()} ₽</span>
+                  <span className="text-foreground">{grossGoods.toLocaleString()} ₽</span>
                 </div>
                 {totalDiscount > 0 && (
                   <div className="flex justify-between">
@@ -187,21 +291,69 @@ export default function CartPageContent() {
                     <span className="text-green-600">-{totalDiscount.toLocaleString()} ₽</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Доставка</span>
-                  <span className={deliveryCost === 0 ? "text-green-600" : "text-foreground"}>
-                    {deliveryCost === 0 ? "Бесплатно" : `${deliveryCost} ₽`}
-                  </span>
-                </div>
+                {!isAuthenticated ? (
+                  <p className="text-xs text-muted-foreground leading-snug pt-1">
+                    <Link to="/auth" className="text-primary font-semibold hover:underline">
+                      Укажите адрес доставки
+                    </Link>
+                    : войдите в аккаунт — рассчитаем доставку по вашему адресу и покажем сумму к оплате.
+                  </p>
+                ) : (
+                  <div className="flex justify-between items-start gap-3 pt-0.5">
+                    <span className="text-muted-foreground shrink-0">Доставка</span>
+                    <span className="text-right text-foreground min-h-[1.25rem]">
+                      {thresholdFreeActive ? (
+                        <span className="text-green-600">Бесплатно</span>
+                      ) : deliveryQuoteLoading ? (
+                        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                          Считаем…
+                        </span>
+                      ) : cartQuote?.needs_address ? (
+                        <span className="text-xs text-muted-foreground">
+                          <Link to="/account#delivery-addresses" className="text-primary font-medium hover:underline">
+                            Укажите адрес
+                          </Link>
+                        </span>
+                      ) : typeof resolvedDeliveryRub === "number" ? (
+                        resolvedDeliveryRub === 0 ? (
+                          <span className="text-green-600">Бесплатно</span>
+                        ) : (
+                          `${resolvedDeliveryRub.toLocaleString()} ₽`
+                        )
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              {totalPrice < freeDeliveryThreshold && (
+              {isAuthenticated &&
+                !thresholdFreeActive &&
+                cartQuote &&
+                !cartQuote.needs_address &&
+                typeof resolvedDeliveryRub === "number" &&
+                resolvedDeliveryRub > 0 &&
+                cartQuote.cheapest_quote?.summary_line_ru && (
+                  <p className="text-[11px] text-muted-foreground leading-snug">{cartQuote.cheapest_quote.summary_line_ru}</p>
+                )}
+
+              {isAuthenticated && totalPrice < FREE_DELIVERY_THRESHOLD_RUB && (
                 <div className="flex items-center gap-2 p-3 rounded-xl bg-primary/5 text-sm">
                   <Truck className="w-4 h-4 text-primary shrink-0" />
                   <span className="text-muted-foreground">
                     До бесплатной доставки ещё{" "}
-                    <span className="text-primary font-medium">{(freeDeliveryThreshold - totalPrice).toLocaleString()} ₽</span>
+                    <span className="text-primary font-medium">
+                      {(FREE_DELIVERY_THRESHOLD_RUB - totalPrice).toLocaleString()} ₽
+                    </span>
                   </span>
+                </div>
+              )}
+
+              {!isAuthenticated && (
+                <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 px-3 py-2.5 text-center text-xs text-muted-foreground">
+                  Стоимость доставки появится после входа и сохранённого адреса.
                 </div>
               )}
 
@@ -213,9 +365,26 @@ export default function CartPageContent() {
               </div>
 
               {isAuthenticated ? (
-                <Button className="w-full gradient-primary text-primary-foreground rounded-xl py-3 h-auto text-sm font-semibold">
-                  Оформить заказ
-                </Button>
+                <div className="space-y-2">
+                  {checkoutError ? (
+                    <p className="text-xs text-destructive text-center">{checkoutError}</p>
+                  ) : null}
+                  <Button
+                    type="button"
+                    className="w-full gradient-primary text-primary-foreground rounded-xl py-3 h-auto text-sm font-semibold inline-flex items-center justify-center gap-2"
+                    disabled={checkoutLoading}
+                    onClick={handleCheckout}
+                  >
+                    {checkoutLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                        Переход к оплате…
+                      </>
+                    ) : (
+                      "Оформить заказ"
+                    )}
+                  </Button>
+                </div>
               ) : (
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground text-center">Для оформления заказа необходимо войти</p>
