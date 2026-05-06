@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { Clock, Heart, ShoppingCart, Share2, Star, Minus, Plus, Shield, Truck, RotateCcw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { publicApi } from "@/lib/api";
+import { publicApi, PUBLIC_STORE_HOME_PAGE_KEY } from "@/lib/api";
 import { productFullToStorefront } from "@/lib/mapPublicProduct";
 import { extractHotDealsSettingsFromPageLayout, getActiveHotDealForProduct } from "@/lib/hotDeals";
 import { useCart } from "@/contexts/CartContext";
@@ -63,8 +63,8 @@ export default function ProductDetailHero(
   const full = data?.product;
   const storefront = useMemo(() => (full ? productFullToStorefront(full) : null), [full]);
   const { data: homeLayout } = useQuery({
-    queryKey: ["public-layout-page", "home"],
-    queryFn: () => publicApi.pageLayout("home"),
+    queryKey: ["public-layout-page", PUBLIC_STORE_HOME_PAGE_KEY],
+    queryFn: () => publicApi.pageLayout(PUBLIC_STORE_HOME_PAGE_KEY),
     retry: false,
     staleTime: 60_000,
   });

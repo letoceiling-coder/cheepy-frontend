@@ -1545,6 +1545,9 @@ export const marketplaceSettingsApi = {
 // PUBLIC API (user-facing pages)
 // ──────────────────────────────────────────────
 
+/** Active constructor page-template key for storefront home (Laravel seeds `system:homepage`; must match saved template `page_key`). */
+export const PUBLIC_STORE_HOME_PAGE_KEY = 'system:homepage';
+
 export const publicApi = {
   marketplaceSettings: () => get<{ data: PublicMarketplaceSettings }>('/public/marketplace-settings', true),
   menu: () => get<{ categories: Category[] }>('/public/menu', true),

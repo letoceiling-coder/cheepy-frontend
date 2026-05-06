@@ -1,19 +1,27 @@
 import { useState } from "react";
 import { useDragScroll } from "@/hooks/useDragScroll";
 import { ShoppingCart, Heart } from "lucide-react";
-import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { mockProducts } from "@/data/mock-data";
 
-const TrendingGrid = () => {
-  const { ref, isVisible } = useScrollAnimation();
+const DEFAULT_TITLE = "В тренде";
+const DEFAULT_SUBTITLE = "Самые популярные товары прямо сейчас";
+
+export type TrendingGridProps = {
+  title?: string;
+  subtitle?: string;
+};
+
+const TrendingGrid = ({ title, subtitle }: TrendingGridProps = {}) => {
   const scrollRef = useDragScroll<HTMLDivElement>();
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const products = mockProducts.slice(0, 8);
+  const displayTitle = (title ?? "").trim() || DEFAULT_TITLE;
+  const displaySubtitle = (subtitle ?? "").trim() || DEFAULT_SUBTITLE;
 
   return (
-    <section ref={ref} className={`py-6 transition-all duration-700 ${isVisible ? "opacity-100" : "opacity-0"}`}>
-      <h2 className="text-lg font-bold text-foreground mb-2">В тренде</h2>
-      <p className="text-muted-foreground text-sm mb-4">Самые популярные товары прямо сейчас</p>
+    <section className="py-6">
+      <h2 className="text-lg font-bold text-foreground mb-2">{displayTitle}</h2>
+      <p className="text-muted-foreground text-sm mb-4">{displaySubtitle}</p>
       
       {/* Desktop: 4 cards */}
       <div className="hidden md:grid grid-cols-4 gap-4 mb-4">
