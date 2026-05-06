@@ -1,6 +1,7 @@
 import React, { useRef, useCallback } from 'react';
 import { Trash2, Copy, ChevronUp, ChevronDown, Eye, EyeOff, GripVertical } from 'lucide-react';
 import { BlockConfig, DeviceMode } from '../types';
+import { ConstructorCanvasPreviewProvider } from '../context/ConstructorCanvasPreviewContext';
 import { BlockRenderer } from '../blockRenderer';
 import { Button } from '@/components/ui/button';
 
@@ -81,6 +82,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           </div>
         )}
 
+        <ConstructorCanvasPreviewProvider value={true}>
         {blocks.map((block, idx) => (
           <div
             key={block.id}
@@ -134,6 +136,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             </div>
           </div>
         ))}
+        </ConstructorCanvasPreviewProvider>
       </div>
     </div>
   );

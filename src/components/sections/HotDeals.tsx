@@ -10,6 +10,7 @@ import {
   isHotDealsLayoutConfigured,
   type ActiveHotDeal,
 } from "@/lib/hotDeals";
+import { useConstructorCanvasPreview } from "@/constructor/context/ConstructorCanvasPreviewContext";
 
 const useCountdown = (endsAt: number) => {
   const [timeLeft, setTimeLeft] = useState(() => Math.max(0, endsAt - Date.now()));
@@ -103,13 +104,15 @@ type HotDealsProps = {
   dealItems?: HotDealProductSetting[];
   schedule?: BlockScheduleSetting;
   /**
-   * When true and there is no constructor configuration, renders legacy demo carousel (static homepage fallback).
+   * When true (только статический fallback главной без API-шаблона), локальная демо-карусель.
+   * На витрине с layout конструктора не используйте для моков — там только образец через constructor preview context.
    */
   allowDemo?: boolean;
 };
 
 const HotDeals = ({ title, subtitle, dealItems, schedule, allowDemo = false }: HotDealsProps) => {
   const scrollRef = useDragScroll<HTMLDivElement>();
+  const constructorPreview = useConstructorCanvasPreview();
 
   const settingsPayload = useMemo(() => ({ dealItems, schedule }), [dealItems, schedule]);
   const configured = useMemo(() => getActiveHotDeals(settingsPayload), [settingsPayload]);
@@ -119,7 +122,8 @@ const HotDeals = ({ title, subtitle, dealItems, schedule, allowDemo = false }: H
   const catalogQuery = useStorefrontProductCards(dealProductIds);
   const needsCatalog = dealProductIds.length > 0;
 
-  const deals: ActiveHotDeal[] = useMemo(() => {
+  /** Строго витрина: без подстановки моков конструктора. */
+  const storefrontDeals: ActiveHotDeal[] = useMemo(() => {
     if (!layoutConfigured) {
       if (!allowDemo) return [];
       return mockActiveDealsFromMarketplace();
@@ -162,20 +166,34 @@ const HotDeals = ({ title, subtitle, dealItems, schedule, allowDemo = false }: H
     catalogQuery.data,
   ]);
 
-  if (!layoutConfigured && !allowDemo) return null;
+  const displayDeals = useMemo(() => {
+    if (storefrontDeals.length > 0) return storefrontDeals;
+    if (constructorPreview) return mockActiveDealsFromMarketplace();
+    return [];
+  }, [storefrontDeals, constructorPreview]);
 
-  if (needsCatalog && catalogQuery.isPending) return null;
-  if (needsCatalog && catalogQuery.isError) return null;
+  const showingSample = constructorPreview && storefrontDeals.length === 0 && displayDeals.length > 0;
 
-  if (deals.length === 0) return null;
+  if (!constructorPreview && !layoutConfigured && !allowDemo) return null;
 
-  const showLive = layoutConfigured || allowDemo;
+  if (!constructorPreview) {
+    if (needsCatalog && catalogQuery.isPending) return null;
+    if (needsCatalog && catalogQuery.isError) return null;
+  }
+
+  if (displayDeals.length === 0) return null;
 
   return (
     <section className="mb-6">
       <div className="flex items-baseline gap-3 mb-3">
         <h2 className="text-xl font-bold text-foreground">{title || "ГОРЯЧИЕ ПРЕДЛОЖЕНИЯ"}</h2>
-        {showLive ? <span className="text-sm text-destructive font-semibold animate-pulse">LIVE</span> : null}
+        {showingSample ? (
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Образец</span>
+        ) : storefrontDeals.length > 0 ? (
+          <span className="text-sm text-destructive font-semibold animate-pulse">LIVE</span>
+        ) : allowDemo ? (
+          <span className="text-sm text-destructive font-semibold animate-pulse">LIVE</span>
+        ) : null}
       </div>
       {subtitle ? <p className="text-sm text-muted-foreground -mt-2 mb-3">{subtitle}</p> : null}
       <div className="relative flex items-center gap-3">
@@ -187,7 +205,7 @@ const HotDeals = ({ title, subtitle, dealItems, schedule, allowDemo = false }: H
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div ref={scrollRef} className="flex-1 overflow-x-auto flex gap-4 py-2 no-scrollbar snap-x snap-mandatory cursor-grab active:cursor-grabbing">
-          {deals.map((deal) => (
+          {displayDeals.map((deal) => (
             <DealCard key={deal.id} deal={deal} />
           ))}
         </div>
