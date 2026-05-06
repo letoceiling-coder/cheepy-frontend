@@ -32,6 +32,7 @@ import CouponsPage from "./pages/account/CouponsPage";
 import ReceiptsPage from "./pages/account/ReceiptsPage";
 import ReferralPage from "./pages/account/ReferralPage";
 import ChangePasswordPage from "./pages/account/ChangePasswordPage";
+import PreferencesPage from "./pages/account/PreferencesPage";
 import RequireAccountAuth from "./pages/account/RequireAccountAuth";
 import PersonLayout from "./pages/person/PersonLayout";
 import PersonDashboard from "./pages/person/PersonDashboard";
@@ -333,6 +334,9 @@ function AnimatedRoutes() {
           <Route path="receipts" element={<RequireAccountAuth><ReceiptsPage /></RequireAccountAuth>} />
           <Route path="referral" element={<RequireAccountAuth><ReferralPage /></RequireAccountAuth>} />
           <Route path="password" element={<RequireAccountAuth><ChangePasswordPage /></RequireAccountAuth>} />
+          {/* Локальная аналитика поведения — доступна без авторизации (хранится в браузере). */}
+          <Route path="preferences" element={<PreferencesPage />} />
+          <Route path="предпочтения" element={<PreferencesPage />} />
         </Route>
 
         {/* Person — без авторизации */}

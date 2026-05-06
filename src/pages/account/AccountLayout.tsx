@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { User, Package, CreditCard, Wallet, Heart, Tag, FileText, Users, Lock, LogOut } from "lucide-react";
+import { User, Package, CreditCard, Wallet, Heart, Tag, FileText, Users, Lock, LogOut, Sparkles } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -11,6 +11,7 @@ const authNavItems = [
   { to: "/account/payment", icon: CreditCard, label: "Способы оплаты" },
   { to: "/account/balance", icon: Wallet, label: "Баланс" },
   { to: "/account/favorites", icon: Heart, label: "Избранное" },
+  { to: "/account/preferences", icon: Sparkles, label: "Предпочтения" },
   { to: "/account/coupons", icon: Tag, label: "Купоны" },
   { to: "/account/receipts", icon: FileText, label: "Чеки" },
   { to: "/account/referral", icon: Users, label: "Реферальная программа" },
@@ -19,6 +20,7 @@ const authNavItems = [
 
 const guestNavItems = [
   { to: "/account", icon: User, label: "Вход и профиль", end: true },
+  { to: "/account/preferences", icon: Sparkles, label: "Предпочтения" },
 ];
 
 const AccountLayout = () => {

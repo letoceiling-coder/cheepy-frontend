@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Heart, ShoppingCart, BarChart2 } from "lucide-react";
+import { useIsFavorite, useToggleFavorite } from "@/hooks/useFavorites";
 
 interface Product {
   id: string | number;
@@ -17,7 +18,13 @@ const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?
   const navigate = useNavigate();
   const [activeImage, setActiveImage] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
+  const isFavorite = useIsFavorite(product.id);
+  const toggleFav = useToggleFavorite();
+  const handleToggleFavorite = (e: React.MouseEvent | React.SyntheticEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFav(product.id);
+  };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -76,7 +83,9 @@ const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={(e) => { e.preventDefault(); setIsFavorite(!isFavorite); }}
+              type="button"
+              aria-label={isFavorite ? "Убрать из избранного" : "В избранное"}
+              onClick={handleToggleFavorite}
               className={`p-2 rounded-full border border-border transition-colors ${isFavorite ? "bg-primary/10 text-primary border-primary/30" : "bg-secondary text-muted-foreground hover:text-primary"}`}
             >
               <Heart className={`w-4 h-4 ${isFavorite ? "fill-primary" : ""}`} />
@@ -145,10 +154,9 @@ const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?
           }`}
         >
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsFavorite(!isFavorite);
-            }}
+            type="button"
+            aria-label={isFavorite ? "Убрать из избранного" : "В избранное"}
+            onClick={handleToggleFavorite}
             className={`p-1.5 rounded-full bg-background/90 transition-colors ${
               isFavorite ? "text-primary" : "text-muted-foreground hover:text-primary"
             }`}
