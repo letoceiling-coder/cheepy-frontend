@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, ShoppingCart } from "lucide-react";
-import { publicApi, type Category } from "@/lib/api";
+import { Heart, Loader2, ShoppingCart } from "lucide-react";
+import { publicApi, type Category, type Product } from "@/lib/api";
 import type { ProductFeedSettings } from "@/constructor/settingsProfiles";
 import { useFeedProductsPagination } from "@/hooks/useFeedProductsPagination";
+import { useIsFavorite, useToggleFavorite } from "@/hooks/useFavorites";
 import { useTopPreferredCategories } from "@/hooks/useUserPreferences";
 import { trackProductEvent } from "@/lib/userPreferences";
 import { mockProducts } from "@/data/mock-data";
+import type { StorefrontProduct } from "@/types/storefront-product";
 import { useConstructorCanvasPreview } from "@/constructor/context/ConstructorCanvasPreviewContext";
 
 const DEFAULT_TITLE = "Для вас";
@@ -55,8 +57,141 @@ function findDescendantIds(items: Category[], rootIds: number[]): number[] {
   return Array.from(visited);
 }
 
-const MinimalProductGrid: React.FC<MinimalProductGridProps> = (props) => {
+function MinimalGridProductCard({ p }: { p: Product }) {
   const navigate = useNavigate();
+  const isFavorite = useIsFavorite(p.id);
+  const toggleFav = useToggleFavorite();
+  const priceRaw = typeof p.price_raw === "number" && Number.isFinite(p.price_raw) ? p.price_raw : 0;
+  const img = p.thumbnail || "";
+  const pid = Number(p.id);
+
+  const openProduct = () => {
+    if (!Number.isFinite(pid) || pid <= 0) return;
+    trackProductEvent("click", {
+      productId: pid,
+      categoryId: p.category?.id ?? null,
+      categorySlug: p.category?.slug ?? null,
+    });
+    navigate(`/product/${p.id}`);
+  };
+
+  const onHeartClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!Number.isFinite(pid) || pid <= 0) return;
+    toggleFav(pid, {
+      categoryId: p.category?.id ?? null,
+      categorySlug: p.category?.slug ?? null,
+    });
+  };
+
+  return (
+    <div
+      className="group cursor-pointer text-left rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      tabIndex={0}
+      onClick={openProduct}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openProduct();
+        }
+      }}
+      aria-label={`${p.title}${priceRaw > 0 ? `, ${priceRaw.toLocaleString()} ₽` : ""}`}
+    >
+      <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-secondary">
+        {img ? (
+          <img
+            src={img}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full bg-muted/40" />
+        )}
+        <button
+          type="button"
+          aria-label={isFavorite ? "Убрать из избранного" : "В избранное"}
+          aria-pressed={isFavorite}
+          className={`absolute bottom-2 right-2 z-20 rounded-full bg-background/90 p-2 shadow-md border border-border transition-colors hover:bg-background ${
+            isFavorite ? "text-primary" : "text-muted-foreground hover:text-primary"
+          }`}
+          onClick={onHeartClick}
+        >
+          <Heart className={`w-4 h-4 ${isFavorite ? "fill-primary" : ""}`} />
+        </button>
+        <span className="pointer-events-none absolute bottom-2 left-2 right-14 h-8 rounded-lg gradient-primary text-primary-foreground text-xs font-medium flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+          <ShoppingCart size={12} aria-hidden /> В корзину
+        </span>
+      </div>
+      <p className="text-xs text-foreground truncate" title={p.title}>{p.title}</p>
+      <div className="flex items-baseline gap-1 mt-0.5">
+        {priceRaw > 0 ? (
+          <span className="text-sm font-bold text-foreground">{priceRaw.toLocaleString()} ₽</span>
+        ) : (
+          <span className="text-sm font-bold text-muted-foreground">—</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MinimalPreviewProductCard({ p }: { p: StorefrontProduct }) {
+  const navigate = useNavigate();
+  const isFavorite = useIsFavorite(p.id);
+  const toggleFav = useToggleFavorite();
+  const pid = typeof p.id === "number" ? p.id : Number(p.id);
+  const img = p.images[0] ?? "";
+
+  const openProduct = () => {
+    if (Number.isFinite(pid) && pid > 0) navigate(`/product/${p.id}`);
+  };
+
+  const onHeartClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!Number.isFinite(pid) || pid <= 0) return;
+    toggleFav(pid);
+  };
+
+  return (
+    <div
+      className="group cursor-pointer text-left rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      tabIndex={0}
+      onClick={openProduct}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openProduct();
+        }
+      }}
+      aria-label={p.name}
+    >
+      <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-secondary">
+        <img src={img} alt="" className="w-full h-full object-cover" />
+        <button
+          type="button"
+          aria-label={isFavorite ? "Убрать из избранного" : "В избранное"}
+          aria-pressed={isFavorite}
+          className={`absolute bottom-2 right-2 z-20 rounded-full bg-background/90 p-2 shadow-md border border-border transition-colors hover:bg-background ${
+            isFavorite ? "text-primary" : "text-muted-foreground hover:text-primary"
+          }`}
+          onClick={onHeartClick}
+        >
+          <Heart className={`w-4 h-4 ${isFavorite ? "fill-primary" : ""}`} />
+        </button>
+      </div>
+      <p className="text-xs text-foreground truncate">{p.name}</p>
+      <div className="flex items-baseline gap-1 mt-0.5">
+        <span className="text-sm font-bold text-foreground">{p.price.toLocaleString()} ₽</span>
+        {p.oldPrice && <span className="text-xs text-muted-foreground line-through">{p.oldPrice.toLocaleString()} ₽</span>}
+      </div>
+    </div>
+  );
+}
+
+const MinimalProductGrid: React.FC<MinimalProductGridProps> = (props) => {
   const constructorPreview = useConstructorCanvasPreview();
   const feed = props.feed ?? {};
 
@@ -179,16 +314,7 @@ const MinimalProductGrid: React.FC<MinimalProductGridProps> = (props) => {
         <p className="text-muted-foreground text-sm mb-6">{displaySubtitle}</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {mocks.map((p) => (
-            <div key={p.id} className="group">
-              <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-secondary">
-                <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
-              </div>
-              <p className="text-xs text-foreground truncate">{p.name}</p>
-              <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="text-sm font-bold text-foreground">{p.price.toLocaleString()} ₽</span>
-                {p.oldPrice && <span className="text-xs text-muted-foreground line-through">{p.oldPrice.toLocaleString()} ₽</span>}
-              </div>
-            </div>
+            <MinimalPreviewProductCard key={p.id} p={p} />
           ))}
         </div>
       </section>
@@ -203,50 +329,9 @@ const MinimalProductGrid: React.FC<MinimalProductGridProps> = (props) => {
       <p className="text-muted-foreground text-sm mb-6">{displaySubtitle}</p>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        {pagination.items.map((p) => {
-          const priceRaw = typeof p.price_raw === "number" && Number.isFinite(p.price_raw) ? p.price_raw : 0;
-          const img = p.thumbnail || "";
-          return (
-            <button
-              key={String(p.id)}
-              type="button"
-              className="group cursor-pointer text-left"
-              onClick={() => {
-                trackProductEvent("click", {
-                  productId: Number(p.id),
-                  categoryId: p.category?.id ?? null,
-                  categorySlug: p.category?.slug ?? null,
-                });
-                navigate(`/product/${p.id}`);
-              }}
-            >
-              <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-secondary">
-                {img ? (
-                  <img
-                    src={img}
-                    alt={p.title}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-muted/40" />
-                )}
-                <span className="absolute bottom-2 left-2 right-2 h-8 rounded-lg gradient-primary text-primary-foreground text-xs font-medium flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                  <ShoppingCart size={12} /> В корзину
-                </span>
-              </div>
-              <p className="text-xs text-foreground truncate" title={p.title}>{p.title}</p>
-              <div className="flex items-baseline gap-1 mt-0.5">
-                {priceRaw > 0 ? (
-                  <span className="text-sm font-bold text-foreground">{priceRaw.toLocaleString()} ₽</span>
-                ) : (
-                  <span className="text-sm font-bold text-muted-foreground">—</span>
-                )}
-              </div>
-            </button>
-          );
-        })}
+        {pagination.items.map((p) => (
+          <MinimalGridProductCard key={String(p.id)} p={p} />
+        ))}
 
         {skeletons.map((_, i) => (
           <div key={`skeleton-${i}`} className="animate-pulse">
