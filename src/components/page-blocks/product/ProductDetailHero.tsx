@@ -100,6 +100,17 @@ export default function ProductDetailHero(
     if (full?.id) pushRecentProductId(full.id);
   }, [full?.id]);
 
+  useEffect(() => {
+    if (!full?.id) return;
+    void import("@/lib/userPreferences").then(({ trackProductEvent }) => {
+      trackProductEvent("view", {
+        productId: Number(full.id),
+        categoryId: full.category?.id ?? null,
+        categorySlug: full.category?.slug ?? null,
+      });
+    });
+  }, [full?.id, full?.category?.id, full?.category?.slug]);
+
   if (isLoading || !id) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10 animate-pulse">

@@ -56,6 +56,16 @@ export interface ProductFeedSettings {
   limit: number;
   pinnedProductIds: number[];
   excludedProductIds: number[];
+  /**
+   * Режим источника карточек: `manual` — товары из выбранных `categoryIds`,
+   * `auto` — из аналитики предпочтений пользователя (см. lib/userPreferences).
+   * Поддерживается блоком MinimalProductGrid (Personal feed). Опционально для остальных feed‑блоков.
+   */
+  mode?: 'manual' | 'auto';
+  /** true — бесконечная подгрузка по скроллу (IntersectionObserver). */
+  infiniteScroll?: boolean;
+  /** Показывать ли кнопку «Показать ещё» (по умолчанию true). */
+  showLoadMoreButton?: boolean;
 }
 
 export interface ScheduleWindowSetting {
@@ -327,6 +337,7 @@ function defaultByProfile(profile: SettingsProfileId): NormalizedProfileSettings
         ...base, profile, feed: {
           source: 'system_products', statuses: ['approved', 'published'], categoryIds: [], includeDescendants: true,
           sortBy: 'created_at', sortDir: 'desc', limit: 12, pinnedProductIds: [], excludedProductIds: [],
+          mode: 'manual', infiniteScroll: false, showLoadMoreButton: true,
         },
       };
     case 'P-CATEGORY-FEED':
@@ -359,7 +370,13 @@ export function normalizeBlockProfileSettings(blockType: string, raw: Record<str
   merged.profile = profile;
   if (merged.profile === 'P-PRODUCT-FEED') {
     merged.feed = { ...(defaults as ProductFeedProfileSettings).feed, ...(safeRaw as Partial<ProductFeedProfileSettings>).feed };
-    if (typeof merged.feed?.limit !== 'number') merged.feed.limit = 12;
+    const blockDefaultLimit = blockType === 'MinimalProductGrid' ? 10 : 12;
+    if (typeof merged.feed?.limit !== 'number') merged.feed.limit = blockDefaultLimit;
+    // Минимально 4, максимально 60 — общий ограничитель.
+    merged.feed.limit = Math.max(4, Math.min(60, Math.round(merged.feed.limit)));
+    if (merged.feed.mode !== 'auto' && merged.feed.mode !== 'manual') merged.feed.mode = 'manual';
+    if (typeof merged.feed.infiniteScroll !== 'boolean') merged.feed.infiniteScroll = false;
+    if (typeof merged.feed.showLoadMoreButton !== 'boolean') merged.feed.showLoadMoreButton = true;
     if (blockType === 'HotDeals') {
       const s = safeRaw as Partial<ProductFeedProfileSettings>;
       merged.dealItems = Array.isArray(s.dealItems)

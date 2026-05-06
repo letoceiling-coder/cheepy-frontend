@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, SlidersHorizontal, Grid2X2, LayoutList, X } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { publicApi } from "@/lib/api";
 import { publicListProductToStorefront } from "@/lib/mapPublicProduct";
+import { trackCategoryEvent } from "@/lib/userPreferences";
 
 export default function CategoryListingContent() {
   const { slug } = useParams();
@@ -46,6 +47,12 @@ export default function CategoryListingContent() {
   const meta = data?.meta;
   const apiFilters = data?.filters ?? [];
   const totalPages = meta?.last_page ?? 1;
+
+  useEffect(() => {
+    const cat = data?.category;
+    if (!cat?.id) return;
+    trackCategoryEvent("view", { categoryId: cat.id, slug: cat.slug, name: cat.name });
+  }, [data?.category?.id, data?.category?.slug, data?.category?.name]);
 
   const FilterSection = ({
     title,

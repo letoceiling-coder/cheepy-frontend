@@ -315,19 +315,66 @@ export function CategoryImageOverridesField({
 }
 
 export function ProductFeedField({ value, onChange }: { value: ProductFeedSettings; onChange: (next: ProductFeedSettings) => void }) {
+  const mode: 'manual' | 'auto' = value.mode === 'auto' ? 'auto' : 'manual';
+  const infiniteScroll = value.infiniteScroll === true;
+  const showLoadMoreButton = value.showLoadMoreButton !== false;
   return (
     <div className="space-y-2">
+      <SettingField label="Режим источника">
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={mode === 'manual' ? 'default' : 'outline'}
+            className="h-7 text-xs"
+            onClick={() => onChange({ ...value, mode: 'manual' })}
+          >
+            Ручной (категории)
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={mode === 'auto' ? 'default' : 'outline'}
+            className="h-7 text-xs"
+            onClick={() => onChange({ ...value, mode: 'auto' })}
+          >
+            Автоматический (предпочтения)
+          </Button>
+        </div>
+      </SettingField>
+      <p className="text-[11px] text-muted-foreground -mt-1">
+        {mode === 'auto'
+          ? 'Карточки подбираются по аналитике поведения пользователя (просмотры, клики, корзина).'
+          : 'Карточки берутся из выбранных ниже категорий каталога.'}
+      </p>
       <div className="grid grid-cols-2 gap-2">
-        <SettingField label="Лимит">
-          <Input type="number" min={1} max={120} value={value.limit} className="h-8 text-xs" onChange={(e) => onChange({ ...value, limit: Number(e.target.value) || 12 })} />
+        <SettingField label="Лимит на странице">
+          <Input
+            type="number"
+            min={4}
+            max={60}
+            value={value.limit}
+            className="h-8 text-xs"
+            onChange={(e) => onChange({ ...value, limit: Math.max(4, Math.min(60, Number(e.target.value) || 10)) })}
+          />
         </SettingField>
         <SettingField label="Включая подкатегории">
           <Switch checked={value.includeDescendants} onCheckedChange={(v) => onChange({ ...value, includeDescendants: v })} />
         </SettingField>
       </div>
-      <SettingField label="Категории">
-        <CategoryTreeField value={value.categoryIds} onChange={(ids) => onChange({ ...value, categoryIds: ids })} />
-      </SettingField>
+      <div className="grid grid-cols-2 gap-2">
+        <SettingField label="Кнопка «Показать ещё»">
+          <Switch checked={showLoadMoreButton} onCheckedChange={(v) => onChange({ ...value, showLoadMoreButton: v })} />
+        </SettingField>
+        <SettingField label="Авто‑подгрузка при скролле">
+          <Switch checked={infiniteScroll} onCheckedChange={(v) => onChange({ ...value, infiniteScroll: v })} />
+        </SettingField>
+      </div>
+      {mode === 'manual' ? (
+        <SettingField label="Категории">
+          <CategoryTreeField value={value.categoryIds} onChange={(ids) => onChange({ ...value, categoryIds: ids })} />
+        </SettingField>
+      ) : null}
     </div>
   );
 }
