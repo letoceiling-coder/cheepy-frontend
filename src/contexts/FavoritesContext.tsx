@@ -1,33 +1,74 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { StorefrontProduct } from "@/types/storefront-product";
+import {
+  listFavorites,
+  toggleFavorite as libToggleFavoriteId,
+  isFavorite as libIsFavorite,
+  clearFavorites as libClearFavorites,
+  FAVORITES_EVENT_NAME,
+  type FavoriteEntry,
+  type ToggleFavoriteOptions,
+} from "@/lib/favorites";
 
-interface FavoritesContextType {
-  favorites: StorefrontProduct[];
+export interface FavoritesContextType {
+  /** Записи из localStorage (источник правды для счётчиков и списков). */
+  favoriteEntries: FavoriteEntry[];
   toggleFavorite: (product: StorefrontProduct) => void;
-  isFavorite: (productId: number) => boolean;
+  toggleFavoriteId: (productId: number | string, opts?: ToggleFavoriteOptions) => void;
+  isFavorite: (productId: number | string | null | undefined) => boolean;
+  clearFavoriteStorage: () => void;
   count: number;
 }
 
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
 
 export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
-  const [favorites, setFavorites] = useState<StorefrontProduct[]>([]);
+  const [favoriteEntries, setFavoriteEntries] = useState<FavoriteEntry[]>(() => listFavorites());
 
-  const toggleFavorite = (product: StorefrontProduct) => {
-    setFavorites(prev =>
-      prev.some(p => p.id === product.id)
-        ? prev.filter(p => p.id !== product.id)
-        : [...prev, product]
-    );
-  };
+  const syncFromStorage = useCallback(() => {
+    setFavoriteEntries(listFavorites());
+  }, []);
 
-  const isFavorite = (productId: number) => favorites.some(p => p.id === productId);
+  useEffect(() => {
+    syncFromStorage();
+    const handler = () => syncFromStorage();
+    window.addEventListener(FAVORITES_EVENT_NAME, handler);
+    window.addEventListener("storage", handler);
+    return () => {
+      window.removeEventListener(FAVORITES_EVENT_NAME, handler);
+      window.removeEventListener("storage", handler);
+    };
+  }, [syncFromStorage]);
 
-  return (
-    <FavoritesContext.Provider value={{ favorites, toggleFavorite, isFavorite, count: favorites.length }}>
-      {children}
-    </FavoritesContext.Provider>
+  const toggleFavorite = useCallback((product: StorefrontProduct) => {
+    const id = Number(product.id);
+    if (!Number.isFinite(id) || id <= 0) return;
+    libToggleFavoriteId(id);
+  }, []);
+
+  const toggleFavoriteId = useCallback((productId: number | string, opts?: ToggleFavoriteOptions) => {
+    libToggleFavoriteId(productId, opts);
+  }, []);
+
+  const isFavorite = useCallback((productId: number | string | null | undefined) => libIsFavorite(productId), []);
+
+  const clearFavoriteStorage = useCallback(() => {
+    libClearFavorites();
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      favoriteEntries,
+      toggleFavorite,
+      toggleFavoriteId,
+      isFavorite,
+      clearFavoriteStorage,
+      count: favoriteEntries.length,
+    }),
+    [favoriteEntries, toggleFavorite, toggleFavoriteId, isFavorite, clearFavoriteStorage],
   );
+
+  return <FavoritesContext.Provider value={value}>{children}</FavoritesContext.Provider>;
 };
 
 export const useFavorites = () => {

@@ -49,7 +49,7 @@ const PersonDashboard = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const { requireAuth } = useLoginPrompt();
   const { items: cartItems } = useCart();
-  const { favorites } = useFavorites();
+  const { count: favCount } = useFavorites();
   const navigate = useNavigate();
 
   const displayUser = user || mockUser;
@@ -60,7 +60,7 @@ const PersonDashboard = () => {
 
   // Animated counters
   const ordersCounter = useAnimatedCounter(mockOrders.length);
-  const favoritesCounter = useAnimatedCounter(favorites.length || 12);
+  const favoritesCounter = useAnimatedCounter(favCount);
   const balanceCounter = useAnimatedCounter(mockUser.balance);
   const addressesCounter = useAnimatedCounter(mockUser.addresses.length);
   const couponsCounter = useAnimatedCounter(activeCoupons);

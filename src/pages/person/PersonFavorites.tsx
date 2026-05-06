@@ -5,7 +5,6 @@ import { useLoginPrompt } from "@/contexts/LoginPromptContext";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { useFavorites } from "@/contexts/FavoritesContext";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 
@@ -14,7 +13,6 @@ type SortKey = "name" | "price-asc" | "price-desc" | "rating";
 const PersonFavorites = () => {
   const { requireAuth } = useLoginPrompt();
   const { toast } = useToast();
-  const { favorites } = useFavorites();
   const { addToCart } = useCart();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
