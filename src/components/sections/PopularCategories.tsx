@@ -3,6 +3,7 @@ import { useDragScroll } from "@/hooks/useDragScroll";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { publicApi, publicCrmMediaFileUrl, resolveCrmMediaAssetUrl } from "@/lib/api";
+import { fetchCategoryProductThumbnails } from "@/lib/categoryFeedThumbnails";
 import product1 from "@/assets/product-1.jpg";
 
 type FeedSettings = {
@@ -28,10 +29,6 @@ type MenuCategory = {
 
 function flatten(nodes: MenuCategory[]): MenuCategory[] {
   return nodes.flatMap((node) => [node, ...(Array.isArray(node.children) ? flatten(node.children) : [])]);
-}
-
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
 }
 
 const PopularCategories = ({ title, subtitle, feed }: Props) => {
@@ -90,13 +87,61 @@ const PopularCategories = ({ title, subtitle, feed }: Props) => {
     };
   }, [selectedIds.join(",")]);
 
-  const cats = useMemo(() => {
+  /** Stable shape: no fallbackById — avoids useEffect + state feedback loops (bursts of categoryProducts). */
+  const categoryBase = useMemo(() => {
     const baseRaw = selectedIds.length > 0 ? pickedCategories : menuCategories;
     const base = baseRaw.filter((c) => Number(c.products_count ?? 0) > 0);
-    // If admin explicitly picked categories, show all non-empty picked categories.
-    // For auto mode (menu), apply limit.
     const sliced = selectedIds.length > 0 ? base : base.slice(0, Math.max(1, Number(limit) || 24));
-    return sliced.map((cat) => {
+    return sliced.map((cat) => ({
+      id: cat.id,
+      slug: cat.slug,
+      name: cat.name,
+      count: Number(cat.products_count ?? 0),
+    }));
+  }, [limit, menuCategories, pickedCategories, selectedIds.length]);
+
+  const thumbFetchKey = useMemo(() => {
+    const slugPart = categoryBase
+      .filter((c) => {
+        const override = overrides.find((x) => Number(x.categoryId) === Number(c.id));
+        if (override?.mediaFileId || override?.imageUrl) return false;
+        return c.count > 0;
+      })
+      .map((c) => c.slug)
+      .sort()
+      .join("|");
+    return `${selectedIds.join(",")}|${slugPart}`;
+  }, [categoryBase, overrides, selectedIds.join(",")]);
+
+  useEffect(() => {
+    const needRows = categoryBase.filter((c) => {
+      const override = overrides.find((x) => Number(x.categoryId) === Number(c.id));
+      if (override?.mediaFileId || override?.imageUrl) return false;
+      return c.count > 0;
+    });
+    if (needRows.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      const map = await fetchCategoryProductThumbnails(
+        needRows.map((c) => ({ id: c.id, slug: c.slug })),
+        { concurrency: 5, pauseBetweenChunksMs: 50 },
+      );
+      if (cancelled) return;
+      setFallbackById((prev) => {
+        const next = { ...prev };
+        for (const [id, url] of Object.entries(map)) {
+          if (url) next[Number(id)] = url;
+        }
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [thumbFetchKey]);
+
+  const cats = useMemo(() => {
+    return categoryBase.map((cat) => {
       const override = overrides.find((x) => Number(x.categoryId) === Number(cat.id));
       const image =
         override?.mediaFileId
@@ -108,48 +153,11 @@ const PopularCategories = ({ title, subtitle, feed }: Props) => {
         id: cat.id,
         slug: cat.slug,
         name: cat.name,
-        count: Number(cat.products_count ?? 0),
+        count: cat.count,
         image,
       };
     });
-  }, [fallbackById, limit, menuCategories, overrides, pickedCategories, selectedIds.length]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const need = cats.filter((c) => {
-      const override = overrides.find((x) => Number(x.categoryId) === Number(c.id));
-      if (override?.mediaFileId || override?.imageUrl) return false;
-      if (c.count <= 0) return false;
-      return !fallbackById[c.id];
-    });
-    if (need.length === 0) return;
-    void (async () => {
-      // small throttle to avoid burst when blocks mount together
-      await sleep(30);
-      const entries = await Promise.all(
-        need.map(async (c) => {
-          try {
-            const res = await publicApi.categoryProducts(c.slug, { page: 1, per_page: 1 });
-            const thumb = res.data?.[0]?.thumbnail ? resolveCrmMediaAssetUrl(res.data[0].thumbnail) : "";
-            return [c.id, thumb] as const;
-          } catch {
-            return [c.id, ""] as const;
-          }
-        })
-      );
-      if (cancelled) return;
-      setFallbackById((prev) => {
-        const next = { ...prev };
-        for (const [id, url] of entries) {
-          if (url) next[id] = url;
-        }
-        return next;
-      });
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [cats, fallbackById, overrides]);
+  }, [categoryBase, overrides, fallbackById]);
 
   const showCards = !(pickedLoading && selectedIds.length > 0) && cats.length > 0;
 

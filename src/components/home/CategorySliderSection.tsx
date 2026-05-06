@@ -3,6 +3,7 @@ import { useDragScroll } from "@/hooks/useDragScroll";
 import CategoryCard from "./CategoryCard";
 import CategorySliderControls from "./CategorySliderControls";
 import { publicApi, resolveCrmMediaAssetUrl } from "@/lib/api";
+import { fetchCategoryProductThumbnails } from "@/lib/categoryFeedThumbnails";
 import product1 from "@/assets/product-1.jpg";
 
 type FeedSettings = {
@@ -56,28 +57,70 @@ const CategorySliderSection = ({ feed }: Props) => {
   const overrides = feed?.imageOverrides ?? [];
   const limit = feed?.limit ?? 24;
 
-  const sliderCategories = useMemo(() => {
+  const rowMeta = useMemo(() => {
     const base = selectedIds.length > 0 ? menuCategories.filter((x) => selectedIds.includes(Number(x.id))) : menuCategories;
     const sliced = base.slice(0, Math.max(1, Number(limit) || 24));
     return sliced.map((cat) => {
       const override = overrides.find((x) => Number(x.categoryId) === Number(cat.id));
-      const overrideUrl = override?.imageUrl ? resolveCrmMediaAssetUrl(String(override.imageUrl)) : '';
-      const image = overrideUrl || cat.icon || fallbackById[cat.id] || product1;
+      const overrideUrl = override?.imageUrl ? resolveCrmMediaAssetUrl(String(override.imageUrl)) : "";
       return {
         id: cat.id,
         slug: cat.slug,
         name: cat.name,
         count: Number(cat.products_count ?? 0),
-        image,
+        iconUrl: cat.icon || "",
+        hasOverrideUrl: Boolean(overrideUrl),
+        overrideUrl,
       };
     });
-  }, [fallbackById, limit, menuCategories, overrides, selectedIds]);
+  }, [limit, menuCategories, overrides, selectedIds]);
+
+  const thumbFetchKey = useMemo(() => {
+    const slugPart = rowMeta
+      .filter((r) => !r.hasOverrideUrl && !r.iconUrl && r.count > 0)
+      .map((r) => r.slug)
+      .sort()
+      .join("|");
+    return `${selectedIds.join(",")}|${slugPart}`;
+  }, [rowMeta, selectedIds.join(",")]);
+
+  useEffect(() => {
+    const needRows = rowMeta.filter((r) => !r.hasOverrideUrl && !r.iconUrl && r.count > 0);
+    if (needRows.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      const map = await fetchCategoryProductThumbnails(
+        needRows.map((c) => ({ id: c.id, slug: c.slug })),
+        { concurrency: 5, pauseBetweenChunksMs: 50 },
+      );
+      if (cancelled) return;
+      setFallbackById((prev) => {
+        const next = { ...prev };
+        for (const [id, url] of Object.entries(map)) {
+          if (url) next[Number(id)] = url;
+        }
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [thumbFetchKey]);
+
+  const sliderCategories = useMemo(() => {
+    return rowMeta.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      name: r.name,
+      count: r.count,
+      image: r.overrideUrl || r.iconUrl || fallbackById[r.id] || product1,
+    }));
+  }, [rowMeta, fallbackById]);
 
   const total = sliderCategories.length;
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    // Reset cursor when list changes (e.g., settings updated)
     setCurrent(0);
   }, [total]);
 
@@ -87,36 +130,6 @@ const CategorySliderSection = ({ feed }: Props) => {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const need = sliderCategories.filter((c) => !c.image || c.image === product1).map((c) => c);
-    if (need.length === 0) return;
-    void (async () => {
-      const entries = await Promise.all(
-        need.map(async (c) => {
-          try {
-            const res = await publicApi.categoryProducts(c.slug, { page: 1, per_page: 1 });
-            const thumb = res.data?.[0]?.thumbnail ? resolveCrmMediaAssetUrl(res.data[0].thumbnail) : '';
-            return [c.id, thumb] as const;
-          } catch {
-            return [c.id, ''] as const;
-          }
-        })
-      );
-      if (cancelled) return;
-      setFallbackById((prev) => {
-        const next = { ...prev };
-        for (const [id, url] of entries) {
-          if (url) next[id] = url;
-        }
-        return next;
-      });
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [sliderCategories]);
 
   const scrollToIndex = useCallback((index: number) => {
     itemRefs.current[index]?.scrollIntoView({

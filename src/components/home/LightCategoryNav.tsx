@@ -3,6 +3,7 @@ import { useDragScroll } from "@/hooks/useDragScroll";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { publicApi, publicCrmMediaFileUrl, resolveCrmMediaAssetUrl } from "@/lib/api";
+import { fetchCategoryProductThumbnails } from "@/lib/categoryFeedThumbnails";
 import product1 from "@/assets/product-1.jpg";
 
 type FeedSettings = {
@@ -88,11 +89,60 @@ const LightCategoryNav = ({ feed }: Props) => {
     };
   }, [selectedIds.join(",")]);
 
-  const sliderCategories = useMemo(() => {
+  const categoryBase = useMemo(() => {
     const baseRaw = selectedIds.length > 0 ? pickedCategories : menuCategories;
     const base = baseRaw.filter((c) => Number(c.products_count ?? 0) > 0);
     const sliced = base.slice(0, Math.max(1, Number(limit) || 24));
-    return sliced.map((cat) => {
+    return sliced.map((cat) => ({
+      id: cat.id,
+      slug: cat.slug,
+      name: cat.name,
+      count: Number(cat.products_count ?? 0),
+    }));
+  }, [limit, menuCategories, pickedCategories, selectedIds]);
+
+  const thumbFetchKey = useMemo(() => {
+    const slugPart = categoryBase
+      .filter((c) => {
+        const override = overrides.find((x) => Number(x.categoryId) === Number(c.id));
+        if (override?.mediaFileId || override?.imageUrl) return false;
+        return c.count > 0;
+      })
+      .map((c) => c.slug)
+      .sort()
+      .join("|");
+    return `${selectedIds.join(",")}|${slugPart}`;
+  }, [categoryBase, overrides, selectedIds.join(",")]);
+
+  useEffect(() => {
+    const needRows = categoryBase.filter((c) => {
+      const override = overrides.find((x) => Number(x.categoryId) === Number(c.id));
+      if (override?.mediaFileId || override?.imageUrl) return false;
+      return c.count > 0;
+    });
+    if (needRows.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      const map = await fetchCategoryProductThumbnails(
+        needRows.map((c) => ({ id: c.id, slug: c.slug })),
+        { concurrency: 5, pauseBetweenChunksMs: 50 },
+      );
+      if (cancelled) return;
+      setFallbackById((prev) => {
+        const next = { ...prev };
+        for (const [id, url] of Object.entries(map)) {
+          if (url) next[Number(id)] = url;
+        }
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [thumbFetchKey]);
+
+  const sliderCategories = useMemo(() => {
+    return categoryBase.map((cat) => {
       const override = overrides.find((x) => Number(x.categoryId) === Number(cat.id));
       const image =
         override?.mediaFileId
@@ -104,11 +154,11 @@ const LightCategoryNav = ({ feed }: Props) => {
         id: cat.id,
         slug: cat.slug,
         name: cat.name,
-        count: Number(cat.products_count ?? 0),
+        count: cat.count,
         image,
       };
     });
-  }, [fallbackById, limit, menuCategories, overrides, pickedCategories, selectedIds]);
+  }, [categoryBase, overrides, fallbackById]);
 
   const total = sliderCategories.length;
 
@@ -125,46 +175,10 @@ const LightCategoryNav = ({ feed }: Props) => {
     setCurrent(0);
   }, [total]);
 
-  // Keep a tiny delay so layout is ready before the first scrollIntoView
   useEffect(() => {
     const t = window.setTimeout(() => scrollToIndex(current), 0);
     return () => window.clearTimeout(t);
   }, [current, scrollToIndex]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const need = sliderCategories.filter((c) => {
-      const override = overrides.find((x) => Number(x.categoryId) === Number(c.id));
-      if (override?.mediaFileId || override?.imageUrl) return false;
-      if (c.count <= 0) return false;
-      return !fallbackById[c.id];
-    });
-    if (need.length === 0) return;
-    void (async () => {
-      const entries = await Promise.all(
-        need.map(async (c) => {
-          try {
-            const res = await publicApi.categoryProducts(c.slug, { page: 1, per_page: 1 });
-            const thumb = res.data?.[0]?.thumbnail ? resolveCrmMediaAssetUrl(res.data[0].thumbnail) : '';
-            return [c.id, thumb] as const;
-          } catch {
-            return [c.id, ''] as const;
-          }
-        })
-      );
-      if (cancelled) return;
-      setFallbackById((prev) => {
-        const next = { ...prev };
-        for (const [id, url] of entries) {
-          if (url) next[id] = url;
-        }
-        return next;
-      });
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [sliderCategories, fallbackById, overrides]);
 
   const ready = selectedIds.length > 0 ? !pickedLoading : menuReady;
 
