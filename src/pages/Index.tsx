@@ -176,7 +176,7 @@ const Index = () => {
           <PopularCategories />
           <MarketplaceAdvantages />
           <HeroProductPromo />
-          <HotDeals />
+          <HotDeals allowDemo />
           <ProductGrid title="ГОРЯЧИЕ ПРЕДЛОЖЕНИЯ" initialCount={6} />
           <RandomModelShowcase />
           <LargeProductSlider />

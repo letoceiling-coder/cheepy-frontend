@@ -5,7 +5,11 @@ import { useStorefrontProductCards } from "@/hooks/useStorefrontProductCards";
 import { Link } from "react-router-dom";
 import { hotDeals, type HotDeal } from "@/data/marketplaceData";
 import type { BlockScheduleSetting, HotDealProductSetting } from "@/constructor/settingsProfiles";
-import { getActiveHotDeals, type ActiveHotDeal } from "@/lib/hotDeals";
+import {
+  getActiveHotDeals,
+  isHotDealsLayoutConfigured,
+  type ActiveHotDeal,
+} from "@/lib/hotDeals";
 
 const useCountdown = (endsAt: number) => {
   const [timeLeft, setTimeLeft] = useState(() => Math.max(0, endsAt - Date.now()));
@@ -78,61 +82,100 @@ const DealCard = ({ deal }: { deal: ActiveHotDeal }) => {
   );
 };
 
+function mockActiveDealsFromMarketplace(): ActiveHotDeal[] {
+  return hotDeals.map((deal: HotDeal) => ({
+    id: `mock-${deal.id}`,
+    productId: Number(deal.id) || 0,
+    name: deal.name,
+    image: deal.image,
+    salePrice: deal.price,
+    originalPrice: deal.oldPrice,
+    discountPercent: Math.round((1 - deal.price / deal.oldPrice) * 100),
+    startsAt: 0,
+    endsAt: deal.endsAt,
+    url: `/product/${deal.id}`,
+  }));
+}
+
 type HotDealsProps = {
   title?: string;
   subtitle?: string;
   dealItems?: HotDealProductSetting[];
   schedule?: BlockScheduleSetting;
+  /**
+   * When true and there is no constructor configuration, renders legacy demo carousel (static homepage fallback).
+   */
+  allowDemo?: boolean;
 };
 
-const HotDeals = ({ title, subtitle, dealItems, schedule }: HotDealsProps) => {
+const HotDeals = ({ title, subtitle, dealItems, schedule, allowDemo = false }: HotDealsProps) => {
   const scrollRef = useDragScroll<HTMLDivElement>();
-  const configuredDeals = useMemo(() => getActiveHotDeals({ dealItems, schedule }), [dealItems, schedule]);
-  const dealProductIds = useMemo(() => configuredDeals.map((d) => d.productId), [configuredDeals]);
-  const { data: storefrontById = {} } = useStorefrontProductCards(dealProductIds);
-  const commissionedDeals = useMemo(
-    () =>
-      configuredDeals.map((deal) => {
-        const key = String(deal.productId ?? "");
-        const price = key ? storefrontById[key]?.price_raw : undefined;
-        if (price == null || price <= 0) return deal;
-        const salePrice = Math.max(1, Math.round(price * (1 - deal.discountPercent / 100)));
-        return {
-          ...deal,
-          originalPrice: price,
-          salePrice,
-        };
-      }),
-    [configuredDeals, storefrontById],
-  );
-  const hasConfiguredDeals = Boolean(
-    (dealItems?.length ?? 0) > 0 ||
-    (schedule?.windows ?? []).some((window) => (window.dealItems?.length ?? 0) > 0),
-  );
-  const deals: ActiveHotDeal[] = commissionedDeals.length > 0
-    ? commissionedDeals
-    : hasConfiguredDeals
-      ? []
-    : hotDeals.map((deal: HotDeal) => ({
-      id: `mock-${deal.id}`,
-      productId: Number(deal.id) || 0,
-      name: deal.name,
-      image: deal.image,
-      salePrice: deal.price,
-      originalPrice: deal.oldPrice,
-      discountPercent: Math.round((1 - deal.price / deal.oldPrice) * 100),
-      startsAt: 0,
-      endsAt: deal.endsAt,
-      url: `/product/${deal.id}`,
-    }));
+
+  const settingsPayload = useMemo(() => ({ dealItems, schedule }), [dealItems, schedule]);
+  const configured = useMemo(() => getActiveHotDeals(settingsPayload), [settingsPayload]);
+  const layoutConfigured = isHotDealsLayoutConfigured(settingsPayload);
+
+  const dealProductIds = useMemo(() => configured.map((d) => d.productId), [configured]);
+  const catalogQuery = useStorefrontProductCards(dealProductIds);
+  const needsCatalog = dealProductIds.length > 0;
+
+  const deals: ActiveHotDeal[] = useMemo(() => {
+    if (!layoutConfigured) {
+      if (!allowDemo) return [];
+      return mockActiveDealsFromMarketplace();
+    }
+
+    if (configured.length === 0) {
+      return [];
+    }
+
+    if (needsCatalog) {
+      if (!catalogQuery.isSuccess || !catalogQuery.data) return [];
+      const byId = catalogQuery.data;
+      return configured.flatMap((deal) => {
+        const row = byId[String(deal.productId)];
+        const priceRaw = typeof row?.price_raw === "number" ? row.price_raw : NaN;
+        if (!row || !Number.isFinite(priceRaw) || priceRaw <= 0) return [];
+        const salePrice = Math.max(1, Math.round(priceRaw * (1 - deal.discountPercent / 100)));
+        const img = (row.thumbnail && String(row.thumbnail).trim()) || deal.image;
+        const nm = (row.title && row.title.trim()) || deal.name;
+        return [
+          {
+            ...deal,
+            name: nm,
+            image: img,
+            originalPrice: priceRaw,
+            salePrice,
+            url: deal.url || `/product/${deal.productId}`,
+          },
+        ];
+      });
+    }
+
+    return [];
+  }, [
+    layoutConfigured,
+    allowDemo,
+    configured,
+    needsCatalog,
+    catalogQuery.isSuccess,
+    catalogQuery.data,
+  ]);
+
+  if (!layoutConfigured && !allowDemo) return null;
+
+  if (needsCatalog && catalogQuery.isPending) return null;
+  if (needsCatalog && catalogQuery.isError) return null;
 
   if (deals.length === 0) return null;
+
+  const showLive = layoutConfigured || allowDemo;
 
   return (
     <section className="mb-6">
       <div className="flex items-baseline gap-3 mb-3">
         <h2 className="text-xl font-bold text-foreground">{title || "ГОРЯЧИЕ ПРЕДЛОЖЕНИЯ"}</h2>
-        <span className="text-sm text-destructive font-semibold animate-pulse">LIVE</span>
+        {showLive ? <span className="text-sm text-destructive font-semibold animate-pulse">LIVE</span> : null}
       </div>
       {subtitle ? <p className="text-sm text-muted-foreground -mt-2 mb-3">{subtitle}</p> : null}
       <div className="relative flex items-center gap-3">

@@ -23,6 +23,16 @@ export type HotDealsSettingsLike = {
   schedule?: BlockScheduleSetting;
 };
 
+/** True if the block has any saved schedule/products to evaluate (not empty template). */
+export function isHotDealsLayoutConfigured(settings: HotDealsSettingsLike | undefined): boolean {
+  if (!settings) return false;
+  if ((settings.dealItems?.length ?? 0) > 0) return true;
+  const sched = settings.schedule;
+  if (sched?.enabled) return true;
+  if ((sched?.windows?.length ?? 0) > 0) return true;
+  return false;
+}
+
 function parsePriceText(text: string | null | undefined): number {
   const digits = String(text ?? '').replace(/[^\d]/g, '');
   return digits ? Number(digits) : 0;
