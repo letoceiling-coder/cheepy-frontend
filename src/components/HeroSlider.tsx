@@ -23,6 +23,11 @@ type HeroSliderProps = {
   overlayOpacity?: number;
   cta?: HeroSliderCta;
   className?: string;
+  /**
+   * Если медиаконтент из CMS отсутствует: показывать встроенные демо-слайды из ассетов.
+   * По умолчанию false — показываем скелетон (без «ложного» первого контента).
+   */
+  allowDemoSlides?: boolean;
 };
 
 const fallbackSlides = [
@@ -31,7 +36,13 @@ const fallbackSlides = [
   { image: hero3, title: "Летняя коллекция", subtitle: "Скидки до 50%", cta: "Купить" },
 ] as const;
 
-const HeroSlider = ({ media, overlayOpacity, cta, className }: HeroSliderProps) => {
+const HeroSlider = ({
+  media,
+  overlayOpacity,
+  cta,
+  className,
+  allowDemoSlides = false,
+}: HeroSliderProps) => {
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -58,17 +69,38 @@ const HeroSlider = ({ media, overlayOpacity, cta, className }: HeroSliderProps) 
       .filter((x) => Boolean(x.imageUrl || x.title || x.subtitle));
 
     if (normalized.length > 0) return normalized;
-    return fallbackSlides.map((s) => ({ imageUrl: s.image, title: s.title, subtitle: s.subtitle, ctaText: s.cta, ctaUrl: "", ctaTarget: "_self" as const, alt: s.title }));
-  }, [media, cta]);
+    if (!allowDemoSlides) return [];
+    return fallbackSlides.map((s) => ({
+      imageUrl: s.image,
+      title: s.title,
+      subtitle: s.subtitle,
+      ctaText: s.cta,
+      ctaUrl: "",
+      ctaTarget: "_self" as const,
+      alt: s.title,
+    }));
+  }, [media, cta, allowDemoSlides]);
 
   const next = useCallback(() => setCurrent((p) => (p + 1) % slides.length), [slides.length]);
   const prev = () => setCurrent((p) => (p - 1 + slides.length) % slides.length);
 
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || slides.length <= 1) return;
     const timer = setInterval(next, 5000);
     return () => clearInterval(timer);
-  }, [isPaused, next]);
+  }, [isPaused, next, slides.length]);
+
+  useEffect(() => {
+    setCurrent((c) => (slides.length > 0 ? c % slides.length : 0));
+  }, [slides.length]);
+
+  if (slides.length === 0) {
+    return (
+      <div className={`relative rounded-2xl overflow-hidden mb-8 ${className ?? ""}`} aria-busy aria-label="Загрузка промо-блока">
+        <div className="relative h-[320px] md:h-[420px] lg:h-[520px] bg-muted animate-pulse" />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -115,26 +147,27 @@ const HeroSlider = ({ media, overlayOpacity, cta, className }: HeroSliderProps) 
         ))}
       </div>
 
-      {/* Navigation arrows */}
-      <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 bg-background/80 p-2 rounded-full hover:bg-background transition-colors">
-        <ChevronLeft className="w-5 h-5 text-foreground" />
-      </button>
-      <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 bg-background/80 p-2 rounded-full hover:bg-background transition-colors">
-        <ChevronRight className="w-5 h-5 text-foreground" />
-      </button>
-
-      {/* Pagination dots */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-        {slides.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setCurrent(i)}
-            className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-              i === current ? "bg-primary-foreground w-6" : "bg-primary-foreground/50"
-            }`}
-          />
-        ))}
-      </div>
+      {slides.length > 1 ? (
+        <>
+          <button type="button" onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 bg-background/80 p-2 rounded-full hover:bg-background transition-colors">
+            <ChevronLeft className="w-5 h-5 text-foreground" />
+          </button>
+          <button type="button" onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 bg-background/80 p-2 rounded-full hover:bg-background transition-colors">
+            <ChevronRight className="w-5 h-5 text-foreground" />
+          </button>
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setCurrent(i)}
+                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${i === current ? "bg-primary-foreground w-6" : "bg-primary-foreground/50"
+                  }`}
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 };

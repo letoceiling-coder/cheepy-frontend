@@ -116,10 +116,11 @@ import VideoCarouselBanner from "@/components/banners/VideoCarouselBanner";
 import CinematicVideoBanner from "@/components/banners/CinematicVideoBanner";
 
 const Index = () => {
-  const { data: pageLayout } = useQuery({
+  const { data: pageLayout, isPending, isError } = useQuery({
     queryKey: ["public-layout-page", "home"],
     queryFn: () => publicApi.pageLayout("home"),
     retry: false,
+    staleTime: 60_000,
   });
 
   const dynamicBlocks = useMemo(() => {
@@ -138,23 +139,36 @@ const Index = () => {
 
   const hasDynamicHomeLayout = dynamicBlocks.length > 0;
 
-  return (
-    <div className="min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
-      <Header />
-
-      <main className="homepage-flow">
-        {hasDynamicHomeLayout ? (
-          <div className="max-w-[1400px] mx-auto px-4 py-4 space-y-2">
-            {dynamicBlocks.map((cfg) => (
-              <div key={cfg.id} data-block-type={cfg.type}>
-                <BlockRenderer block={cfg} />
-              </div>
-            ))}
+  const homeMain = (() => {
+    if (isPending && !isError) {
+      return (
+        <div className="max-w-[1400px] mx-auto px-4 py-4 space-y-4" aria-busy aria-label="Загрузка главной страницы">
+          <div className="relative rounded-2xl overflow-hidden">
+            <div className="h-[320px] md:h-[420px] lg:h-[520px] bg-muted animate-pulse" />
           </div>
-        ) : (
-        <>
+          <div className="h-20 bg-muted animate-pulse rounded-xl" />
+          <div className="h-36 bg-muted animate-pulse rounded-xl" />
+          <div className="h-48 bg-muted animate-pulse rounded-xl" />
+        </div>
+      );
+    }
+
+    if (hasDynamicHomeLayout) {
+      return (
+        <div className="max-w-[1400px] mx-auto px-4 py-4 space-y-2">
+          {dynamicBlocks.map((cfg) => (
+            <div key={cfg.id} data-block-type={cfg.type}>
+              <BlockRenderer block={cfg} />
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <>
         <div className="max-w-[1400px] mx-auto px-4">
-          <HeroSlider />
+          <HeroSlider allowDemoSlides />
           <CategoryCircleSlider />
           <CategorySliderSection />
           <LightCategoryNav />
@@ -263,9 +277,15 @@ const Index = () => {
           <InformBlock />
           <MapSection />
         </div>
-        </>
-        )}
-      </main>
+      </>
+    );
+  })();
+
+  return (
+    <div className="min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
+      <Header />
+
+      <main className="homepage-flow">{homeMain}</main>
 
       <Footer />
       <MobileBottomNav />
