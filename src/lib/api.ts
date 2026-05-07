@@ -1488,6 +1488,8 @@ export interface MarketplaceCurrencyRate {
 
 export interface MarketplaceSettingsData {
   marketplace_name: string;
+  /** Абсолютный URL логотипа для писем и шаблонов. */
+  marketplace_logo_url?: string;
   support_emails: MarketplaceContact[];
   support_phones: MarketplaceContact[];
   default_currency: string;
@@ -1519,6 +1521,7 @@ export interface MarketplaceCategoryNode {
 
 export interface PublicMarketplaceSettings {
   marketplace_name: string;
+  marketplace_logo_url?: string;
   support_emails: MarketplaceContact[];
   support_phones: MarketplaceContact[];
   default_currency: string;
@@ -2319,6 +2322,96 @@ export const crmSmsIntegrationsApi = {
       `/crm/sms-integrations/${name}/test`,
       body ?? {}
     ),
+};
+
+/** SMTP для маркетинговых и транзакционных писем (конфигурация в CRM). */
+export interface MailIntegrationListItem {
+  name: string;
+  title: string;
+  is_active: boolean;
+  status: "connected" | "disconnected";
+  last_successful_send_at?: string | null;
+}
+
+export const crmMailIntegrationsApi = {
+  list: () => get<MailIntegrationListItem[]>("/crm/mail-integrations"),
+  get: (name: string) => get<DeliveryIntegrationDetail>(`/crm/mail-integrations/${name}`),
+  update: (name: string, data: Record<string, string | number | boolean | null>) =>
+    patch<DeliveryIntegrationDetail>(`/crm/mail-integrations/${name}`, data),
+  test: (name: string, body: Record<string, string>) =>
+    post<{ success: boolean; message: string }>(`/crm/mail-integrations/${name}/test`, body),
+};
+
+export interface CrmMarketingChannel {
+  key: string;
+  name: string;
+  icon: string;
+  connected: boolean;
+  subscriber_count: number;
+  documentation_title: string;
+  documentation_markdown: string;
+}
+
+export const crmMarketingChannelsApi = {
+  list: () => get<{ data: CrmMarketingChannel[] }>("/crm/marketing/channels"),
+};
+
+export interface CrmMarketingCampaignRow {
+  id: number;
+  name: string;
+  channel: string;
+  channel_key: string;
+  audience: string;
+  audienceSize: number;
+  status: string;
+  sentCount: number;
+  openRate: number;
+  clickRate: number;
+  scheduledAt: string;
+  createdAt?: string;
+}
+
+export const crmMarketingCampaignsApi = {
+  list: () => get<{ data: CrmMarketingCampaignRow[] }>("/crm/marketing/campaigns"),
+  create: (payload: {
+    name: string;
+    channel_key?: string;
+    audience?: string;
+    subject?: string;
+    body_html?: string;
+    marketing_email_template_id?: number | null;
+  }) => post<{ data: { id: number } }>("/crm/marketing/campaigns", payload),
+  send: (id: number, body?: { limit?: number }) =>
+    post<{ success: boolean; message: string; sent?: number }>(`/crm/marketing/campaigns/${id}/send`, body ?? {}),
+};
+
+export interface CrmEmailTemplateListItem {
+  id: number;
+  slug: string;
+  title: string;
+  send_trigger: string;
+  subject: string;
+  is_automatic: boolean;
+  is_active: boolean;
+  placeholder_hint?: string | null;
+  updated_at?: string | null;
+}
+
+export interface CrmEmailTemplateDetail extends CrmEmailTemplateListItem {
+  body_html: string;
+}
+
+export const crmEmailTemplatesApi = {
+  list: () => get<{ data: CrmEmailTemplateListItem[] }>("/crm/email-templates"),
+  get: (id: number) => get<{ data: CrmEmailTemplateDetail }>(`/crm/email-templates/${id}`),
+  update: (
+    id: number,
+    payload: Partial<
+      Pick<CrmEmailTemplateDetail, "title" | "subject" | "body_html" | "is_automatic" | "is_active" | "placeholder_hint">
+    >
+  ) => patch<{ data: CrmEmailTemplateDetail }>(`/crm/email-templates/${id}`, payload),
+  preview: (payload: { subject: string; body_html: string }) =>
+    post<{ subject: string; body_html: string; variables: Record<string, string> }>("/crm/email-templates/preview", payload),
 };
 
 export interface SocialOauthDocLink {

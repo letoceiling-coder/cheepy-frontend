@@ -7,9 +7,11 @@ import {
   crmPaymentProvidersApi,
   crmDeliveryIntegrationsApi,
   crmSmsIntegrationsApi,
+  crmMailIntegrationsApi,
   crmSocialOauthIntegrationsApi,
   type PaymentProviderItem,
   type DeliveryIntegrationItem,
+  type MailIntegrationListItem,
   type SocialOauthIntegrationItem,
 } from "@/lib/api";
 import { PaymentAlertsBanner } from "../components/PaymentAlertsBanner";
@@ -42,6 +44,10 @@ const MAPS_UI: Record<string, { icon: string; description: string }> = {
 
 const SMS_UI: Record<string, { icon: string; description: string }> = {
   iqsms: { icon: "📲", description: "SMS через REST API (SMS Дисконт / iqsms.ru)" },
+};
+
+const MAIL_UI: Record<string, { icon: string; description: string }> = {
+  smtp: { icon: "✉️", description: "SMTP (маркетинг и транзакционные письма из CRM)" },
 };
 
 const SOCIAL_UI: Record<string, { icon: string; description: string }> = {
@@ -95,18 +101,21 @@ export default function CrmIntegrationsPage() {
   const [paymentProviders, setPaymentProviders] = useState<PaymentProviderItem[]>([]);
   const [deliveryRows, setDeliveryRows] = useState<DeliveryIntegrationItem[]>([]);
   const [smsRows, setSmsRows] = useState<DeliveryIntegrationItem[]>([]);
+  const [mailRows, setMailRows] = useState<MailIntegrationListItem[]>([]);
   const [socialRows, setSocialRows] = useState<SocialOauthIntegrationItem[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [loadingDelivery, setLoadingDelivery] = useState(true);
   const [loadingSms, setLoadingSms] = useState(true);
+  const [loadingMail, setLoadingMail] = useState(true);
   const [loadingSocial, setLoadingSocial] = useState(true);
 
-  const categories = ["payments", "delivery", "maps", "sms", "social", "ai", "crm", "erp"] as const;
+  const categories = ["payments", "delivery", "maps", "sms", "mail", "social", "ai", "crm", "erp"] as const;
   const categoryLabels: Record<(typeof categories)[number], string> = {
     payments: "Платежи",
     delivery: "Доставка",
     maps: "Карты",
     sms: "SMS",
+    mail: "Email",
     social: "Соцсети",
     ai: "ИИ",
     crm: "CRM",
@@ -135,6 +144,14 @@ export default function CrmIntegrationsPage() {
       .then(setSmsRows)
       .catch(() => setSmsRows([]))
       .finally(() => setLoadingSms(false));
+  }, []);
+
+  useEffect(() => {
+    crmMailIntegrationsApi
+      .list()
+      .then(setMailRows)
+      .catch(() => setMailRows([]))
+      .finally(() => setLoadingMail(false));
   }, []);
 
   useEffect(() => {
@@ -371,6 +388,66 @@ export default function CrmIntegrationsPage() {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Link to={`/crm/integrations/sms/${row.name}`}>
+                        <Settings className="h-3.5 w-3.5" />
+                        Настроить
+                      </Link>
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="mail" className="mt-4">
+          {loadingMail ? (
+            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+              Загрузка...
+            </div>
+          ) : mailRows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Интеграции почты не найдены. Убедитесь, что миграции и сид приложены на сервере API.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {mailRows.map((row) => {
+                const ui = MAIL_UI[row.name] ?? { icon: "✉️", description: "Отправка писем" };
+                return (
+                  <div
+                    key={row.name}
+                    role="link"
+                    tabIndex={0}
+                    className="p-4 rounded-lg border border-border bg-card space-y-3 cursor-pointer hover:bg-accent/5 transition-colors"
+                    onClick={() => navigate(`/crm/integrations/mail/${row.name}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") navigate(`/crm/integrations/mail/${row.name}`);
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{ui.icon}</span>
+                        <span className="font-medium text-sm">{row.title}</span>
+                      </div>
+                      <StatusBadge status={row.status} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">{ui.description}</p>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      {row.status === "connected" ? (
+                        <Wifi className="h-3 w-3" />
+                      ) : (
+                        <WifiOff className="h-3 w-3" />
+                      )}
+                      {row.is_active ? "Активен" : "Выключен"}
+                      {row.last_successful_send_at ? ` · тест OK: ${fmtSync(row.last_successful_send_at)}` : ""}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full gap-2"
+                      asChild
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Link to={`/crm/integrations/mail/${row.name}`}>
                         <Settings className="h-3.5 w-3.5" />
                         Настроить
                       </Link>

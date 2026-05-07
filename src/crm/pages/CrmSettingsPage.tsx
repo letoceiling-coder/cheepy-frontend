@@ -17,6 +17,7 @@ const QK_MARKETPLACE_SETTINGS = ["crm-marketplace-settings"] as const;
 function emptySettings(): MarketplaceSettingsData {
   return {
     marketplace_name: "Cheepy",
+    marketplace_logo_url: "",
     support_emails: [{ email: "support@cheepy.ru", description: "Основная поддержка" }],
     support_phones: [{ phone: "+7 (800) 123-45-67", description: "Основной телефон" }],
     default_currency: "RUB",
@@ -147,6 +148,16 @@ export default function CrmSettingsPage() {
             <div>
               <Label className="text-xs">Название маркетплейса</Label>
               <Input value={settings.marketplace_name} onChange={(e) => update({ marketplace_name: e.target.value })} className="h-8 text-sm mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs">URL логотипа (для шаблонов писем и витрины)</Label>
+              <Input
+                value={settings.marketplace_logo_url ?? ""}
+                onChange={(e) => update({ marketplace_logo_url: e.target.value })}
+                placeholder="https://example.com/logo.png"
+                className="h-8 text-sm mt-1"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">Подставляется в HTML-письма из раздела «Шаблоны».</p>
             </div>
 
             <div className="space-y-2">

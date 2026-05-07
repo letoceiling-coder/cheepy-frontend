@@ -123,6 +123,7 @@ import CrmProviderDetailPage from "./crm/pages/CrmProviderDetailPage";
 import CrmDeliveryIntegrationPage from "./crm/pages/CrmDeliveryIntegrationPage";
 import CrmMapsIntegrationPage from "./crm/pages/CrmMapsIntegrationPage";
 import CrmSmsIntegrationPage from "./crm/pages/CrmSmsIntegrationPage";
+import CrmMailIntegrationPage from "./crm/pages/CrmMailIntegrationPage";
 import CrmSocialOauthIntegrationPage from "./crm/pages/CrmSocialOauthIntegrationPage";
 import CrmGenericIntegrationPage from "./crm/pages/CrmGenericIntegrationPage";
 import CrmIntegrationLegacyRedirect from "./crm/pages/CrmIntegrationLegacyRedirect";
@@ -457,6 +458,7 @@ function AnimatedRoutes() {
           <Route path="integrations/delivery/:slug" element={<CrmDeliveryIntegrationPage />} />
           <Route path="integrations/maps/:slug" element={<CrmMapsIntegrationPage />} />
           <Route path="integrations/sms/:slug" element={<CrmSmsIntegrationPage />} />
+          <Route path="integrations/mail/:slug" element={<CrmMailIntegrationPage />} />
           <Route path="integrations/social/:slug" element={<CrmSocialOauthIntegrationPage />} />
           <Route path="integrations/crm/:slug" element={<CrmGenericIntegrationPage category="crm" />} />
           <Route path="integrations/erp/:slug" element={<CrmGenericIntegrationPage category="erp" />} />

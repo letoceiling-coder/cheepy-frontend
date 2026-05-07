@@ -187,7 +187,7 @@ export function CrmTopbar() {
                   return (
                     <DropdownMenuItem
                       key={item.id}
-                      className={`flex flex-col items-start gap-0.5 py-2.5 cursor-pointer whitespace-normal min-h-0 max-w-full [&>span]:w-full ${!read ? "bg-primary/5" : ""}`}
+                      className={`flex flex-col items-start gap-0.5 py-2.5 cursor-pointer whitespace-normal min-h-0 max-w-full [&>span]:w-full focus:[&>span:nth-child(1)]:text-accent-foreground focus:[&>span:nth-child(2)]:text-accent-foreground/90 focus:[&>span:nth-child(3)]:text-accent-foreground/85 data-[highlighted]:[&>span:nth-child(1)]:text-accent-foreground data-[highlighted]:[&>span:nth-child(2)]:text-accent-foreground/90 data-[highlighted]:[&>span:nth-child(3)]:text-accent-foreground/85 ${!read ? "bg-primary/5" : ""}`}
                       onClick={() => onOpenItem(item)}
                     >
                       <span className={`text-sm ${read ? "text-foreground" : "font-semibold text-foreground"}`}>{item.title}</span>
