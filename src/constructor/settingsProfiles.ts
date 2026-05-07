@@ -105,6 +105,9 @@ export interface HotDealProductSetting {
 
 export interface CategoryFeedSettings {
   source: 'catalog_categories';
+  /** Выбранные категории витрины (основное поле UI); при пустом списке можно fallback на legacy rootCategoryId. */
+  categoryIds: number[];
+  /** @deprecated Используйте categoryIds; если задан только root — нормализация скопирует его в categoryIds[0]. */
   rootCategoryId: number | null;
   depth: number;
   minProducts: number;
@@ -236,7 +239,7 @@ export type NormalizedProfileSettings =
 const heroTypes = new Set(['HeroSlider', 'CinematicHero', 'SplitHero', 'HeroWithSlider']);
 const heroProductTypes = new Set(['HeroProductPromo']);
 const productFeedTypes = new Set([
-  'ProductGrid', 'Bestsellers', 'TrendingProducts', 'NewArrivals', 'TopRatedProducts', 'LimitedEdition', 'FeaturedCollection',
+  'ProductGrid', 'Bestsellers', 'TrendingProducts', 'TrendingGrid', 'NewArrivals', 'TopRatedProducts', 'LimitedEdition', 'FeaturedCollection',
   'ProductCollection', 'ProductShowcase', 'ProductDiscovery', 'MinimalProductGrid', 'ProductHoverGrid', 'InteractiveProductCards',
   'TiltProductCards', 'ProductRotationShowcase', 'ProductDemoCards', 'LargeProductSlider', 'BundleDeals', 'ProductComparison',
   'ProductConfigurator', 'HotDeals', 'DailyDeals', 'FlashSale', 'DealsCountdown', 'SpecialOffers', 'ProductDetailHero',
@@ -343,7 +346,7 @@ function defaultByProfile(profile: SettingsProfileId): NormalizedProfileSettings
     case 'P-CATEGORY-FEED':
       return {
         ...base, profile, feed: {
-          source: 'catalog_categories', rootCategoryId: null, depth: 3, minProducts: 1, hideEmpty: true,
+          source: 'catalog_categories', categoryIds: [], rootCategoryId: null, depth: 3, minProducts: 1, hideEmpty: true,
           sortBy: 'sort_order', sortDir: 'asc', limit: 24, imageOverrides: [],
         },
       };
@@ -370,7 +373,7 @@ export function normalizeBlockProfileSettings(blockType: string, raw: Record<str
   merged.profile = profile;
   if (merged.profile === 'P-PRODUCT-FEED') {
     merged.feed = { ...(defaults as ProductFeedProfileSettings).feed, ...(safeRaw as Partial<ProductFeedProfileSettings>).feed };
-    const blockDefaultLimit = blockType === 'MinimalProductGrid' ? 10 : 12;
+    const blockDefaultLimit = blockType === 'MinimalProductGrid' ? 10 : blockType === 'TrendingGrid' ? 8 : 12;
     if (typeof merged.feed?.limit !== 'number') merged.feed.limit = blockDefaultLimit;
     // Минимально 4, максимально 60 — общий ограничитель.
     merged.feed.limit = Math.max(4, Math.min(60, Math.round(merged.feed.limit)));
@@ -437,7 +440,25 @@ export function normalizeBlockProfileSettings(blockType: string, raw: Record<str
       }
     }
   }
-  if (merged.profile === 'P-CATEGORY-FEED' && typeof merged.feed?.depth !== 'number') merged.feed.depth = 3;
+  if (merged.profile === 'P-CATEGORY-FEED') {
+    merged.feed = {
+      ...(defaults as CategoryFeedProfileSettings).feed,
+      ...((safeRaw as Partial<CategoryFeedProfileSettings>).feed ?? {}),
+    } as CategoryFeedSettings;
+    const catFeed = merged.feed as CategoryFeedSettings;
+    const rawFeed = safeRaw.feed as Partial<CategoryFeedSettings> | undefined;
+    const fromRaw = rawFeed?.categoryIds;
+    if (Array.isArray(fromRaw)) {
+      catFeed.categoryIds = fromRaw.filter((x) => Number.isFinite(x) && typeof x === 'number' && (x as number) > 0) as number[];
+    } else if (!Array.isArray(catFeed.categoryIds)) {
+      catFeed.categoryIds = [];
+    }
+    const root = typeof catFeed.rootCategoryId === 'number' && catFeed.rootCategoryId > 0 ? catFeed.rootCategoryId : null;
+    if (catFeed.categoryIds.length === 0 && root != null && !catFeed.categoryIds.includes(root)) {
+      catFeed.categoryIds = [root];
+    }
+    if (typeof merged.feed?.depth !== 'number') merged.feed.depth = 3;
+  }
   if ((merged.profile === 'P-HERO-MEDIA' || merged.profile === 'P-BANNER-MEDIA' || merged.profile === 'P-VIDEO-MEDIA' || merged.profile === 'P-LOOKBOOK-MEDIA')
     && (!Array.isArray(merged.media) || merged.media.length === 0)) {
     merged.media = [defaultMediaItem()];
@@ -484,6 +505,20 @@ export function normalizeBlockProfileSettings(blockType: string, raw: Record<str
       merged.autoplaySeconds = 0;
     }
     merged.autoplaySeconds = Math.min(60, Math.max(0, Math.round(merged.autoplaySeconds)));
+  }
+  if (merged.profile === 'P-BANNER-MEDIA') {
+    const bm = merged as BannerMediaSettings;
+    if (typeof bm.autoplaySeconds !== 'number' || !Number.isFinite(bm.autoplaySeconds) || bm.autoplaySeconds < 0) {
+      bm.autoplaySeconds = 5;
+    }
+    bm.autoplaySeconds = Math.min(120, Math.max(0, Math.round(bm.autoplaySeconds)));
+  }
+  if (merged.profile === 'P-UTILITY') {
+    const ut = merged as UtilitySettings;
+    if (typeof ut.minHeight !== 'number' || !Number.isFinite(ut.minHeight)) {
+      ut.minHeight = 720;
+    }
+    ut.minHeight = Math.min(4000, Math.max(320, Math.round(ut.minHeight)));
   }
   return merged;
 }

@@ -8,7 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Trash2, Copy, Eye, EyeOff } from 'lucide-react';
 import { BlockConfig, type BlockSettings, type FooterSettings, type HeaderSettings } from '../types';
-import type { ProductFeedProfileSettings, SocialFeedSettings } from '../settingsProfiles';
+import type {
+  BannerMediaSettings,
+  ProductFeedProfileSettings,
+  SocialFeedSettings,
+  UtilitySettings,
+} from '../settingsProfiles';
 import { getSettingsProfileForBlockType, normalizeBlockProfileSettings } from '../settingsProfiles';
 import { AdvantagesItemsField, CategoryImageOverridesField, CategoryTreeField, CtaEditor, HotDealsSettingsField, LinksEditor, MediaPickerField, ProductFeedField, ProductPickerField, SettingField } from './settings/SharedProfileFields';
 import { CrmMediaPickerDialog } from '@/crm/components/CrmMediaPickerDialog';
@@ -380,6 +385,22 @@ function ProfileSettingsForm({
       {profile === 'P-HERO-MEDIA' || profile === 'P-BANNER-MEDIA' || profile === 'P-VIDEO-MEDIA' || profile === 'P-LOOKBOOK-MEDIA' ? (
         <SettingField label="Медиа"><MediaPickerField items={normalized.media} onChange={(media) => update({ media })} /></SettingField>
       ) : null}
+      {profile === 'P-BANNER-MEDIA' ? (
+        <SettingField label="Автопереключение слайдов (сек), 0 — выкл">
+          <Input
+            type="number"
+            min={0}
+            max={120}
+            className="h-8 text-xs"
+            value={Number.isFinite((normalized as BannerMediaSettings).autoplaySeconds) ? Number((normalized as BannerMediaSettings).autoplaySeconds) : 5}
+            onChange={(e) =>
+              update({
+                autoplaySeconds: Math.min(120, Math.max(0, Math.round(Number(e.target.value) || 0))),
+              })
+            }
+          />
+        </SettingField>
+      ) : null}
       {profile === 'P-HERO-MEDIA' ? (
         <SettingField label="Затемнение/оверлей (%)">
           <Input
@@ -396,8 +417,22 @@ function ProfileSettingsForm({
       {profile === 'P-NAV-GLOBAL' ? <SettingField label="Ссылки"><LinksEditor links={(normalized as any).links ?? []} onChange={(links) => update({ links })} /></SettingField> : null}
       {profile === 'P-UTILITY' ? (
         <>
-          <SettingField label="Path"><Input className="h-8 text-xs" value={String((normalized as any).path ?? '/')} onChange={(e) => update({ path: e.target.value })} /></SettingField>
-          <SettingField label="Caption"><Input className="h-8 text-xs" value={String((normalized as any).caption ?? '')} onChange={(e) => update({ caption: e.target.value })} /></SettingField>
+          <SettingField label="Path"><Input className="h-8 text-xs" value={String((normalized as UtilitySettings).path ?? '/')} onChange={(e) => update({ path: e.target.value })} /></SettingField>
+          <SettingField label="Минимальная высота (px)">
+            <Input
+              type="number"
+              min={320}
+              max={4000}
+              className="h-8 text-xs"
+              value={Number.isFinite((normalized as UtilitySettings).minHeight) ? Number((normalized as UtilitySettings).minHeight) : 720}
+              onChange={(e) =>
+                update({
+                  minHeight: Math.min(4000, Math.max(320, Math.round(Number(e.target.value) || 720))),
+                })
+              }
+            />
+          </SettingField>
+          <SettingField label="Caption"><Input className="h-8 text-xs" value={String((normalized as UtilitySettings).caption ?? '')} onChange={(e) => update({ caption: e.target.value })} /></SettingField>
         </>
       ) : null}
     </div>

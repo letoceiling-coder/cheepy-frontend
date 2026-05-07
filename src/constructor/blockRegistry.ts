@@ -22,6 +22,7 @@ export const blockRegistry: BlockDefinition[] = [
   { type: 'ProductGrid', label: 'Product Grid', category: 'products', icon: 'Grid3x3', defaultSettings: { title: 'Products', initialCount: 6 } },
   { type: 'Bestsellers', label: 'Bestsellers', category: 'products', icon: 'Award', defaultSettings: {} },
   { type: 'TrendingProducts', label: 'Trending Products', category: 'products', icon: 'TrendingUp', defaultSettings: {} },
+  { type: 'TrendingGrid', label: 'Trending Grid', category: 'products', icon: 'LayoutGrid', defaultSettings: {} },
   { type: 'NewArrivals', label: 'New Arrivals', category: 'products', icon: 'Sparkles', defaultSettings: {} },
   { type: 'TopRatedProducts', label: 'Top Rated', category: 'products', icon: 'Star', defaultSettings: {} },
   { type: 'LimitedEdition', label: 'Limited Edition', category: 'products', icon: 'Clock', defaultSettings: {} },
