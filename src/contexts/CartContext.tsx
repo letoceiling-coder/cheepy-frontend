@@ -1,6 +1,8 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
 import type { StorefrontProduct } from "@/types/storefront-product";
 import { resolveCartLinePricing, type CartLinePricing, type CartPromotionSnapshot } from "@/lib/cartPricing";
+import { useAuth } from "@/contexts/AuthContext";
+import { storeCartSyncApi } from "@/lib/api";
 
 const CART_STORAGE_KEY = "cheepy_cart_v1";
 
@@ -28,6 +30,13 @@ function isCartItemShape(x: unknown): x is CartItem {
   if (!Array.isArray(x.promotions)) return false;
   if (typeof x.addedAt !== "string") return false;
   return true;
+}
+
+function cartLinesSyncKey(lines: CartItem[]): string {
+  return lines
+    .map((i) => `${i.product.id}:${i.quantity}:${i.color}:${i.size}`)
+    .sort()
+    .join("|");
 }
 
 function loadPersistedCart(): CartItem[] {
@@ -83,13 +92,32 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
+  const { isAuthenticated } = useAuth();
   const [items, setItems] = useState<CartItem[]>(() => loadPersistedCart());
   const [now, setNow] = useState(() => Date.now());
+  const cartSyncKey = useMemo(() => cartLinesSyncKey(items), [items]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
   }, [items]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const timer = window.setTimeout(() => {
+      void storeCartSyncApi
+        .sync({
+          items: items.map((i) => ({
+            product_id: String(i.product.id),
+            quantity: i.quantity,
+            color: i.color || undefined,
+            size: i.size || undefined,
+          })),
+        })
+        .catch(() => {});
+    }, 550);
+    return () => window.clearTimeout(timer);
+  }, [isAuthenticated, cartSyncKey]);
 
   useEffect(() => {
     if (!items.some((item) => item.promotions.some((promotion) => now < promotion.endsAt))) return;

@@ -2385,6 +2385,31 @@ export const crmMarketingCampaignsApi = {
     post<{ success: boolean; message: string; sent?: number }>(`/crm/marketing/campaigns/${id}/send`, body ?? {}),
 };
 
+export interface CrmMarketingNewsItem {
+  id: number;
+  slug: string;
+  title: string;
+  body: string;
+  image_url: string | null;
+  video_url: string | null;
+  file_url: string | null;
+  file_label: string | null;
+  is_active: boolean;
+  sort_order: number;
+  published_at: string | null;
+  updated_at?: string | null;
+}
+
+export const crmMarketingNewsApi = {
+  list: () => get<{ data: CrmMarketingNewsItem[] }>("/crm/marketing/news"),
+  get: (id: number) => get<{ data: CrmMarketingNewsItem }>(`/crm/marketing/news/${id}`),
+  create: (payload: Partial<CrmMarketingNewsItem> & { title: string; body: string }) =>
+    post<{ data: CrmMarketingNewsItem }>("/crm/marketing/news", payload),
+  update: (id: number, payload: Partial<CrmMarketingNewsItem>) =>
+    patch<{ data: CrmMarketingNewsItem }>(`/crm/marketing/news/${id}`, payload),
+  destroy: (id: number) => del<{ ok: boolean }>(`/crm/marketing/news/${id}`),
+};
+
 export interface CrmEmailTemplateListItem {
   id: number;
   slug: string;
@@ -2544,6 +2569,8 @@ export interface AccountProfile {
   phone: string | null;
   birthday: string | null;
   marketing_opt_in: boolean;
+  /** Интересы каталога (ids из CRM `catalog_categories`) для подборок в письмах. */
+  preferences?: { catalog_category_ids?: number[] } | null;
   linked_social_providers: string[];
 }
 
@@ -2832,6 +2859,12 @@ export interface StoreCheckoutResponse {
 export const storeCheckoutApi = {
   create: (payload: { items: StoreCheckoutItemPayload[]; provider?: string }) =>
     storefrontRequest<StoreCheckoutResponse>("POST", "/store/checkout", payload, true),
+};
+
+/** Серверный снимок корзины (брошенная корзина, проверки актуальности перед письмом). */
+export const storeCartSyncApi = {
+  sync: (payload: { items: StoreCheckoutItemPayload[] }) =>
+    storefrontRequest<{ ok: boolean; items_count: number }>("POST", "/store/cart-sync", payload, true),
 };
 
 export interface AiProviderModelOption {

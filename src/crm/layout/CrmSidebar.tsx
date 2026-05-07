@@ -3,7 +3,7 @@ import {
   BarChart3, Megaphone, MessageSquare, Settings, ArrowLeft, Layers,
   Shield, Truck, CreditCard, Wallet, MapPin, Ticket, Mail, FileText,
   Bell, PackageCheck, Plug, Building2, Link2, KeyRound, Activity, Images,
-  LayoutTemplate, Sparkles,
+  LayoutTemplate, Sparkles, Newspaper,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
@@ -80,6 +80,7 @@ const sections: NavSection[] = [
       { title: "Акции", url: "/crm/promotions", icon: Megaphone, permission: "marketing.create" },
       { title: "Промокоды", url: "/crm/coupons", icon: Ticket, permission: "marketing.create" },
       { title: "Бонусная система", url: "/crm/bonus-rules", icon: Wallet, permission: "marketing.create" },
+      { title: "Новости", url: "/crm/marketing/news", icon: Newspaper, permission: "marketing.create" },
       { title: "Рассылки", url: "/crm/marketing", icon: Mail, permission: "marketing.send" },
       { title: "Шаблоны", url: "/crm/templates", icon: FileText, permission: "content.manage" },
     ],

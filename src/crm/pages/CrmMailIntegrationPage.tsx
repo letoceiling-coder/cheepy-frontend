@@ -15,11 +15,12 @@ import {
 import { ArrowLeft, Loader2, Zap, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
-const KNOWN_SLUGS = ["smtp"] as const;
+const KNOWN_SLUGS = ["smtp", "telegram", "whatsapp", "vk"] as const;
 
 type MailDetail = DeliveryIntegrationDetail & { last_successful_send_at?: string | null };
 
-const SMTP_GUIDE = `Подключение SMTP для рассылок и транзакционных писем:
+const MAIL_GUIDES: Record<(typeof KNOWN_SLUGS)[number], string> = {
+  smtp: `Подключение SMTP для рассылок и транзакционных писем:
 
 1. Возьмите данные у почтового провайдера (Mail.ru, Yandex 360, Gmail через «Пароли приложений», корпоративный SMTP).
 
@@ -29,7 +30,53 @@ const SMTP_GUIDE = `Подключение SMTP для рассылок и тр�
 
 4. После сохранения включите переключатель «Активен» и отправьте тест на свой ящик.
 
-5. Автоматические письма (регистрация / заказ) используют тот же SMTP и шаблоны в разделе «Шаблоны».`;
+5. Автоматические письма (регистрация / заказ) используют тот же SMTP и шаблоны в разделе «Шаблоны».`,
+
+  telegram: `Telegram Bot API (маркетинговый канал в CRM):
+
+1. Создайте бота через @BotFather, получите токен и вставьте его в поле ниже (хранится маскированно после сохранения).
+
+2. Поле default_chat_id — для проверки отправки на конкретный чат (можно узнать через @userinfobot или ответ боту в личке после /start).
+
+3. Кнопка «Проверить» вызывает getMe; если указан Chat ID или default_chat_id в конфиге — пробует sendMessage.
+
+4. Массовые рассылки в Telegram в CRM требуют отдельного учёта chat_id пользователей (в разработке).`,
+
+  whatsapp: `WhatsApp Cloud API (Meta):
+
+1. В Meta for Developers создайте приложение, подключите продукт WhatsApp, получите Phone number ID и постоянный access token.
+
+2. Заполните phone_number_id и access_token ниже (токен — секретный, после сохранения отображается как ***).
+
+3. Отправку шаблонных сообщений и вебхуки подключайте по документации Meta — интеграция в этом экране хранит только ключи.
+
+4. Автоматическая проверка из CRM может быть недоступна до полной привязки номера у Meta — используйте Graph API напрямую для отладки.`,
+
+  vk: `VK: сообщества (API ключ):
+
+1. В настройках сообщества откройте «Работа с API», создайте ключ с нужными правами (сообщения сообщества при необходимости).
+
+2. Укажите group_access_token и числовой group_id сообщества.
+
+3. Массовые рассылки VK в CRM дополняются отдельными сценариями (виджеты, видеообъявления) — здесь сохраняются ключи для будущих сценариев.
+
+4. Автотест отправки сообщения может быть недоступен — проверяйте токен вручную в API Explorer.`,
+};
+
+function pageDescription(slug: (typeof KNOWN_SLUGS)[number]): string {
+  switch (slug) {
+    case "smtp":
+      return "Исходящая почта (SMTP) для маркетинга и уведомлений";
+    case "telegram":
+      return "Токен бота Telegram для маркетингового канала и тестов API";
+    case "whatsapp":
+      return "WhatsApp Cloud API — реквизиты для отправки сообщений";
+    case "vk":
+      return "Ключ доступа сообщества VK";
+    default:
+      return "Интеграция";
+  }
+}
 
 export default function CrmMailIntegrationPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -76,7 +123,8 @@ export default function CrmMailIntegrationPage() {
       for (const k of editableKeys) {
         const v = form[k];
         const str = v != null ? String(v).trim() : "";
-        if (k === "password" && (str === "" || str === "***")) continue;
+        const maskedSecrets = ["password", "bot_token", "access_token", "group_access_token"];
+        if (maskedSecrets.includes(k) && (str === "" || str === "***")) continue;
         payload[k] = str !== "" ? str : null;
       }
       const res = await crmMailIntegrationsApi.update(detail.name, payload);
@@ -112,18 +160,33 @@ export default function CrmMailIntegrationPage() {
 
   const handleTest = async () => {
     if (!detail) return;
-    if (!detail.is_active) {
-      toast.error("Сначала активируйте SMTP");
-      return;
+    const name = detail.name;
+
+    if (name === "smtp") {
+      if (!detail.is_active) {
+        toast.error("Сначала активируйте SMTP");
+        return;
+      }
+      if (!testTo.trim()) {
+        toast.error("Укажите email для теста");
+        return;
+      }
     }
+
     setTesting(true);
     try {
-      const res = await crmMailIntegrationsApi.test(detail.name, {
-        to: testTo.trim(),
-        subject: testSubject.trim(),
-      });
+      let body: Record<string, string> = {};
+      if (name === "smtp") {
+        body = { to: testTo.trim(), subject: testSubject.trim() };
+      } else if (name === "telegram") {
+        body = { chat_id: testTo.trim(), subject: testSubject.trim() };
+      } else {
+        body = {};
+      }
+
+      const res = await crmMailIntegrationsApi.test(name, body);
       toast[res.success ? "success" : "error"](res.message);
-      if (res.success) {
+      if (res.success && (name === "smtp" || name === "telegram")) {
         const fresh = await crmMailIntegrationsApi.get(detail.name);
         setDetail(fresh as MailDetail);
       }
@@ -146,12 +209,14 @@ export default function CrmMailIntegrationPage() {
   const isReadonly = (f: ConfigSchemaField) => !!f.readonly;
 
   const lastSent = detail.last_successful_send_at ?? (detail as { last_successful_auth_at?: string }).last_successful_auth_at;
+  const slugKey = (KNOWN_SLUGS.includes(detail.name as (typeof KNOWN_SLUGS)[number]) ? detail.name : "smtp") as (typeof KNOWN_SLUGS)[number];
+  const guideText = MAIL_GUIDES[slugKey];
 
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title={detail.title}
-        description="Исходящая почта (SMTP) для маркетинга и уведомлений"
+        description={pageDescription(slugKey)}
         actions={
           <Button variant="ghost" size="sm" asChild>
             <Link to="/crm/integrations">
@@ -165,13 +230,13 @@ export default function CrmMailIntegrationPage() {
       {detail.docs_url ? (
         <p className="text-sm">
           <a href={detail.docs_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
-            Справочник отправки Laravel <ExternalLink className="h-3.5 w-3.5" />
+            Документация провайдера / API <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </p>
       ) : null}
 
       <section className="rounded-lg border border-border bg-card p-4">
-        <Textarea rows={11} readOnly value={SMTP_GUIDE} className="text-xs font-sans whitespace-pre-wrap bg-muted/40" />
+        <Textarea rows={11} readOnly value={guideText} className="text-xs font-sans whitespace-pre-wrap bg-muted/40" />
       </section>
 
       <section className="rounded-lg border border-border bg-card p-4">
@@ -211,19 +276,46 @@ export default function CrmMailIntegrationPage() {
       </section>
 
       <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <h2 className="text-sm font-medium flex items-center gap-2"><Zap className="h-4 w-4" /> Тест SMTP</h2>
+        <h2 className="text-sm font-medium flex items-center gap-2">
+          <Zap className="h-4 w-4" />
+          {detail.name === "smtp" ? "Тест SMTP" : detail.name === "telegram" ? "Проверка Telegram" : "Проверка интеграции"}
+        </h2>
         <div className="grid gap-3 max-w-xl">
-          <div>
-            <Label className="text-xs">На адрес</Label>
-            <Input className="h-9 mt-1" value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="you@example.com" />
-          </div>
-          <div>
-            <Label className="text-xs">Тема (необязательно)</Label>
-            <Input className="h-9 mt-1" value={testSubject} onChange={(e) => setTestSubject(e.target.value)} placeholder={`[${detail.title}] тест`} />
-          </div>
-          <Button size="sm" className="w-fit" variant="outline" disabled={testing || testTo.trim() === ""} onClick={() => void handleTest()}>
-            {testing ? "Отправка…" : "Отправить тест"}
-          </Button>
+          {detail.name === "smtp" ? (
+            <>
+              <div>
+                <Label className="text-xs">На адрес</Label>
+                <Input className="h-9 mt-1" value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="you@example.com" />
+              </div>
+              <div>
+                <Label className="text-xs">Тема (необязательно)</Label>
+                <Input className="h-9 mt-1" value={testSubject} onChange={(e) => setTestSubject(e.target.value)} placeholder={`[${detail.title}] тест`} />
+              </div>
+              <Button size="sm" className="w-fit" variant="outline" disabled={testing || testTo.trim() === ""} onClick={() => void handleTest()}>
+                {testing ? "Отправка…" : "Отправить тест"}
+              </Button>
+            </>
+          ) : detail.name === "telegram" ? (
+            <>
+              <div>
+                <Label className="text-xs">Chat ID для sendMessage (необязательно)</Label>
+                <Input className="h-9 mt-1 font-mono" value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="Из default_chat_id или свой" />
+              </div>
+              <Button size="sm" className="w-fit" variant="outline" disabled={testing} onClick={() => void handleTest()}>
+                {testing ? "Запрос…" : "Проверить токен (getMe)"}
+              </Button>
+              <p className="text-[11px] text-muted-foreground">Без поля выполняется только getMe. С Chat ID — дополнительно тестовое сообщение.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Для этого канала полноценный тест из CRM пока возвращает подсказку с бэкенда — сохраните ключи и проверьте отправку через API провайдера.
+              </p>
+              <Button size="sm" className="w-fit" variant="outline" disabled={testing} onClick={() => void handleTest()}>
+                {testing ? "Запрос…" : "Запрос проверки"}
+              </Button>
+            </>
+          )}
         </div>
       </section>
     </div>

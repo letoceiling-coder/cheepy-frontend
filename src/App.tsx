@@ -115,6 +115,7 @@ import CrmRegionsPage from "./crm/pages/CrmRegionsPage";
 import CrmCouponsPage from "./crm/pages/CrmCouponsPage";
 import CrmBonusRulesPage from "./crm/pages/CrmBonusRulesPage";
 import CrmMarketingPage from "./crm/pages/CrmMarketingPage";
+import CrmMarketingNewsPage from "./crm/pages/CrmMarketingNewsPage";
 import CrmTemplatesPage from "./crm/pages/CrmTemplatesPage";
 import CrmNotificationsPage from "./crm/pages/CrmNotificationsPage";
 import CrmIntegrationsPage from "./crm/pages/CrmIntegrationsPage";
@@ -445,6 +446,7 @@ function AnimatedRoutes() {
           <Route path="coupons" element={<CrmCouponsPage />} />
           <Route path="bonus-rules" element={<CrmBonusRulesPage />} />
           <Route path="marketing" element={<CrmMarketingPage />} />
+          <Route path="marketing/news" element={<CrmMarketingNewsPage />} />
           <Route path="templates" element={<CrmTemplatesPage />} />
           <Route path="users" element={<CrmUsersPage />} />
           <Route path="users/:id" element={<CrmUserDetailPage />} />

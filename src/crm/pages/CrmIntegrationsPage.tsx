@@ -48,6 +48,9 @@ const SMS_UI: Record<string, { icon: string; description: string }> = {
 
 const MAIL_UI: Record<string, { icon: string; description: string }> = {
   smtp: { icon: "✉️", description: "SMTP (маркетинг и транзакционные письма из CRM)" },
+  telegram: { icon: "✈️", description: "Telegram Bot API (токен, тест getMe / sendMessage)" },
+  whatsapp: { icon: "💬", description: "WhatsApp Cloud API Meta (phone_number_id, access_token)" },
+  vk: { icon: "🔵", description: "VK API сообщества (group_access_token, group_id)" },
 };
 
 const SOCIAL_UI: Record<string, { icon: string; description: string }> = {

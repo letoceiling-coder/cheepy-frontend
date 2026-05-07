@@ -90,7 +90,10 @@ export default function CrmMarketingPage() {
               size="sm"
               variant="secondary"
               className="h-7 w-fit gap-1 text-xs"
-              disabled={sendMutation.isPending}
+              disabled={sendMutation.isPending || !connectedEmail}
+              title={
+                connectedEmail ? undefined : "Включите и настройте SMTP в интеграциях перед отправкой"
+              }
               onClick={() => sendMutation.mutate({ id: c.id, limit: 200 })}
             >
               <Send className="h-3 w-3" /> Разослать (до 200)
@@ -138,7 +141,7 @@ export default function CrmMarketingPage() {
         title="Маркетинг и рассылки"
         description="Каналы и кампании: данные из БД CRM (SMTP, аудитория с маркетинг-согласием)"
         actions={
-          <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)} disabled={!connectedEmail}>
+          <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}>
             <Plus className="h-3.5 w-3.5" /> Новая рассылка
           </Button>
         }
@@ -146,7 +149,7 @@ export default function CrmMarketingPage() {
 
       {!connectedEmail ? (
         <p className="text-xs text-muted-foreground">
-          Рассылки по email доступны после настройки SMTP:{" "}
+          Черновики кампаний можно сохранять сразу. Отправка писем возможна после настройки SMTP:{" "}
           <button type="button" className="text-primary underline" onClick={() => navigate("/crm/integrations/mail/smtp")}>
             открыть SMTP
           </button>
@@ -189,17 +192,19 @@ export default function CrmMarketingPage() {
                             ? `${fmt(ch.subscriber_count)} согласившихся на маркетинг (email в профиле)`
                             : "SMTP не подключён"
                           : ch.connected
-                            ? `${fmt(ch.subscriber_count)} подписчиков`
-                            : "Интеграция канала — в дорожной карте"}
+                            ? `${fmt(ch.subscriber_count)} подписчиков (учёт аудитории — следующий этап)`
+                            : `Ключи: Интеграции → Маркетинговые каналы → ${ch.name}`}
                       </p>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
                     <div className="flex items-center gap-2">
                       {ch.connected ? <Wifi className="h-4 w-4 text-primary" /> : <WifiOff className="h-4 w-4 text-muted-foreground" />}
-                      {ch.key === "email" ? (
+                      {(["email", "telegram", "whatsapp", "vk"] as string[]).includes(ch.key) ? (
                         <Button size="sm" variant={ch.connected ? "outline" : "default"} className="text-xs" asChild>
-                          <Link to="/crm/integrations/mail/smtp">{ch.connected ? "Настроить SMTP" : "Подключить SMTP"}</Link>
+                          <Link to={`/crm/integrations/mail/${ch.key === "email" ? "smtp" : ch.key}`}>
+                            {ch.key === "email" ? (ch.connected ? "Настроить SMTP" : "Подключить SMTP") : ch.connected ? "Настройки" : "Подключить"}
+                          </Link>
                         </Button>
                       ) : null}
                       <Button
