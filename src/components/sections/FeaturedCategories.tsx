@@ -5,7 +5,7 @@ import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { Link } from "react-router-dom";
 import { publicApi, publicCrmMediaFileUrl, resolveCrmMediaAssetUrl } from "@/lib/api";
 import { fetchCategoryProductThumbnails } from "@/lib/categoryFeedThumbnails";
-import product1 from "@/assets/product-1.jpg";
+import { usePublicMenuCategories, type PublicMenuCategory } from "@/hooks/usePublicMenuCategories";
 
 type FeedSettings = {
   categoryIds?: number[];
@@ -19,46 +19,24 @@ type Props = {
   feed?: FeedSettings;
 };
 
-type MenuCategory = {
+type CatRow = {
   id: number;
-  name: string;
   slug: string;
-  icon?: string | null;
-  products_count?: number;
-  children?: MenuCategory[];
+  name: string;
+  count: number;
+  icon: string | null;
 };
-
-function flatten(nodes: MenuCategory[]): MenuCategory[] {
-  return nodes.flatMap((node) => [node, ...(Array.isArray(node.children) ? flatten(node.children) : [])]);
-}
 
 const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
   const scrollRef = useDragScroll<HTMLDivElement>();
   const { ref, isVisible } = useScrollAnimation();
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
-  const [pickedCategories, setPickedCategories] = useState<MenuCategory[]>([]);
+  const [pickedCategories, setPickedCategories] = useState<PublicMenuCategory[]>([]);
   const [pickedLoading, setPickedLoading] = useState(() => Boolean(feed?.categoryIds?.length));
-  const [menuReady, setMenuReady] = useState(false);
   const [fallbackById, setFallbackById] = useState<Record<number, string>>({});
+  const [thumbSettled, setThumbSettled] = useState(true);
 
-  useEffect(() => {
-    let mounted = true;
-    publicApi
-      .menu()
-      .then((res) => {
-        if (!mounted) return;
-        const raw = Array.isArray(res.categories) ? (res.categories as MenuCategory[]) : [];
-        setMenuCategories(flatten(raw));
-      })
-      .catch(() => setMenuCategories([]))
-      .finally(() => {
-        if (mounted) setMenuReady(true);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const { data: menuCategories = [], isPending: menuPending, isFetched: menuFetched } = usePublicMenuCategories();
 
   const selectedIds = feed?.categoryIds ?? [];
   const overrides = feed?.imageOverrides ?? [];
@@ -78,7 +56,7 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
       .categoriesByIds(selectedIds)
       .then((res) => {
         if (!mounted) return;
-        const rows = Array.isArray(res.data) ? (res.data as MenuCategory[]) : [];
+        const rows = Array.isArray(res.data) ? (res.data as PublicMenuCategory[]) : [];
         setPickedCategories(rows);
       })
       .catch(() => setPickedCategories([]))
@@ -90,7 +68,7 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
     };
   }, [selectedIds.join(",")]);
 
-  const categoryBase = useMemo(() => {
+  const categoryBase = useMemo((): CatRow[] => {
     const baseRaw = selectedIds.length > 0 ? pickedCategories : menuCategories;
     const base = baseRaw.filter((c) => Number(c.products_count ?? 0) > 0);
     const sliced = base.slice(0, Math.max(1, Number(limit) || 24));
@@ -99,6 +77,7 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
       slug: cat.slug,
       name: cat.name,
       count: Number(cat.products_count ?? 0),
+      icon: typeof cat.icon === "string" && cat.icon.trim() ? cat.icon.trim() : null,
     }));
   }, [limit, menuCategories, pickedCategories, selectedIds.length]);
 
@@ -107,6 +86,7 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
       .filter((c) => {
         const override = overrides.find((x) => Number(x.categoryId) === Number(c.id));
         if (override?.mediaFileId || override?.imageUrl) return false;
+        if (c.icon) return false;
         return c.count > 0;
       })
       .map((c) => c.slug)
@@ -119,9 +99,14 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
     const needRows = categoryBase.filter((c) => {
       const override = overrides.find((x) => Number(x.categoryId) === Number(c.id));
       if (override?.mediaFileId || override?.imageUrl) return false;
+      if (c.icon) return false;
       return c.count > 0;
     });
-    if (needRows.length === 0) return;
+    if (needRows.length === 0) {
+      setThumbSettled(true);
+      return;
+    }
+    setThumbSettled(false);
     let cancelled = false;
     void (async () => {
       const map = await fetchCategoryProductThumbnails(
@@ -136,6 +121,7 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
         }
         return next;
       });
+      setThumbSettled(true);
     })();
     return () => {
       cancelled = true;
@@ -143,14 +129,28 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
   }, [thumbFetchKey]);
 
   const categories = useMemo(() => {
+    const needsFetchWave = categoryBase.some((c) => {
+      const o = overrides.find((x) => Number(x.categoryId) === Number(c.id));
+      if (o?.mediaFileId || o?.imageUrl) return false;
+      if (c.icon) return false;
+      return c.count > 0;
+    });
+
     return categoryBase.map((cat) => {
       const override = overrides.find((x) => Number(x.categoryId) === Number(cat.id));
-      const image =
+      const fromOverride =
         override?.mediaFileId
           ? publicCrmMediaFileUrl(Number(override.mediaFileId))
           : override?.imageUrl
             ? resolveCrmMediaAssetUrl(String(override.imageUrl))
-            : fallbackById[cat.id] || product1;
+            : null;
+      const fromIcon = cat.icon ? resolveCrmMediaAssetUrl(cat.icon) : null;
+      const fromFetch = fallbackById[cat.id] ?? null;
+      const imagePendingFetch =
+        needsFetchWave && !thumbSettled && !fromOverride && !fromIcon && cat.count > 0;
+      const resolved = fromOverride || fromIcon || fromFetch;
+      const image: string | null = imagePendingFetch ? null : resolved || null;
+
       return {
         id: cat.id,
         slug: cat.slug,
@@ -159,21 +159,33 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
         image,
       };
     });
-  }, [categoryBase, overrides, fallbackById]);
+  }, [categoryBase, overrides, fallbackById, thumbSettled]);
 
   const scroll = (dir: number) => {
     scrollRef.current?.scrollBy({ left: dir * 320, behavior: "smooth" });
   };
 
-  const ready = selectedIds.length > 0 ? !pickedLoading : menuReady;
+  const ready = selectedIds.length > 0 ? !pickedLoading : menuFetched;
+  const menuLoadingStrip = selectedIds.length === 0 && menuPending;
+
   if (ready && categories.length === 0) return null;
 
-  const showStrip = !(pickedLoading && selectedIds.length > 0) && categories.length > 0;
+  const showStrip =
+    !(pickedLoading && selectedIds.length > 0) && categories.length > 0 && !menuLoadingStrip;
+
+  const StripSkeleton = (
+    <div className="flex gap-5 overflow-x-auto no-scrollbar pb-2" aria-busy>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="min-w-[240px] md:min-w-[260px] h-[340px] rounded-xl bg-muted animate-pulse shrink-0 max-h-[340px]" />
+      ))}
+    </div>
+  );
 
   return (
     <section
       ref={ref}
       className={`py-6 transition-opacity duration-700 ${isVisible ? "opacity-100" : "opacity-0"}`}
+      aria-busy={menuLoadingStrip ? true : !thumbSettled ? true : undefined}
     >
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -181,47 +193,66 @@ const FeaturedCategories = ({ title, subtitle, feed }: Props) => {
           <p className="text-muted-foreground text-sm mt-1">{String(subtitle || "Исследуйте лучшие категории маркетплейса")}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => scroll(-1)} className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors">
+          <button
+            type="button"
+            onClick={() => scroll(-1)}
+            className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors"
+            aria-label="Назад"
+          >
             <ChevronLeft size={18} />
           </button>
-          <button onClick={() => scroll(1)} className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors">
+          <button
+            type="button"
+            onClick={() => scroll(1)}
+            className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors"
+            aria-label="Вперёд"
+          >
             <ChevronRight size={18} />
           </button>
         </div>
       </div>
       <div ref={scrollRef} className="flex gap-5 overflow-x-auto no-scrollbar pb-2 cursor-grab active:cursor-grabbing">
-        {showStrip ? categories.map((cat, i) => {
-          return (
-            <Link
-              key={`${cat.slug}-${i}`}
-              to={`/category/${cat.slug}`}
-              className="min-w-[240px] md:min-w-[260px] max-h-[340px] rounded-xl overflow-hidden relative cursor-pointer group flex-shrink-0"
-              onMouseEnter={() => setHoveredIdx(i)}
-              onMouseLeave={() => setHoveredIdx(null)}
-            >
-              <div className="relative h-[180px] overflow-hidden">
-                <img
-                  src={cat.image}
-                  alt={cat.name}
-                  className={`w-full h-full object-cover transition-transform duration-500 ${hoveredIdx === i ? "scale-110" : "scale-100"}`}
-                />
-                <div className={`absolute inset-0 bg-gradient-to-t from-foreground/70 to-transparent transition-opacity duration-300 ${hoveredIdx === i ? "opacity-90" : "opacity-70"}`} />
-                <div className={`absolute inset-0 transition-all duration-300 ${hoveredIdx === i ? "shadow-[inset_0_0_40px_hsl(262,83%,58%,0.3)]" : ""}`} />
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 p-5">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg gradient-primary flex items-center justify-center transition-transform duration-300 ${hoveredIdx === i ? "scale-110" : ""}`}>
-                    <ShoppingBag size={20} className="text-primary-foreground" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-primary-foreground">{cat.name}</h3>
-                    <p className="text-primary-foreground/70 text-sm">{cat.count} товаров</p>
+        {menuLoadingStrip ? (
+          StripSkeleton
+        ) : showStrip ? (
+          categories.map((cat, i) => {
+            const imgCls = `w-full h-full object-cover transition-transform duration-500 ${hoveredIdx === i ? "scale-110" : "scale-100"}`;
+            return (
+              <Link
+                key={`${cat.slug}-${i}`}
+                to={`/category/${cat.slug}`}
+                className="min-w-[240px] md:min-w-[260px] max-h-[340px] rounded-xl overflow-hidden relative cursor-pointer group flex-shrink-0"
+                onMouseEnter={() => setHoveredIdx(i)}
+                onMouseLeave={() => setHoveredIdx(null)}
+              >
+                <div className="relative h-[180px] overflow-hidden">
+                  {cat.image ? (
+                    <img src={cat.image} alt="" className={imgCls} />
+                  ) : (
+                    <div className={`absolute inset-0 bg-muted animate-pulse ${hoveredIdx === i ? "" : ""}`} aria-hidden />
+                  )}
+                  <div
+                    className={`absolute inset-0 bg-gradient-to-t from-foreground/70 to-transparent transition-opacity duration-300 ${hoveredIdx === i ? "opacity-90" : "opacity-70"}`}
+                  />
+                  <div className={`absolute inset-0 transition-all duration-300 ${hoveredIdx === i ? "shadow-[inset_0_0_40px_hsl(262,83%,58%,0.3)]" : ""}`} />
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 p-5">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-10 h-10 rounded-lg gradient-primary flex items-center justify-center transition-transform duration-300 ${hoveredIdx === i ? "scale-110" : ""}`}
+                    >
+                      <ShoppingBag size={20} className="text-primary-foreground" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-primary-foreground">{cat.name}</h3>
+                      <p className="text-primary-foreground/70 text-sm">{cat.count} товаров</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          );
-        }) : null}
+              </Link>
+            );
+          })
+        ) : null}
       </div>
     </section>
   );

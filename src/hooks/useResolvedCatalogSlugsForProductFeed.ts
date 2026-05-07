@@ -1,12 +1,20 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { publicApi } from "@/lib/api";
+import type { Category } from "@/lib/api";
 import type { ProductFeedSettings } from "@/constructor/settingsProfiles";
 import { useTopPreferredCategories } from "@/hooks/useUserPreferences";
-import { buildCategorySlugById, flattenMenuCategories, resolveProductFeedCategorySlugs } from "@/lib/catalogCategorySlugs";
+import {
+  buildCategorySlugById,
+  resolveProductFeedCategorySlugs,
+} from "@/lib/catalogCategorySlugs";
+import {
+  PUBLIC_MENU_QUERY_KEY,
+  fetchPublicMenuCategoriesFlat,
+} from "@/hooks/usePublicMenuCategories";
 
 /**
  * Единая резолюция slug'ов каталога для блоков с лентой товаров (manual / auto + cold start).
+ * Меню разделяет кэш с `usePublicMenuCategories` (`PUBLIC_MENU_QUERY_KEY`).
  */
 export function useResolvedCatalogSlugsForProductFeed(feed: Partial<ProductFeedSettings> | undefined): {
   resolvedSlugs: string[];
@@ -17,12 +25,15 @@ export function useResolvedCatalogSlugsForProductFeed(feed: Partial<ProductFeedS
   const categoryIds = Array.isArray(feed?.categoryIds) ? feed!.categoryIds! : [];
 
   const menuQuery = useQuery({
-    queryKey: ["public-menu-categories"],
-    queryFn: () => publicApi.menu(),
-    staleTime: 5 * 60_000,
+    queryKey: PUBLIC_MENU_QUERY_KEY,
+    queryFn: fetchPublicMenuCategoriesFlat,
+    staleTime: 60_000,
+    gcTime: 300_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 
-  const flatCats = useMemo(() => flattenMenuCategories(menuQuery.data?.categories), [menuQuery.data]);
+  const flatCats = (menuQuery.data ?? []) as Category[];
   const slugById = useMemo(() => buildCategorySlugById(flatCats), [flatCats]);
   const preferredCats = useTopPreferredCategories(8);
 

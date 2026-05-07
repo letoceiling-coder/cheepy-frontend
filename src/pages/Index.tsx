@@ -23,6 +23,7 @@ import IconCategories from "@/components/home/CategoryVariants/IconCategories";
 import BrandStrip from "@/components/home/CategoryVariants/BrandStrip";
 import GridCategories from "@/components/home/CategoryVariants/GridCategories";
 import { publicApi, PUBLIC_STORE_HOME_PAGE_KEY } from "@/lib/api";
+import { usePublicMenuCategories } from "@/hooks/usePublicMenuCategories";
 import { BlockRenderer } from "@/constructor/blockRenderer";
 import type { BlockConfig } from "@/constructor/types";
 
@@ -116,6 +117,7 @@ import VideoCarouselBanner from "@/components/banners/VideoCarouselBanner";
 import CinematicVideoBanner from "@/components/banners/CinematicVideoBanner";
 
 const Index = () => {
+  usePublicMenuCategories();
   const { data: pageLayout, isPending, isError } = useQuery({
     queryKey: ["public-layout-page", PUBLIC_STORE_HOME_PAGE_KEY],
     queryFn: () => publicApi.pageLayout(PUBLIC_STORE_HOME_PAGE_KEY),
