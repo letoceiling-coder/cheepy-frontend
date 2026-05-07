@@ -199,6 +199,8 @@ const MinimalProductGrid: React.FC<MinimalProductGridProps> = (props) => {
   const pageSize = Math.min(60, Math.max(4, typeof feed.limit === "number" ? feed.limit : DEFAULT_LIMIT));
   const showButton = feed.showLoadMoreButton !== false;
   const infinite = feed.infiniteScroll === true;
+  /** В режиме /constructor автоподгрузка при скролле отключена — иначе сетку нельзя «перепрыгнуть» для настройки блоков ниже. */
+  const infiniteScrollActive = infinite && !constructorPreview;
   const includeDescendants = feed.includeDescendants !== false;
   const categoryIds = Array.isArray(feed.categoryIds) ? feed.categoryIds : [];
   const sortBy = (feed.sortBy as "list_position" | "price_raw" | "created_at" | "updated_at" | "name" | undefined) ?? undefined;
@@ -273,7 +275,7 @@ const MinimalProductGrid: React.FC<MinimalProductGridProps> = (props) => {
   // IntersectionObserver для бесконечной подгрузки.
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    if (!infinite) return;
+    if (!infiniteScrollActive) return;
     if (!enabled) return;
     if (!pagination.hasMore) return;
     const node = sentinelRef.current;
@@ -291,7 +293,7 @@ const MinimalProductGrid: React.FC<MinimalProductGridProps> = (props) => {
     );
     io.observe(node);
     return () => io.disconnect();
-  }, [infinite, enabled, pagination.hasMore, pagination.isFetching, pagination.loadMore]);
+  }, [infiniteScrollActive, enabled, pagination.hasMore, pagination.isFetching, pagination.loadMore]);
 
   const showingMockSample = constructorPreview && (resolvedSlugs.length === 0 || (!pagination.isFetching && pagination.items.length === 0));
 
@@ -358,7 +360,7 @@ const MinimalProductGrid: React.FC<MinimalProductGridProps> = (props) => {
             {pagination.isFetching ? "Загружаем…" : "Показать ещё"}
           </button>
         )}
-        {pagination.hasMore && infinite && (
+        {pagination.hasMore && infiniteScrollActive && (
           <div ref={sentinelRef} className="h-px w-full" aria-hidden="true" />
         )}
         {!pagination.hasMore && pagination.items.length > 0 && (
