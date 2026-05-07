@@ -2024,6 +2024,216 @@ export const crmCommerceApi = {
     }>('/crm/store-payouts'),
 };
 
+// ── CRM storefront insights (dashboard, аналитика, пользователи, витрина) ──
+
+export interface CrmInsightsPeriod {
+  days: number;
+  start: string;
+  end: string;
+}
+
+export interface CrmInsightsKpis {
+  revenue_rub: number;
+  revenue_prev_rub: number;
+  orders_count: number;
+  orders_prev: number;
+  users_registered: number;
+  users_new_in_period: number;
+  sellers_active: number;
+  sellers_total: number;
+  avg_check_rub: number;
+  top_catalog_category?: string | null;
+}
+
+export interface CrmSalesChartPoint {
+  label: string;
+  revenue_rub: number;
+  orders: number;
+}
+
+export interface CrmRecentPaidOrder {
+  id: number;
+  number: string;
+  user_name?: string | null;
+  user_email?: string | null;
+  total_amount: number;
+  status: string;
+  payment_status: string;
+  created_at?: string | null;
+}
+
+export interface CrmTopProductRow {
+  product_id?: number | null;
+  title: string;
+  sold: number;
+  revenue_rub: number;
+}
+
+export interface CrmStoreOverviewPayload {
+  period: CrmInsightsPeriod;
+  kpis: CrmInsightsKpis;
+  sales_chart: CrmSalesChartPoint[];
+  recent_orders: CrmRecentPaidOrder[];
+  top_products: CrmTopProductRow[];
+}
+
+export interface CrmCategoryRevenueRow {
+  name: string;
+  revenue_rub: number;
+  orders: number;
+}
+
+export interface CrmGeoDeliveryRow {
+  label: string;
+  orders: number;
+  revenue_rub: number;
+}
+
+export interface CrmOrderStatusFunnelRow {
+  stage: string;
+  count: number;
+}
+
+export interface CrmStoreAnalyticsPayload {
+  period: CrmInsightsPeriod;
+  sales_chart: CrmSalesChartPoint[];
+  category_revenue: CrmCategoryRevenueRow[];
+  geo_delivery: CrmGeoDeliveryRow[];
+  order_status_funnel: CrmOrderStatusFunnelRow[];
+  payment_summary: Record<string, number>;
+}
+
+export interface CrmStoreUserRow {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  status: string;
+  orders: number;
+  total_spent: number;
+  balance: number;
+  registered_at: string;
+  last_active: string;
+}
+
+export interface CrmCatalogSellerRow {
+  id: string;
+  name: string;
+  slug?: string | null;
+  phone?: string | null;
+  status: string;
+  rating: number;
+  products: number;
+  orders: number | null;
+  revenue_rub: number | null;
+  commission: number | null;
+  complaints: number | null;
+  joined_at: string;
+}
+
+export interface CrmSellerReviewRow {
+  id: string;
+  seller_title: string;
+  seller_slug?: string | null;
+  user_name: string;
+  rating: number;
+  text: string;
+  status: 'published' | 'moderation' | string;
+  complaints: number;
+  seller_reply?: string | null;
+  created_at: string;
+}
+
+export interface CrmActivityFeedItem {
+  id: string;
+  type: 'order' | 'payment' | 'moderation' | 'system' | 'seller' | 'review';
+  title: string;
+  message: string;
+  created_at?: string | null;
+}
+
+export interface CrmMarketplaceTenantRow {
+  id: string;
+  name: string;
+  slug: string;
+  domain: string;
+  logo: string;
+  currency: string;
+  commission: number;
+  regions: string[];
+  status: 'active' | 'inactive' | 'setup';
+  sellers_count: number;
+  users_count: number;
+  products_count: number;
+  created_at: string;
+}
+
+function crmPeriodQuery(periodSelect: string): string {
+  switch (periodSelect) {
+    case "6m":
+      return "180d";
+    case "1y":
+      return "365d";
+    case "30d":
+    case "7d":
+      return periodSelect;
+    default:
+      return "30d";
+  }
+}
+
+export const crmStoreInsightsApi = {
+  overview: (periodSelect?: string) => {
+    const p = periodSelect ? crmPeriodQuery(periodSelect) : "30d";
+    return get<{ data: CrmStoreOverviewPayload }>(
+      `/crm/store-insights/overview?period=${encodeURIComponent(p)}`
+    );
+  },
+  analytics: (periodSelect?: string) => {
+    const p = periodSelect ? crmPeriodQuery(periodSelect) : "30d";
+    return get<{ data: CrmStoreAnalyticsPayload }>(
+      `/crm/store-insights/analytics?period=${encodeURIComponent(p)}`
+    );
+  },
+  storeUsers: (params?: { page?: number; per_page?: number; search?: string; role?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set("page", String(params.page));
+    if (params?.per_page) q.set("per_page", String(params.per_page));
+    if (params?.search) q.set("search", params.search);
+    if (params?.role && params.role !== "all") q.set("role", params.role);
+    return get<{ data: CrmStoreUserRow[]; meta: CrmStoreCommerceMeta }>(
+      `/crm/store-users${q.toString() ? `?${q}` : ""}`
+    );
+  },
+  catalogSellers: (params?: { page?: number; per_page?: number; search?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set("page", String(params.page));
+    if (params?.per_page) q.set("per_page", String(params.per_page));
+    if (params?.search) q.set("search", params.search);
+    return get<{ data: CrmCatalogSellerRow[]; meta: CrmStoreCommerceMeta }>(
+      `/crm/catalog-sellers${q.toString() ? `?${q}` : ""}`
+    );
+  },
+  sellerReviews: (params?: {
+    page?: number;
+    per_page?: number;
+    status?: string;
+  }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set("page", String(params.page));
+    if (params?.per_page) q.set("per_page", String(params.per_page));
+    if (params?.status && params.status !== "all") q.set("status", params.status);
+    return get<{ data: CrmSellerReviewRow[]; meta: CrmStoreCommerceMeta }>(
+      `/crm/seller-reviews${q.toString() ? `?${q}` : ""}`
+    );
+  },
+  updateSellerReview: (id: number, body: { is_published: boolean }) =>
+    patch<{ data: { id: string; status: string } }>(`/crm/seller-reviews/${id}`, body),
+  activityFeed: () => get<{ data: CrmActivityFeedItem[] }>("/crm/activity-feed"),
+  marketplaceTenant: () => get<{ data: CrmMarketplaceTenantRow[] }>("/crm/marketplace-tenant"),
+};
+
 export interface DeliveryIntegrationItem {
   name: string;
   title: string;

@@ -31,6 +31,7 @@ const variants: Record<string, string> = {
   ended: "bg-muted text-muted-foreground border-border",
   approved: "bg-green-100 text-green-700 border-green-200",
   needs_review: "bg-amber-100 text-amber-700 border-amber-200",
+  setup: "bg-sky-100 text-sky-800 border-sky-200",
 };
 
 const labels: Record<string, string> = {
@@ -63,6 +64,7 @@ const labels: Record<string, string> = {
   ended: "Завершён",
   approved: "Одобрен",
   needs_review: "На проверке",
+  setup: "Настройка",
 };
 
 interface StatusBadgeProps {
