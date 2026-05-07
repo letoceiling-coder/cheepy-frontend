@@ -16,7 +16,13 @@ import {
 import { useRbac } from "../rbac/RbacContext";
 import { useTenant } from "../tenant/TenantContext";
 import { crmStoreInsightsApi, type CrmActivityFeedItem } from "@/lib/api";
-import { markActivityFeedItemsRead, useActivityFeedUnreadCount } from "@/crm/lib/activityFeedRead";
+import {
+  getActivityFeedReadRevision,
+  loadActivityFeedReadIds,
+  markActivityFeedItemsRead,
+  subscribeActivityFeedRead,
+  useActivityFeedUnreadCount,
+} from "@/crm/lib/activityFeedRead";
 import { navigateFromActivityFeed } from "@/crm/lib/activityFeedNavigate";
 
 function formatRelative(iso?: string | null): string {
