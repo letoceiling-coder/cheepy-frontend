@@ -195,7 +195,7 @@ const Index = () => {
           <TopRatedProducts />
           <CinematicHero />
           <HeroWithSlider />
-          <PromoBanner />
+          <PromoBanner allowDemoBanner />
           <FullWidthPromoBanner />
           <CategoryBanners />
           <FeaturedCollection />

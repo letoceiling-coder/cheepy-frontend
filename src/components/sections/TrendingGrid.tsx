@@ -160,7 +160,7 @@ const TrendingGrid = ({ title, subtitle, feed: feedProp }: TrendingGridProps) =>
     );
   }
 
-  if (useApi && apiProducts.length === 0 && pagination.isFetching) {
+  if (useApi && pagination.isFetching && apiProducts.length === 0) {
     return (
       <section className="py-6">
         <h2 className="text-lg font-bold text-foreground mb-2">{displayTitle}</h2>
@@ -180,7 +180,33 @@ const TrendingGrid = ({ title, subtitle, feed: feedProp }: TrendingGridProps) =>
     );
   }
 
-  // Legacy / демо: нет выбранных категорий (или конструктор без API) — образец на mockProducts.
+  /** Витрина: ждём меню каталога — скелетон, без мок-карточек. */
+  if (!constructorPreview && menuPending) {
+    return (
+      <section className="py-6">
+        <h2 className="text-lg font-bold text-foreground mb-2">{displayTitle}</h2>
+        <p className="text-muted-foreground text-sm mb-4">{displaySubtitle}</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="animate-pulse rounded-xl border border-border overflow-hidden">
+              <div className="aspect-[3/4] bg-muted/40" />
+              <div className="p-3 space-y-2">
+                <div className="h-3 bg-muted/40 rounded w-2/3" />
+                <div className="h-3 bg-muted/40 rounded w-1/3" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  /** Витрина: нет категорий или пустой ответ API — блок скрыт (не подставляем образец). */
+  if (!constructorPreview && (!useApi || (useApi && !pagination.isFetching && apiProducts.length === 0))) {
+    return null;
+  }
+
+  /** Конструктор (или превью с пустым ответом): образец на mockProducts. */
   const products = mockRows;
   return (
     <section className="py-6">
@@ -287,7 +313,7 @@ const TrendingGrid = ({ title, subtitle, feed: feedProp }: TrendingGridProps) =>
           </Link>
         ))}
       </div>
-      {constructorPreview && !useApi ? (
+      {constructorPreview && (!useApi || (!pagination.isFetching && apiProducts.length === 0 && useApi)) ? (
         <p className="text-[11px] text-muted-foreground mt-2 italic">Подключите категории в настройках ленты или оставьте демонстрацию.</p>
       ) : null}
     </section>
