@@ -1,25 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useCallback, useSyncExternalStore } from "react";
 import { PageHeader } from "../components/PageHeader";
 import { Bell, ShoppingCart, Shield, CreditCard, Settings, Store, MessageSquare, Check, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { crmStoreInsightsApi, type CrmActivityFeedItem } from "@/lib/api";
-
-const READ_LS = "crm-activity-feed-read-ids";
-
-function loadReadSet(): Set<string> {
-  try {
-    const raw = localStorage.getItem(READ_LS);
-    const arr = raw ? (JSON.parse(raw) as unknown) : [];
-    if (!Array.isArray(arr)) return new Set();
-    return new Set(arr.filter((x) => typeof x === "string"));
-  } catch {
-    return new Set();
-  }
-}
-
-function saveReadSet(s: Set<string>) {
-  localStorage.setItem(READ_LS, JSON.stringify(Array.from(s)));
-}
+import {
+  loadActivityFeedReadIds,
+  markActivityFeedItemsRead,
+  useActivityFeedUnreadCount,
+  subscribeActivityFeedRead,
+  getActivityFeedReadRevision,
+} from "@/crm/lib/activityFeedRead";
+import { navigateFromActivityFeed } from "@/crm/lib/activityFeedNavigate";
 
 const typeIcons: Record<CrmActivityFeedItem["type"], React.ElementType> = {
   order: ShoppingCart,
@@ -41,11 +33,7 @@ function formatWhen(iso?: string | null): string {
 }
 
 export default function CrmNotificationsPage() {
-  const [readIds, setReadIds] = useState<Set<string>>(() => loadReadSet());
-
-  useEffect(() => {
-    saveReadSet(readIds);
-  }, [readIds]);
+  const navigate = useNavigate();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["crm-activity-feed"],
@@ -53,26 +41,21 @@ export default function CrmNotificationsPage() {
   });
 
   const items = data?.data ?? [];
+  const unreadCount = useActivityFeedUnreadCount(items);
 
-  const markRead = useCallback((id: string) => {
-    setReadIds((prev) => {
-      const n = new Set(prev);
-      n.add(id);
-      return n;
-    });
-  }, []);
+  const readLsRev = useSyncExternalStore(subscribeActivityFeedRead, getActivityFeedReadRevision, () => 0);
+  const readSet = useMemo(() => loadActivityFeedReadIds(), [readLsRev]);
 
   const markAllRead = useCallback(() => {
-    setReadIds((prev) => {
-      const n = new Set(prev);
-      items.forEach((i) => n.add(i.id));
-      return n;
-    });
+    markActivityFeedItemsRead(items.map((i) => i.id));
   }, [items]);
 
-  const unreadCount = useMemo(
-    () => items.filter((n) => !readIds.has(n.id)).length,
-    [items, readIds]
+  const handleRowActivate = useCallback(
+    (item: CrmActivityFeedItem) => {
+      markActivityFeedItemsRead([item.id]);
+      navigateFromActivityFeed(navigate, item);
+    },
+    [navigate]
   );
 
   if (error) {
@@ -87,16 +70,18 @@ export default function CrmNotificationsPage() {
     <div className="space-y-4 animate-fade-in">
       <PageHeader
         title="Уведомления"
-        description={`События из заказов и платёжных webhooks.${unreadCount > 0 ? ` ${unreadCount} новых.` : ""} Прочитанное сохраняется в браузере.`}
-        actions={unreadCount > 0 ? (
-          <button
-            type="button"
-            onClick={markAllRead}
-            className="text-xs text-primary hover:underline flex items-center gap-1"
-          >
-            <Check className="h-3 w-3" /> Прочитать все
-          </button>
-        ) : undefined}
+        description={`События из заказов и платёжных webhooks.${unreadCount > 0 ? ` ${unreadCount} непрочитанных.` : ""} Прочитанность хранится в браузере (как для колокольчика в шапке).`}
+        actions={
+          unreadCount > 0 ? (
+            <button
+              type="button"
+              onClick={markAllRead}
+              className="text-xs text-primary hover:underline flex items-center gap-1"
+            >
+              <Check className="h-3 w-3" /> Прочитать все
+            </button>
+          ) : undefined
+        }
       />
 
       {isLoading ? (
@@ -110,29 +95,34 @@ export default function CrmNotificationsPage() {
       ) : (
         <div className="space-y-2">
           {items.map((n) => {
-            const read = readIds.has(n.id);
+            const read = readSet.has(n.id);
             const Icon = typeIcons[n.type] ?? Bell;
 
             return (
               <button
                 type="button"
                 key={n.id}
-                className={`flex w-full text-left items-start gap-3 p-4 rounded-lg border transition-colors cursor-pointer ${
-                  read ? 'border-border bg-card' : 'border-primary/20 bg-primary/5'
+                title="Открыть связанную страницу"
+                className={`group flex w-full text-left items-start gap-3 p-4 rounded-lg border transition-colors cursor-pointer hover:border-primary/30 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  read ? "border-border bg-card" : "border-primary/20 bg-primary/5"
                 }`}
-                onClick={() => markRead(n.id)}
+                onClick={() => handleRowActivate(n)}
               >
-                <div className={`p-2 rounded-full shrink-0 ${read ? 'bg-muted' : 'bg-primary/10'}`}>
-                  <Icon className={`h-4 w-4 ${read ? 'text-muted-foreground' : 'text-primary'}`} />
+                <div className={`p-2 rounded-full shrink-0 ${read ? "bg-muted" : "bg-primary/10"}`}>
+                  <Icon className={`h-4 w-4 ${read ? "text-muted-foreground" : "text-primary"}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <p className={`text-sm ${read ? '' : 'font-medium'}`}>{n.title}</p>
+                    <p
+                      className={`text-sm ${read ? "text-foreground" : "font-semibold text-foreground"} group-hover:underline underline-offset-2`}
+                    >
+                      {n.title}
+                    </p>
                     <span className="text-xs text-muted-foreground shrink-0">{formatWhen(n.created_at)}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5 break-words">{n.message}</p>
                 </div>
-                {!read && <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-2" />}
+                {!read ? <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-2" aria-hidden /> : null}
               </button>
             );
           })}
