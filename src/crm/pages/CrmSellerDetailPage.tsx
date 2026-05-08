@@ -5,6 +5,7 @@ import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { DataTable, type Column } from "../components/DataTable";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
@@ -23,6 +24,7 @@ import {
   ApiError,
   resolveCrmMediaAssetUrl,
   type SystemProductItem,
+  type SystemProductStatus,
 } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -76,18 +78,30 @@ function ThumbCell({ url }: { url: string | null | undefined }) {
 
 const PRODUCTS_PER_PAGE = 20;
 
+type SellerProductsStatusFilter = "all" | SystemProductStatus;
+
+const PRODUCT_STATUS_OPTIONS: { value: SellerProductsStatusFilter; label: string }[] = [
+  { value: "all", label: "Все статусы" },
+  { value: "published", label: "Опубликован" },
+  { value: "approved", label: "Одобрен" },
+  { value: "pending", label: "Ожидание" },
+  { value: "needs_review", label: "На проверке" },
+  { value: "draft", label: "Черновик" },
+];
+
 export default function CrmSellerDetailPage() {
   const { id: idParam } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [productsPage, setProductsPage] = useState(1);
+  const [productStatusFilter, setProductStatusFilter] = useState<SellerProductsStatusFilter>("all");
 
   const sellerId = idParam ? Number(idParam) : NaN;
   const idValid = Number.isFinite(sellerId) && sellerId > 0;
 
   useEffect(() => {
     setProductsPage(1);
-  }, [sellerId]);
+  }, [sellerId, productStatusFilter]);
 
   const sellerQ = useQuery({
     queryKey: ["crm-seller-detail", sellerId],
@@ -96,16 +110,18 @@ export default function CrmSellerDetailPage() {
   });
 
   const productsQ = useQuery({
-    queryKey: ["crm-seller-products", sellerId, productsPage],
+    queryKey: ["crm-seller-products", sellerId, productsPage, productStatusFilter],
     queryFn: () =>
       adminSystemProductsApi.list({
         seller_ids: [sellerId],
+        status: productStatusFilter === "all" ? undefined : productStatusFilter,
         page: productsPage,
         per_page: PRODUCTS_PER_PAGE,
         sort_by: "updated_at",
         sort_dir: "desc",
       }),
     enabled: idValid,
+    placeholderData: (previousData) => previousData,
   });
 
   const updateSellerMutation = useMutation({
@@ -380,9 +396,26 @@ export default function CrmSellerDetailPage() {
             </div>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground">
-                Карточки каталога ({pMeta?.total ?? 0}). Клик по строке открывает редактор в CRM.
-              </p>
+              <div className="flex flex-wrap items-center gap-3 gap-y-2">
+                <Select
+                  value={productStatusFilter}
+                  onValueChange={(v) => setProductStatusFilter(v as SellerProductsStatusFilter)}
+                >
+                  <SelectTrigger className="w-[220px] h-9 text-sm" aria-label="Фильтр по статусу товара">
+                    <SelectValue placeholder="Статус" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRODUCT_STATUS_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Карточки каталога ({pMeta?.total ?? 0}). Клик по строке открывает редактор в CRM.
+                </p>
+              </div>
               <DataTable
                 data={productItems}
                 columns={productColumns}
