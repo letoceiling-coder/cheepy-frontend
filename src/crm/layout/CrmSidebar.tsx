@@ -1,9 +1,9 @@
 import {
   LayoutDashboard, Package, FolderTree, ShoppingCart, Users, Store,
-  BarChart3, Megaphone, MessageSquare, Settings, ArrowLeft, Layers,
-  Shield, Truck, CreditCard, Wallet, MapPin, Ticket, Mail, FileText,
-  Bell, PackageCheck, Plug, Building2, Link2, KeyRound, Activity, Images,
-  LayoutTemplate, Sparkles, Newspaper,
+  BarChart3, Megaphone, MessageSquare, Settings, ArrowLeft,
+  Shield, Truck, CreditCard, Wallet, Ticket, Mail, FileText,
+  Bell, PackageCheck, Plug, Building2, Link2, Activity, Images,
+  Sparkles, Newspaper,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link, useLocation } from "react-router-dom";
@@ -33,8 +33,8 @@ const sections: NavSection[] = [
     label: "Основное",
     items: [
       { title: "Dashboard", url: "/crm", icon: LayoutDashboard, end: true },
-      { title: "Контент", url: "/crm/content", icon: Layers, permission: "content.manage" },
-      { title: "CMS-страницы", url: "/crm/cms/pages", icon: LayoutTemplate, permission: "content.manage" },
+      // { title: "Контент", url: "/crm/content", icon: Layers, permission: "content.manage" },
+      // { title: "CMS-страницы", url: "/crm/cms/pages", icon: LayoutTemplate, permission: "content.manage" },
       { title: "Уведомления", url: "/crm/notifications", icon: Bell },
     ],
   },
@@ -65,7 +65,7 @@ const sections: NavSection[] = [
       { title: "Заказы", url: "/crm/orders", icon: ShoppingCart, permission: "orders.read" },
       { title: "Fulfillment", url: "/crm/fulfillment", icon: PackageCheck, permission: "orders.read" },
       { title: "Доставка", url: "/crm/delivery", icon: Truck, permission: "delivery.manage" },
-      { title: "Регионы", url: "/crm/regions", icon: MapPin, permission: "delivery.manage" },
+      // { title: "Регионы", url: "/crm/regions", icon: MapPin, permission: "delivery.manage" },
     ],
   },
   {
@@ -101,7 +101,7 @@ const sections: NavSection[] = [
       { title: "Маркетплейсы", url: "/crm/tenants", icon: Building2, permission: "tenants.manage" },
       { title: "Интеграции", url: "/crm/integrations", icon: Plug, permission: "integrations.manage" },
       { title: "Webhook Logs", url: "/crm/webhook-logs", icon: Activity, permission: "integrations.manage" },
-      { title: "API Keys", url: "/crm/api-keys", icon: KeyRound, permission: "integrations.manage" },
+      // { title: "API Keys", url: "/crm/api-keys", icon: KeyRound, permission: "integrations.manage" },
       { title: "Настройки", url: "/crm/settings", icon: Settings, permission: "settings.manage" },
     ],
   },
