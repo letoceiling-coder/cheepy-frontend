@@ -27,3 +27,13 @@ dist-ssr
 *.sln
 *.sw?
 .tmp_*.sh
+
+# Локальные скрипты агента/аудита (не синхронизируем с origin)
+scripts/agent-api-add-root.sh
+scripts/agent-platform/
+scripts/fix-agent-siteaacess-ssl.sh
+scripts/remote-extract-agent-platform.sh
+scripts/server-dns-check.py
+scripts/server-domain-inventory.py
+scripts/server-full-audit.sh
+scripts/verify-agent-api-on-server.sh
