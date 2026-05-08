@@ -5,7 +5,7 @@ import { DataTable, Column } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Download, Star, Loader2 } from "lucide-react";
+import { Search, Download, Star, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { CrmCatalogSellerRow } from "@/lib/api";
 import { crmStoreInsightsApi } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -15,7 +15,7 @@ const fmt = (n: number) => new Intl.NumberFormat('ru-RU').format(n);
 export default function CrmSellersPage() {
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
-  const [page] = useState(1);
+  const [page, setPage] = useState(1);
   const navigate = useNavigate();
 
   const { data, isLoading, error } = useQuery({
@@ -30,6 +30,7 @@ export default function CrmSellersPage() {
 
   const rows = data?.data ?? [];
   const total = data?.meta.total ?? 0;
+  const lastPage = data?.meta.last_page ?? 1;
 
   const dash = (v: number | null | undefined, suffix = "") =>
     v === null || v === undefined ? "—" : `${fmt(v)}${suffix}`;
@@ -50,13 +51,20 @@ export default function CrmSellersPage() {
     { key: "complaints", title: "Жалобы", render: (s) => (s.complaints != null ? s.complaints : "—") },
   ];
 
-  const applySearch = () => setAppliedSearch(search);
+  const applySearch = () => {
+    setPage(1);
+    setAppliedSearch(search);
+  };
 
   return (
     <div className="space-y-4 animate-fade-in">
       <PageHeader
         title="Продавцы"
-        description={isLoading ? "Загрузка…" : `Каталог источников (${total}): привязка к реальным транзакциям по продавцам в API пока не выделена — выручка/заказы «—».`}
+        description={
+          isLoading
+            ? "Загрузка…"
+            : `Продавцы из базы (${total}). Заказы, выручка и комиссия — по мере подключения отчётности; сейчас могут быть «—».`
+        }
         actions={<Button variant="outline" size="sm" className="gap-1.5" disabled><Download className="h-3.5 w-3.5" /> Экспорт</Button>}
       />
 
@@ -87,7 +95,38 @@ export default function CrmSellersPage() {
           <Loader2 className="h-5 w-5 animate-spin" /> Загрузка…
         </div>
       ) : (
-        <DataTable data={rows} columns={columns} onRowClick={(s) => navigate(`/crm/sellers/${s.id}`)} />
+        <>
+          <DataTable data={rows} columns={columns} onRowClick={(s) => navigate(`/crm/sellers/${s.id}`)} />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">
+              Страница {data?.meta.current_page ?? page} из {lastPage} · на странице {rows.length} · всего {total}
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={page <= 1 || isLoading}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                aria-label="Предыдущая страница"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={page >= lastPage || isLoading}
+                onClick={() => setPage((p) => p + 1)}
+                aria-label="Следующая страница"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

@@ -376,6 +376,8 @@ export interface Seller {
   id: number;
   slug: string;
   name: string;
+  /** Рейтинг из БД парсера/витрины (может быть null). */
+  rating?: number | null;
   avatar?: string | null;
   pavilion: string | null;
   pavilion_line?: string | null;
