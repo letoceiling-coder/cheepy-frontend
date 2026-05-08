@@ -6,7 +6,8 @@ import {
   LayoutTemplate, Sparkles, Newspaper,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { useEffect, useRef } from "react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
@@ -110,6 +111,33 @@ export function CrmSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { hasPermission, hasAnyPermission } = useRbac();
+  const location = useLocation();
+  const scrollRootRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * После перехода прокручиваем сайдбар так, чтобы активный пункт был в зоне видимости.
+   * React Router выставляет aria-current="page" на активном NavLink.
+   */
+  useEffect(() => {
+    const root = scrollRootRef.current;
+    if (!root) return;
+
+    let rafOuter = 0;
+    let rafInner = 0;
+
+    rafOuter = requestAnimationFrame(() => {
+      rafInner = requestAnimationFrame(() => {
+        const active = root.querySelector<HTMLElement>('a[aria-current="page"]');
+        if (!active) return;
+        active.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
+      });
+    });
+
+    return () => {
+      cancelAnimationFrame(rafOuter);
+      cancelAnimationFrame(rafInner);
+    };
+  }, [location.pathname, location.search, collapsed]);
 
   const isItemVisible = (item: NavItem) => {
     if (!item.permission) return true;
@@ -119,7 +147,7 @@ export function CrmSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border">
-      <SidebarContent>
+      <SidebarContent ref={scrollRootRef}>
         <SidebarGroup>
           <SidebarGroupLabel className="flex items-center justify-between px-3 py-2">
             {!collapsed && (
