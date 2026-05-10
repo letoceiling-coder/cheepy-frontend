@@ -1642,6 +1642,8 @@ export const publicApi = {
     if (params) Object.entries(params).forEach(([k, v]) => { if (v !== undefined) q.set(k, String(v)); });
     return get<{
       category: { id: number; name: string; slug: string };
+      /** По всем видимым товарам категории (+ потомки), без учёта price_from/to в запросе строится одинаково на бэке. */
+      price_range?: { min: number; max: number };
       filters: Array<{ attr_name: string; display_name: string; display_type: string; values?: string[] }>;
       data: Product[];
       meta: PaginatedResponse<Product>['meta'];

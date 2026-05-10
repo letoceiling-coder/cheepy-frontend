@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, SlidersHorizontal, Grid2X2, LayoutList, X } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -8,22 +8,50 @@ import { publicApi } from "@/lib/api";
 import { publicListProductToStorefront } from "@/lib/mapPublicProduct";
 import { trackCategoryEvent } from "@/lib/userPreferences";
 
+/** Вынесено из листинга: иначе при каждом ре-рендере родителя компонент «новый», сбрасывается useState(open). */
+function CategoryFilterSection({
+  title,
+  children,
+  defaultOpen = true,
+}: {
+  title: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-b border-border pb-4 mb-4">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center justify-between w-full text-sm font-semibold text-foreground mb-2"
+      >
+        {title}
+        <ChevronDown className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && children}
+    </div>
+  );
+}
+
 export default function CategoryListingContent() {
   const { slug } = useParams();
   const [sortBy, setSortBy] = useState("popular");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500000]);
+  /** [0,0] до первой инициализации с бэка — тогда не уходят price_from/price_to. */
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
+  const priceSeedKeyRef = useRef<string>("");
 
   const sortParams = useMemo(() => {
     switch (sortBy) {
       case "price_asc":
-        return { sort_by: "price_raw", sort_dir: "asc" as const };
+        return { sort_by: "price_asc" };
       case "price_desc":
-        return { sort_by: "price_raw", sort_dir: "desc" as const };
+        return { sort_by: "price_desc" };
       case "new":
-        return { sort_by: "parsed_at", sort_dir: "desc" as const };
+        return { sort_by: "new" };
       default:
         return { sort_by: "list_position", sort_dir: "desc" as const };
     }
@@ -43,9 +71,28 @@ export default function CategoryListingContent() {
     staleTime: 30_000,
   });
 
+  useEffect(() => {
+    priceSeedKeyRef.current = "";
+    setPriceRange([0, 0]);
+    setCurrentPage(1);
+  }, [slug]);
+
+  useEffect(() => {
+    const slugStr = slug ? String(slug) : "";
+    const rawMax = data?.price_range?.max;
+    const rawMin = data?.price_range?.min ?? 0;
+    if (!slugStr || typeof rawMax !== "number" || rawMax < 1) return;
+    const key = `${slugStr}:${rawMax}:${rawMin}`;
+    if (priceSeedKeyRef.current === key) return;
+    priceSeedKeyRef.current = key;
+    setPriceRange([0, rawMax]);
+  }, [slug, data?.price_range?.min, data?.price_range?.max]);
+
   const products = data?.data ?? [];
   const meta = data?.meta;
   const apiFilters = data?.filters ?? [];
+  const catalogPriceMin = typeof data?.price_range?.min === "number" ? data.price_range.min : null;
+  const catalogPriceMax = typeof data?.price_range?.max === "number" ? data.price_range.max : null;
   const totalPages = meta?.last_page ?? 1;
 
   useEffect(() => {
@@ -54,68 +101,64 @@ export default function CategoryListingContent() {
     trackCategoryEvent("view", { categoryId: cat.id, slug: cat.slug, name: cat.name });
   }, [data?.category?.id, data?.category?.slug, data?.category?.name]);
 
-  const FilterSection = ({
-    title,
-    children,
-    defaultOpen = true,
-  }: {
-    title: string;
-    children: React.ReactNode;
-    defaultOpen?: boolean;
-  }) => {
-    const [open, setOpen] = useState(defaultOpen);
-    return (
-      <div className="border-b border-border pb-4 mb-4">
-        <button
-          type="button"
-          onClick={() => setOpen(!open)}
-          className="flex items-center justify-between w-full text-sm font-semibold text-foreground mb-2"
-        >
-          {title}
-          <ChevronDown className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`} />
-        </button>
-        {open && children}
-      </div>
-    );
-  };
-
   const filtersContent = (
     <div className="space-y-0">
-      <FilterSection title="Цена">
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            min={0}
-            value={priceRange[0]}
-            onChange={(e) => setPriceRange([+e.target.value || 0, priceRange[1]])}
-            className="w-full py-2 px-3 rounded-lg border border-border bg-background text-foreground text-sm"
-            placeholder="От"
-          />
-          <span className="text-muted-foreground">—</span>
-          <input
-            type="number"
-            min={0}
-            value={priceRange[1]}
-            onChange={(e) => setPriceRange([priceRange[0], +e.target.value || 0])}
-            className="w-full py-2 px-3 rounded-lg border border-border bg-background text-foreground text-sm"
-            placeholder="До"
-          />
-        </div>
-      </FilterSection>
+      <CategoryFilterSection title="Цена">
+        {!catalogPriceMax || catalogPriceMax < 1 ? (
+          <p className="text-xs text-muted-foreground">Цены недоступны для фильтра в этой категории.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                max={catalogPriceMax}
+                value={priceRange[1] > 0 ? priceRange[0] : ""}
+                onChange={(e) => {
+                  const v = Math.max(0, Math.min(+e.target.value || 0, catalogPriceMax));
+                  setPriceRange([v, priceRange[1] > 0 ? priceRange[1] : catalogPriceMax]);
+                  setCurrentPage(1);
+                }}
+                className="w-full py-2 px-3 rounded-lg border border-border bg-background text-foreground text-sm"
+                placeholder="От"
+              />
+              <span className="text-muted-foreground shrink-0">—</span>
+              <input
+                type="number"
+                min={0}
+                max={catalogPriceMax}
+                value={priceRange[1] > 0 ? priceRange[1] : ""}
+                onChange={(e) => {
+                  const v = Math.max(0, Math.min(+e.target.value || 0, catalogPriceMax));
+                  const lo = Math.min(priceRange[0], v);
+                  setPriceRange([lo, v]);
+                  setCurrentPage(1);
+                }}
+                className="w-full py-2 px-3 rounded-lg border border-border bg-background text-foreground text-sm"
+                placeholder="До"
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              По каталогу до {catalogPriceMax.toLocaleString("ru-RU")} ₽
+              {catalogPriceMin != null && catalogPriceMin > 0 ? ` · от ${catalogPriceMin.toLocaleString("ru-RU")} ₽` : ""}.
+            </p>
+          </div>
+        )}
+      </CategoryFilterSection>
 
       {apiFilters
         .filter((f) => Array.isArray(f.values) && f.values.length > 0)
         .map((f) => (
-          <FilterSection key={f.attr_name} title={f.display_name || f.attr_name} defaultOpen={false}>
+          <CategoryFilterSection key={f.attr_name} title={f.display_name || f.attr_name} defaultOpen={false}>
             <div className="flex flex-wrap gap-2">
               {f.values!.slice(0, 40).map((v) => (
-                <span key={v} className="px-3 py-1.5 rounded-lg text-xs border border-border bg-secondary text-foreground">
+                <button key={v} type="button" className="px-3 py-1.5 rounded-lg text-xs border border-border bg-secondary text-foreground cursor-default opacity-80" disabled>
                   {v}
-                </span>
+                </button>
               ))}
             </div>
             <p className="text-[10px] text-muted-foreground mt-2">Фильтрация по этим значениям будет добавлена в следующей версии API.</p>
-          </FilterSection>
+          </CategoryFilterSection>
         ))}
     </div>
   );
