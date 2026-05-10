@@ -179,86 +179,96 @@ export default function CrmMarketingNewsPage() {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden w-[min(32rem,calc(100vw-2rem))] min-w-0">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Newspaper className="h-4 w-4" /> {editingId == null ? "Новая новость" : "Редактирование"}
+            <DialogTitle className="flex items-center gap-2 pr-8">
+              <Newspaper className="h-4 w-4 shrink-0" /> {editingId == null ? "Новая новость" : "Редактирование"}
             </DialogTitle>
             <DialogDescription>В письма попадают активные записи с датой публикации не позже текущего момента.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 mt-2">
-            <div>
+          <div className="space-y-3 mt-2 min-w-0">
+            <div className="min-w-0">
               <Label className="text-xs">Тема</Label>
-              <Input className="h-8 text-sm mt-1" value={form.title ?? ""} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+              <Input className="h-8 text-sm mt-1 min-w-0 max-w-full" value={form.title ?? ""} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             </div>
-            <div>
+            <div className="min-w-0">
               <Label className="text-xs">Текст (HTML допускается)</Label>
-              <Textarea className="mt-1 text-sm min-h-[120px]" value={form.body ?? ""} onChange={(e) => setForm({ ...form, body: e.target.value })} />
+              <Textarea className="mt-1 text-sm min-h-[120px] min-w-0 max-w-full w-full" value={form.body ?? ""} onChange={(e) => setForm({ ...form, body: e.target.value })} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            <div className="grid grid-cols-2 gap-3 min-w-0">
+              <div className="min-w-0">
                 <Label className="text-xs">Slug (URL)</Label>
-                <Input className="h-8 text-sm mt-1 font-mono" value={form.slug ?? ""} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder="авто" />
+                <Input className="h-8 text-sm mt-1 font-mono min-w-0 max-w-full" value={form.slug ?? ""} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder="авто" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <Label className="text-xs">Сортировка</Label>
                 <Input
                   type="number"
-                  className="h-8 text-sm mt-1"
+                  className="h-8 text-sm mt-1 min-w-0 max-w-full"
                   value={String(form.sort_order ?? 0)}
                   onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) || 0 })}
                 />
               </div>
             </div>
-            <div>
+            <div className="min-w-0">
               <Label className="text-xs">Изображение</Label>
-              <div className="flex gap-2 mt-1 flex-wrap items-stretch">
-                <div className="flex-1 min-w-0 rounded-md border border-input bg-muted/30 px-3 py-1.5 text-sm flex items-center min-h-8 truncate" title={form.image_url ?? ""}>
+              <div className="flex gap-2 mt-1 w-full min-w-0 items-center">
+                <div
+                  className="min-w-0 flex-1 overflow-hidden rounded-md border border-input bg-muted/30 px-3 py-1.5 text-sm min-h-8 flex items-center"
+                  title={form.image_url ? resolveCrmMediaAssetUrl(form.image_url) : undefined}
+                >
                   {form.image_url ? (
-                    <span className="truncate">{resolveCrmMediaAssetUrl(form.image_url)}</span>
+                    <span className="block w-full truncate">{resolveCrmMediaAssetUrl(form.image_url)}</span>
                   ) : (
-                    <span className="text-muted-foreground">Не выбрано — только из медиабиблиотеки</span>
+                    <span className="text-muted-foreground line-clamp-2 sm:line-clamp-1">Не выбрано — только из медиабиблиотеки</span>
                   )}
                 </div>
-                <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 gap-1" onClick={() => setMediaPick("image")}>
-                  Выбрать
-                </Button>
-                {form.image_url ? (
-                  <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0" onClick={() => setForm({ ...form, image_url: "" })}>
-                    Очистить
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button type="button" variant="outline" size="sm" className="h-8 gap-1 whitespace-nowrap" onClick={() => setMediaPick("image")}>
+                    Выбрать
                   </Button>
-                ) : null}
+                  {form.image_url ? (
+                    <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => setForm({ ...form, image_url: "" })}>
+                      Очистить
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             </div>
-            <div>
+            <div className="min-w-0">
               <Label className="text-xs">Видео</Label>
-              <div className="flex gap-2 mt-1 flex-wrap items-stretch">
-                <div className="flex-1 min-w-0 rounded-md border border-input bg-muted/30 px-3 py-1.5 text-sm flex items-center min-h-8 truncate" title={form.video_url ?? ""}>
+              <div className="flex gap-2 mt-1 w-full min-w-0 items-center">
+                <div
+                  className="min-w-0 flex-1 overflow-hidden rounded-md border border-input bg-muted/30 px-3 py-1.5 text-sm min-h-8 flex items-center"
+                  title={form.video_url ? resolveCrmMediaAssetUrl(form.video_url) : undefined}
+                >
                   {form.video_url ? (
-                    <span className="truncate">{resolveCrmMediaAssetUrl(form.video_url)}</span>
+                    <span className="block w-full truncate">{resolveCrmMediaAssetUrl(form.video_url)}</span>
                   ) : (
-                    <span className="text-muted-foreground">Не выбрано — файл видео из медиабиблиотеки</span>
+                    <span className="text-muted-foreground line-clamp-2 sm:line-clamp-1">Не выбрано — файл видео из медиабиблиотеки</span>
                   )}
                 </div>
-                <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 gap-1" onClick={() => setMediaPick("video")}>
-                  Выбрать
-                </Button>
-                {form.video_url ? (
-                  <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0" onClick={() => setForm({ ...form, video_url: "" })}>
-                    Очистить
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button type="button" variant="outline" size="sm" className="h-8 gap-1 whitespace-nowrap" onClick={() => setMediaPick("video")}>
+                    Выбрать
                   </Button>
-                ) : null}
+                  {form.video_url ? (
+                    <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => setForm({ ...form, video_url: "" })}>
+                      Очистить
+                    </Button>
+                  ) : null}
+                </div>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1">Внешние ссылки (YouTube и т.д.) не задаются здесь — загрузите MP4/WebM в библиотеку или вставьте ссылку в текст HTML.</p>
+              <p className="text-[10px] text-muted-foreground mt-1 break-words">Внешние ссылки (YouTube и т.д.) не задаются здесь — загрузите MP4/WebM в библиотеку или вставьте ссылку в текст HTML.</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            <div className="grid grid-cols-2 gap-3 min-w-0">
+              <div className="min-w-0">
                 <Label className="text-xs">Файл (URL)</Label>
-                <Input className="h-8 text-sm mt-1" value={form.file_url ?? ""} onChange={(e) => setForm({ ...form, file_url: e.target.value })} />
+                <Input className="h-8 text-sm mt-1 min-w-0 max-w-full" value={form.file_url ?? ""} onChange={(e) => setForm({ ...form, file_url: e.target.value })} />
               </div>
-              <div>
+              <div className="min-w-0">
                 <Label className="text-xs">Подпись к файлу</Label>
-                <Input className="h-8 text-sm mt-1" value={form.file_label ?? ""} onChange={(e) => setForm({ ...form, file_label: e.target.value })} placeholder="PDF, прайс" />
+                <Input className="h-8 text-sm mt-1 min-w-0" value={form.file_label ?? ""} onChange={(e) => setForm({ ...form, file_label: e.target.value })} placeholder="PDF, прайс" />
               </div>
             </div>
             <div>
