@@ -316,7 +316,7 @@ function AnimatedRoutes() {
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<PageTransition><Index /></PageTransition>} />
         <Route path="/auth" element={<PageTransition><AuthPage /></PageTransition>} />
-        <Route path="/category/:slug" element={<PageTransition><CategoryPage /></PageTransition>} />
+        <Route path="/search" element={<PageTransition><SearchPage /></PageTransition>} />
         <Route path="/product/:id" element={<PageTransition><ProductPage /></PageTransition>} />
         <Route path="/favorites" element={<PageTransition><FavoritesPage /></PageTransition>} />
         <Route path="/cart" element={<PageTransition><CartPage /></PageTransition>} />

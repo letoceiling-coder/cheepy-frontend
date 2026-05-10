@@ -1692,10 +1692,36 @@ export const publicApi = {
     );
   },
 
-  search: (q: string, page = 1, perPage = 20) =>
-    get<{ query: string; data: Product[]; meta: PaginatedResponse<Product>['meta'] }>(
-      `/public/search?q=${encodeURIComponent(q)}&page=${page}&per_page=${perPage}`, true
+  /** Полный поиск по товарам (system_products); data — storefront-карточки как в категории. */
+  searchProducts: (params: { q: string; page?: number; per_page?: number }) => {
+    const q = new URLSearchParams();
+    q.set("q", params.q);
+    q.set("page", String(Math.max(1, params.page ?? 1)));
+    q.set("per_page", String(Math.min(60, Math.max(4, params.per_page ?? 20))));
+    return get<{ query: string; data: StorefrontProductCardPayload[]; meta: PaginatedResponse<Product>["meta"] }>(
+      `/public/search?${q}`,
+      true
+    );
+  },
+
+  /** Подсказки в шапке: категории, продавцы, товары (короткие списки). */
+  searchSuggestions: (params: { q: string }) =>
+    get<SearchSuggestionsApiResponse>(
+      `/public/search?q=${encodeURIComponent(params.q)}&suggest_only=1`,
+      true
     ),
+
+  /** @deprecated используйте searchProducts */
+  search: (q: string, page = 1, perPage = 20) => {
+    const qp = new URLSearchParams();
+    qp.set("q", q);
+    qp.set("page", String(Math.max(1, page)));
+    qp.set("per_page", String(Math.min(60, Math.max(4, perPage))));
+    return get<{ query: string; data: StorefrontProductCardPayload[]; meta: PaginatedResponse<Product>["meta"] }>(
+      `/public/search?${qp}`,
+      true
+    );
+  },
 
   featured: (limit = 24) =>
     get<{ data: Product[] }>(`/public/featured?limit=${limit}`, true),

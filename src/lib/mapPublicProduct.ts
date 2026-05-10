@@ -48,6 +48,25 @@ function attrsByKeyword(attrs: Array<{ name: string; value: string; type?: strin
   return values;
 }
 
+/** Совпадение из GET /public/search (storefront-карточка) → Product для списков. */
+export function storefrontSearchHitToProduct(hit: StorefrontProductCardPayload): Product {
+  const id = hit.id;
+  return {
+    id,
+    external_id: typeof id === "string" ? id : String(id),
+    title: hit.title,
+    price: hit.price ?? null,
+    price_raw: hit.price_raw ?? null,
+    status: "active",
+    is_relevant: true,
+    photos_count: hit.photos_count ?? (hit.thumbnail ? 1 : 0),
+    thumbnail: hit.thumbnail ?? null,
+    category: hit.category ? { id: 0, name: hit.category.name, slug: hit.category.slug } : null,
+    seller: hit.seller ? { id: 0, name: hit.seller.name, slug: hit.seller.slug } : null,
+    parsed_at: null,
+  };
+}
+
 /** Карточка каталога / списка → модель для ProductCard и корзины. */
 export function publicListProductToStorefront(p: Product): StorefrontProduct {
   const price = p.price_raw ?? parseRuPrice(p.price);

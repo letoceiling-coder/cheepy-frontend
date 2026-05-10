@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, type ComponentType } from "react"
 import { Search, User, Heart, ShoppingCart, Grid2X2, X, Circle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import MegaMenu from "./MegaMenu";
+import { HeaderSearchBar } from "@/components/HeaderSearchBar";
 import type { PublicMenuCategory } from "./MegaMenu";
 import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
@@ -258,38 +259,25 @@ const Header = ({ settings }: HeaderProps) => {
             </button>
 
             {/* Search - desktop */}
-            <div className="hidden md:block flex-1 relative">
-              <input
-                type="text"
-                placeholder={mergedSettings.searchPlaceholder}
-                className="w-full border-2 border-primary/30 rounded-full py-2.5 pl-5 pr-12 text-sm focus:outline-none focus:border-primary transition-colors bg-background text-foreground placeholder:text-muted-foreground"
-              />
-              <button className="absolute right-1 top-1/2 -translate-y-1/2 gradient-primary p-2 rounded-full text-primary-foreground">
-                <Search className="w-4 h-4" />
-              </button>
+            <div className="hidden md:block flex-1 relative min-w-0">
+              <HeaderSearchBar placeholder={mergedSettings.searchPlaceholder} />
             </div>
 
             {/* Search - mobile */}
-            <div className="md:hidden flex-1 flex items-center justify-end">
+            <div className="md:hidden flex-1 flex items-center justify-end min-w-0">
               {mobileSearchOpen ? (
-                <div className="flex-1 flex items-center gap-2 animate-fade-in">
-                  <div className="flex-1 relative">
-                    <input
-                      type="text"
-                      placeholder={mergedSettings.searchPlaceholder}
-                      autoFocus
-                      className="w-full border-2 border-primary/30 rounded-full py-2 pl-4 pr-10 text-sm focus:outline-none focus:border-primary transition-colors bg-background text-foreground placeholder:text-muted-foreground"
-                    />
-                    <button className="absolute right-1 top-1/2 -translate-y-1/2 gradient-primary p-1.5 rounded-full text-primary-foreground">
-                      <Search className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <button onClick={() => setMobileSearchOpen(false)} className="text-muted-foreground p-1">
+                <div className="flex-1 flex items-center gap-2 animate-fade-in min-w-0">
+                  <HeaderSearchBar
+                    compact
+                    autoFocus
+                    placeholder={mergedSettings.searchPlaceholder}
+                  />
+                  <button type="button" onClick={() => setMobileSearchOpen(false)} className="text-muted-foreground p-1 shrink-0">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
               ) : (
-                <button onClick={() => setMobileSearchOpen(true)} className="text-foreground p-2">
+                <button type="button" onClick={() => setMobileSearchOpen(true)} className="text-foreground p-2" aria-label="Поиск">
                   <Search className="w-5 h-5" />
                 </button>
               )}
