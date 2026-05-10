@@ -61,14 +61,25 @@ export default function CrmAiIntegrationsTab() {
   const openrouterDraft = drafts["openrouter"];
 
   const openrouterSelectOptions = useMemo(() => {
-    const fallback = openrouterProvider?.models ?? [];
-    const opts = openrouterRemoteModels.length > 0 ? openrouterRemoteModels : fallback;
+    const isFreeOpt = (m: AiProviderModelOption) => m.free === true || String(m.id).trim().endsWith(":free");
+    const fallback = (openrouterProvider?.models ?? []).filter(isFreeOpt);
+    const remote = openrouterRemoteModels.filter(isFreeOpt);
+    const opts = remote.length > 0 ? remote : fallback;
     const dm = openrouterDraft?.default_model?.trim();
-    if (dm && !opts.some((o) => o.id === dm)) {
-      return [...opts, { id: dm, label: `${dm} (текущая)` }];
+    const dmEligible =
+      !!dm &&
+      (isFreeOpt({ id: dm, label: "" }) ||
+        openrouterRemoteModels.some((x) => x.id === dm && isFreeOpt(x)) ||
+        (openrouterProvider?.models ?? []).some((x) => x.id === dm && isFreeOpt(x)));
+    if (dmEligible && dm && !opts.some((o) => o.id === dm)) {
+      return [...opts, { id: dm, label: `${dm} (текущая)`, free: true }];
     }
     return opts;
-  }, [openrouterProvider, openrouterRemoteModels, openrouterDraft?.default_model]);
+  }, [
+    openrouterProvider,
+    openrouterRemoteModels,
+    openrouterDraft?.default_model,
+  ]);
 
   const ollamaProvider = useMemo(() => items.find((i) => i.name === "ollama"), [items]);
   const ollamaDraft = drafts["ollama"];
@@ -395,12 +406,11 @@ export default function CrmAiIntegrationsTab() {
                         </>
                       ) : (
                         <>
-                          После входа на страницу список подтягивается автоматически (без ключа — открытый каталог{" "}
-                          <code className="text-[10px]">GET /v1/models</code>). Ключ нужен только для генерации ответов
-                          агента. Бесплатные помечены «— бесплатно»
-                          (<code className="text-[10px]">:free</code> или нулевая цена prompt/completion). При ошибке или
-                          лимите у выбранной модели агент по очереди пробует резервную цепочку бесплатных моделей от более
-                          сильной к более лёгкой.
+                          В списке только бесплатные модели (по каталогу OpenRouter:{" "}
+                          <code className="text-[10px]">:free</code> или цена prompt/completion 0). Откройте страницу
+                          или нажмите «Обновить» — id бесплатного каталога кэшируются для сохранения настроек. Ключ нужен для
+                          ответов агента; при недоступности выбранной модели включается цепочка бесплатных от более мощной к
+                          более лёгкой.
                         </>
                       )}
                     </p>
