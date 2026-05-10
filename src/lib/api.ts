@@ -2954,8 +2954,25 @@ export interface StoreCheckoutResponse {
   order_number: string;
 }
 
+export interface StoreOrderPreviewResponse {
+  subtotal_catalog_rub: number;
+  discount_rub: number;
+  subtotal_after_coupon_rub: number;
+  delivery_amount: number;
+  delivery_provider: string | null;
+  delivery_type: string;
+  total_amount: number;
+  coupon: { code: string; discount_type: string; discount_value: number; name: string } | null;
+  coupon_applied: boolean;
+}
+
+export const storeOrderPreviewApi = {
+  create: (payload: { items: StoreCheckoutItemPayload[]; coupon_code?: string | null }) =>
+    storefrontRequest<StoreOrderPreviewResponse>("POST", "/store/order-preview", payload, true),
+};
+
 export const storeCheckoutApi = {
-  create: (payload: { items: StoreCheckoutItemPayload[]; provider?: string }) =>
+  create: (payload: { items: StoreCheckoutItemPayload[]; provider?: string; coupon_code?: string | null }) =>
     storefrontRequest<StoreCheckoutResponse>("POST", "/store/checkout", payload, true),
 };
 

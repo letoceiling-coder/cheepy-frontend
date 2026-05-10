@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Trash2, Heart, Loader2, Minus, Plus, ShoppingCart, Truck } from "lucide-react";
+import { Ticket, Trash2, Heart, Loader2, Minus, Plus, ShoppingCart, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
-import { ApiError, publicApi, storeCartDeliveryQuoteApi, storeCheckoutApi, type StorefrontCartDeliveryQuoteResponse } from "@/lib/api";
+import {
+  ApiError,
+  publicApi,
+  storeCartDeliveryQuoteApi,
+  storeCheckoutApi,
+  storeOrderPreviewApi,
+  type StoreOrderPreviewResponse,
+  type StorefrontCartDeliveryQuoteResponse,
+} from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 
 const FALLBACK_DELIVERY_RUB = 299;
@@ -32,8 +41,73 @@ export default function CartPageContent() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [cartQuote, setCartQuote] = useState<StorefrontCartDeliveryQuoteResponse | null>(null);
   const [deliveryQuoteLoading, setDeliveryQuoteLoading] = useState(false);
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [orderPreview, setOrderPreview] = useState<StoreOrderPreviewResponse | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
 
   const cartKey = useMemo(() => cartItemsRequestKey(items), [items]);
+
+  const mapCheckoutItems = useCallback(
+    () =>
+      items.map((i) => ({
+        product_id: String(i.product.id),
+        quantity: i.quantity,
+        ...(i.color ? { color: i.color } : {}),
+        ...(i.size ? { size: i.size } : {}),
+      })),
+    [items],
+  );
+
+  useEffect(() => {
+    if (!appliedCoupon) {
+      setOrderPreview(null);
+    }
+  }, [appliedCoupon]);
+
+  useEffect(() => {
+    if (!isAuthenticated || items.length === 0) {
+      setAppliedCoupon(null);
+      setOrderPreview(null);
+      setCouponInput("");
+      setCouponError(null);
+    }
+  }, [isAuthenticated, items.length]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !appliedCoupon || items.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setPreviewLoading(true);
+      storeOrderPreviewApi
+        .create({ items: mapCheckoutItems(), coupon_code: appliedCoupon })
+        .then((res) => {
+          if (!cancelled) {
+            setOrderPreview(res);
+            setCouponError(null);
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setOrderPreview(null);
+            setAppliedCoupon(null);
+            setCouponError(err instanceof ApiError ? err.message : "Промокод недоступен для этой корзины");
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setPreviewLoading(false);
+        });
+    }, 450);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [isAuthenticated, appliedCoupon, cartKey, mapCheckoutItems, items.length]);
 
   useEffect(() => {
     if (!isAuthenticated || items.length === 0) {
@@ -80,8 +154,11 @@ export default function CartPageContent() {
 
   const grossGoods = totalPrice + totalDiscount;
 
+  const serverTotalsMode = Boolean(isAuthenticated && appliedCoupon && orderPreview);
+
   /** Бесплатно от порога только при включённой настройке CRM, сохранённом адресе и сумме ≥ порога. */
   const thresholdFreeActive =
+    !serverTotalsMode &&
     isAuthenticated &&
     cartQuote != null &&
     !deliveryQuoteLoading &&
@@ -90,7 +167,9 @@ export default function CartPageContent() {
     totalPrice >= effectiveThresholdRub;
 
   let resolvedDeliveryRub: number | undefined;
-  if (!isAuthenticated || deliveryQuoteLoading || cartQuote === null || cartQuote.needs_address) {
+  if (serverTotalsMode && orderPreview) {
+    resolvedDeliveryRub = orderPreview.delivery_amount;
+  } else if (!isAuthenticated || deliveryQuoteLoading || cartQuote === null || cartQuote.needs_address) {
     resolvedDeliveryRub = undefined;
   } else if (thresholdFreeActive) {
     resolvedDeliveryRub = 0;
@@ -100,14 +179,59 @@ export default function CartPageContent() {
     resolvedDeliveryRub = FALLBACK_DELIVERY_RUB;
   }
 
+  const thresholdBannerGapRub =
+    effectiveThresholdRub != null
+      ? serverTotalsMode && orderPreview
+        ? Math.max(0, effectiveThresholdRub - orderPreview.subtotal_after_coupon_rub)
+        : Math.max(0, effectiveThresholdRub - totalPrice)
+      : null;
+
   const finalTotal =
     !isAuthenticated
       ? totalPrice
-      : thresholdFreeActive
-        ? totalPrice
-        : typeof resolvedDeliveryRub === "number"
-          ? totalPrice + resolvedDeliveryRub
-          : totalPrice;
+      : serverTotalsMode && orderPreview
+        ? orderPreview.total_amount
+        : thresholdFreeActive
+          ? totalPrice
+          : typeof resolvedDeliveryRub === "number"
+            ? totalPrice + resolvedDeliveryRub
+            : totalPrice;
+
+  const handleApplyCoupon = useCallback(async () => {
+    if (!isAuthenticated || items.length === 0 || previewLoading) return;
+    const raw = couponInput.trim().toUpperCase();
+    if (!raw) {
+      setCouponError(null);
+      return;
+    }
+    setCouponError(null);
+    setPreviewLoading(true);
+    try {
+      const res = await storeOrderPreviewApi.create({ items: mapCheckoutItems(), coupon_code: raw });
+      if (!res.coupon_applied) {
+        setAppliedCoupon(null);
+        setOrderPreview(null);
+        setCouponError("Промокод не применился");
+        return;
+      }
+      setAppliedCoupon(res.coupon?.code ?? raw);
+      setOrderPreview(res);
+      setCouponInput(res.coupon?.code ?? raw);
+    } catch (err) {
+      setAppliedCoupon(null);
+      setOrderPreview(null);
+      setCouponError(err instanceof ApiError ? err.message : "Не удалось применить промокод");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [couponInput, isAuthenticated, items.length, mapCheckoutItems, previewLoading]);
+
+  const handleClearCoupon = useCallback(() => {
+    setAppliedCoupon(null);
+    setOrderPreview(null);
+    setCouponInput("");
+    setCouponError(null);
+  }, []);
 
   const handleCheckout = useCallback(async () => {
     if (items.length === 0 || checkoutLoading) return;
@@ -121,6 +245,7 @@ export default function CartPageContent() {
           color: i.color,
           size: i.size,
         })),
+        coupon_code: appliedCoupon ?? undefined,
       });
       if (res.checkout_url) {
         window.location.href = res.checkout_url;
@@ -132,7 +257,7 @@ export default function CartPageContent() {
     } finally {
       setCheckoutLoading(false);
     }
-  }, [checkoutLoading, items]);
+  }, [appliedCoupon, checkoutLoading, items]);
 
   return (
     <>
@@ -296,15 +421,89 @@ export default function CartPageContent() {
             <div className="sticky top-[180px] p-5 rounded-2xl border border-border space-y-4">
               <h3 className="text-lg font-bold text-foreground">Итого</h3>
 
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Товары ({items.reduce((s, i) => s + i.quantity, 0)})</span>
-                  <span className="text-foreground">{grossGoods.toLocaleString()} ₽</span>
+              {isAuthenticated ? (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={couponInput}
+                      onChange={(e) => {
+                        setCouponInput(e.target.value.toUpperCase());
+                        setCouponError(null);
+                      }}
+                      placeholder="Промокод"
+                      className="h-10 text-sm font-mono uppercase shrink min-w-0"
+                      aria-label="Промокод"
+                      disabled={previewLoading || checkoutLoading}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-10 shrink-0 whitespace-nowrap"
+                      disabled={previewLoading || checkoutLoading || items.length === 0 || !couponInput.trim()}
+                      onClick={() => void handleApplyCoupon()}
+                    >
+                      Применить
+                    </Button>
+                  </div>
+                  {couponError ? <p className="text-xs text-destructive leading-snug">{couponError}</p> : null}
+                  {appliedCoupon ? (
+                    <div className="flex items-start justify-between gap-2 rounded-xl bg-muted/50 px-3 py-2 text-xs">
+                      <span className="text-muted-foreground inline-flex items-center gap-1.5 min-w-0">
+                        <Ticket className="w-3.5 h-3.5 shrink-0 text-primary" />
+                        <span className="truncate font-mono">{appliedCoupon}</span>
+                      </span>
+                      <button
+                        type="button"
+                        className="text-primary font-semibold whitespace-nowrap hover:underline"
+                        onClick={handleClearCoupon}
+                      >
+                        Сбросить
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
-                {totalDiscount > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Скидка</span>
-                    <span className="text-green-600">-{totalDiscount.toLocaleString()} ₽</span>
+              ) : null}
+
+              {serverTotalsMode && orderPreview ? (
+                <p className="text-[11px] text-muted-foreground leading-snug -mt-1">
+                  Итого и доставка по ценам каталога на сервере (витринные акции в строках товаров могут отличаться).
+                </p>
+              ) : null}
+
+              <div className="space-y-2 text-sm">
+                {!serverTotalsMode ? (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Товары ({items.reduce((s, i) => s + i.quantity, 0)})</span>
+                      <span className="text-foreground">{grossGoods.toLocaleString()} ₽</span>
+                    </div>
+                    {totalDiscount > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Скидка</span>
+                        <span className="text-green-600">-{totalDiscount.toLocaleString()} ₽</span>
+                      </div>
+                    )}
+                  </>
+                ) : orderPreview ? (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Товары ({items.reduce((s, i) => s + i.quantity, 0)})</span>
+                      <span className="text-foreground">{orderPreview.subtotal_catalog_rub.toLocaleString()} ₽</span>
+                    </div>
+                    {orderPreview.discount_rub > 0 ? (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground truncate pr-2" title={orderPreview.coupon?.name ?? appliedCoupon ?? ""}>
+                          Промокод {orderPreview.coupon?.code ? `(${orderPreview.coupon.code})` : ""}
+                        </span>
+                        <span className="text-green-600 shrink-0">-{orderPreview.discount_rub.toLocaleString()} ₽</span>
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Считаем…</span>
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   </div>
                 )}
                 {!isAuthenticated ? (
@@ -318,11 +517,17 @@ export default function CartPageContent() {
                   <div className="flex justify-between items-start gap-3 pt-0.5">
                     <span className="text-muted-foreground shrink-0">Доставка</span>
                     <span className="text-right text-foreground min-h-[1.25rem]">
-                      {deliveryQuoteLoading ? (
+                      {(serverTotalsMode ? previewLoading : deliveryQuoteLoading) ? (
                         <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                           <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                           Считаем…
                         </span>
+                      ) : serverTotalsMode && orderPreview ? (
+                        orderPreview.delivery_amount <= 0 ? (
+                          <span className="text-green-600">Бесплатно</span>
+                        ) : (
+                          `${orderPreview.delivery_amount.toLocaleString()} ₽`
+                        )
                       ) : cartQuote?.needs_address ? (
                         <span className="text-xs text-muted-foreground">
                           <Link to="/account#delivery-addresses" className="text-primary font-medium hover:underline">
@@ -346,6 +551,7 @@ export default function CartPageContent() {
               </div>
 
               {isAuthenticated &&
+                !serverTotalsMode &&
                 !thresholdFreeActive &&
                 cartQuote &&
                 !cartQuote.needs_address &&
@@ -355,14 +561,12 @@ export default function CartPageContent() {
                   <p className="text-[11px] text-muted-foreground leading-snug">{cartQuote.cheapest_quote.summary_line_ru}</p>
                 )}
 
-              {isAuthenticated && effectiveThresholdRub != null && totalPrice < effectiveThresholdRub && (
+              {isAuthenticated && effectiveThresholdRub != null && thresholdBannerGapRub !== null && thresholdBannerGapRub > 0 && (
                 <div className="flex items-center gap-2 p-3 rounded-xl bg-primary/5 text-sm">
                   <Truck className="w-4 h-4 text-primary shrink-0" />
                   <span className="text-muted-foreground">
                     До бесплатной доставки ещё{" "}
-                    <span className="text-primary font-medium">
-                      {(effectiveThresholdRub - totalPrice).toLocaleString()} ₽
-                    </span>
+                    <span className="text-primary font-medium">{thresholdBannerGapRub.toLocaleString()} ₽</span>
                   </span>
                 </div>
               )}
@@ -376,7 +580,12 @@ export default function CartPageContent() {
               <div className="border-t border-border pt-3">
                 <div className="flex justify-between items-baseline">
                   <span className="text-lg font-bold text-foreground">К оплате</span>
-                  <span className="text-xl font-bold text-foreground">{finalTotal.toLocaleString()} ₽</span>
+                  <span className="text-xl font-bold text-foreground inline-flex items-center gap-2">
+                    {(serverTotalsMode ? previewLoading : false) && (
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" aria-hidden />
+                    )}
+                    {finalTotal.toLocaleString()} ₽
+                  </span>
                 </div>
               </div>
 
@@ -390,7 +599,8 @@ export default function CartPageContent() {
                     className="w-full gradient-primary text-primary-foreground rounded-xl py-3 h-auto text-sm font-semibold inline-flex items-center justify-center gap-2"
                     disabled={
                       checkoutLoading ||
-                      (Boolean(isAuthenticated && cartQuote?.needs_address))
+                      (Boolean(isAuthenticated && cartQuote?.needs_address)) ||
+                      (Boolean(appliedCoupon && (!orderPreview || previewLoading)))
                     }
                     onClick={handleCheckout}
                   >
