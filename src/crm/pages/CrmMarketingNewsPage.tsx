@@ -33,8 +33,8 @@ export default function CrmMarketingNewsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<Partial<CrmMarketingNewsItem>>(emptyForm);
   const [saving, setSaving] = useState(false);
-  /** Попап медиабиблиотеки: фото или видео для новости */
-  const [mediaPick, setMediaPick] = useState<"image" | "video" | null>(null);
+  /** Попап медиабиблиотеки: изображение, видео или вложение */
+  const [mediaPick, setMediaPick] = useState<"image" | "video" | "file" | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -261,15 +261,34 @@ export default function CrmMarketingNewsPage() {
               </div>
               <p className="text-[10px] text-muted-foreground mt-1 break-words">Внешние ссылки (YouTube и т.д.) не задаются здесь — загрузите MP4/WebM в библиотеку или вставьте ссылку в текст HTML.</p>
             </div>
-            <div className="grid grid-cols-2 gap-3 min-w-0">
-              <div className="min-w-0">
-                <Label className="text-xs">Файл (URL)</Label>
-                <Input className="h-8 text-sm mt-1 min-w-0 max-w-full" value={form.file_url ?? ""} onChange={(e) => setForm({ ...form, file_url: e.target.value })} />
+            <div className="min-w-0">
+              <Label className="text-xs">Файл (вложение)</Label>
+              <div className="flex gap-2 mt-1 w-full min-w-0 items-center">
+                <div
+                  className="min-w-0 flex-1 overflow-hidden rounded-md border border-input bg-muted/30 px-3 py-1.5 text-sm min-h-8 flex items-center"
+                  title={form.file_url ? resolveCrmMediaAssetUrl(form.file_url) : undefined}
+                >
+                  {form.file_url ? (
+                    <span className="block w-full truncate">{resolveCrmMediaAssetUrl(form.file_url)}</span>
+                  ) : (
+                    <span className="text-muted-foreground line-clamp-2 sm:line-clamp-1">Не выбрано — PDF, архив или другой файл из медиабиблиотеки</span>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button type="button" variant="outline" size="sm" className="h-8 gap-1 whitespace-nowrap" onClick={() => setMediaPick("file")}>
+                    Выбрать
+                  </Button>
+                  {form.file_url ? (
+                    <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => setForm({ ...form, file_url: "" })}>
+                      Очистить
+                    </Button>
+                  ) : null}
+                </div>
               </div>
-              <div className="min-w-0">
-                <Label className="text-xs">Подпись к файлу</Label>
-                <Input className="h-8 text-sm mt-1 min-w-0" value={form.file_label ?? ""} onChange={(e) => setForm({ ...form, file_label: e.target.value })} placeholder="PDF, прайс" />
-              </div>
+            </div>
+            <div className="min-w-0">
+              <Label className="text-xs">Подпись к файлу</Label>
+              <Input className="h-8 text-sm mt-1 min-w-0 max-w-full" value={form.file_label ?? ""} onChange={(e) => setForm({ ...form, file_label: e.target.value })} placeholder="PDF, прайс" />
             </div>
             <div>
               <Label className="text-xs">Дата публикации (локально)</Label>
@@ -301,7 +320,10 @@ export default function CrmMarketingNewsPage() {
       <CrmMediaPickerDialog
         key={mediaPick ?? "closed"}
         open={mediaPick !== null}
-        accept={mediaPick ?? undefined}
+        accept={
+          mediaPick === "image" ? "image" : mediaPick === "video" ? "video" : undefined
+        }
+        title={mediaPick === "file" ? "Выбор файла-вложения" : undefined}
         onOpenChange={(v) => {
           if (!v) setMediaPick(null);
         }}
@@ -314,6 +336,7 @@ export default function CrmMarketingNewsPage() {
           const target = mediaPick;
           if (target === "image") setForm((prev) => ({ ...prev, image_url: raw }));
           else if (target === "video") setForm((prev) => ({ ...prev, video_url: raw }));
+          else if (target === "file") setForm((prev) => ({ ...prev, file_url: raw }));
           setMediaPick(null);
         }}
       />

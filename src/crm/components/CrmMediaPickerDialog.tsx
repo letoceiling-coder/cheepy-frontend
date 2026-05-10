@@ -39,11 +39,20 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onPick: (file: CrmMediaFile) => void;
-  /** Ограничение списка файлов справа */
+  /** Ограничение списка файлов справа; без значения — все типы файлов */
   accept?: MediaAccept;
+  /** Заголовок окна (иначе зависит от accept) */
+  title?: string;
 };
 
-export function CrmMediaPickerDialog({ open, onOpenChange, onPick, accept }: Props) {
+function defaultPickerTitle(accept?: MediaAccept): string {
+  if (accept === "image") return "Выбор изображения";
+  if (accept === "video") return "Выбор видео";
+
+  return "Выбор файла из медиабиблиотеки";
+}
+
+export function CrmMediaPickerDialog({ open, onOpenChange, onPick, accept, title }: Props) {
   const [stack, setStack] = useState<CrmMediaFolder[]>([]);
   const current = stack[stack.length - 1] ?? null;
   const parentId = current?.id ?? null;
@@ -79,7 +88,7 @@ export function CrmMediaPickerDialog({ open, onOpenChange, onPick, accept }: Pro
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[96vw] max-w-6xl h-[88vh] max-h-[88vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Выбор файла из медиабиблиотеки</DialogTitle>
+          <DialogTitle>{title ?? defaultPickerTitle(accept)}</DialogTitle>
         </DialogHeader>
         <div className="text-xs text-muted-foreground flex flex-wrap gap-1 items-center">
           <button type="button" className="hover:underline" onClick={() => setStack([])}>
