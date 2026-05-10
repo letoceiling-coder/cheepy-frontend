@@ -3,6 +3,7 @@ import type { StorefrontProduct } from "@/types/storefront-product";
 import { resolveCartLinePricing, type CartLinePricing, type CartPromotionSnapshot } from "@/lib/cartPricing";
 import { useAuth } from "@/contexts/AuthContext";
 import { storeCartSyncApi } from "@/lib/api";
+import { useLocation } from "react-router-dom";
 
 const CART_STORAGE_KEY = "cheepy_cart_v1";
 
@@ -92,6 +93,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
+  const { pathname } = useLocation();
   const { isAuthenticated } = useAuth();
   const [items, setItems] = useState<CartItem[]>(() => loadPersistedCart());
   const [now, setNow] = useState(() => Date.now());
@@ -104,6 +106,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (!isAuthenticated) return;
+    if (pathname.startsWith("/crm")) return;
     const timer = window.setTimeout(() => {
       void storeCartSyncApi
         .sync({
@@ -117,7 +120,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         .catch(() => {});
     }, 550);
     return () => window.clearTimeout(timer);
-  }, [isAuthenticated, cartSyncKey]);
+  }, [isAuthenticated, cartSyncKey, pathname]);
 
   useEffect(() => {
     if (!items.some((item) => item.promotions.some((promotion) => now < promotion.endsAt))) return;
