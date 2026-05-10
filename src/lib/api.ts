@@ -1636,10 +1636,42 @@ export const publicApi = {
 
   categoryProducts: (
     slug: string,
-    params?: { page?: number; per_page?: number; sort_by?: string; search?: string; price_from?: number; price_to?: number; [key: string]: unknown }
+    params?: {
+      page?: number;
+      per_page?: number;
+      sort_by?: string;
+      sort_dir?: string;
+      search?: string;
+      price_from?: number;
+      price_to?: number;
+      /** Мультифасеты: ключ = attribute_key (size, brand, …), значение — несколько допустимых attr_value (OR внутри ключа). */
+      facets?: Record<string, string[]>;
+      [key: string]: unknown;
+    },
   ) => {
     const q = new URLSearchParams();
-    if (params) Object.entries(params).forEach(([k, v]) => { if (v !== undefined) q.set(k, String(v)); });
+    if (params) {
+      const { facets, ...scalar } = params;
+      Object.entries(scalar).forEach(([k, v]) => {
+        if (v === undefined || v === null) return;
+        if (Array.isArray(v)) {
+          v.forEach((item) => {
+            if (item !== undefined && item !== null && String(item).trim() !== '') q.append(`${k}[]`, String(item));
+          });
+          return;
+        }
+        q.set(k, String(v));
+      });
+      if (facets && typeof facets === 'object') {
+        Object.entries(facets).forEach(([attrKey, vals]) => {
+          if (!Array.isArray(vals)) return;
+          vals.forEach((item) => {
+            const s = String(item ?? '').trim();
+            if (s !== '') q.append(`${attrKey}[]`, s);
+          });
+        });
+      }
+    }
     return get<{
       category: { id: number; name: string; slug: string };
       /** По всем видимым товарам категории (+ потомки), без учёта price_from/to в запросе строится одинаково на бэке. */
