@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { crmMarketingNewsApi, type CrmMarketingNewsItem } from "@/lib/api";
+import { crmMarketingNewsApi, resolveCrmMediaAssetUrl, type CrmMarketingNewsItem } from "@/lib/api";
 import { Loader2, Newspaper, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { CrmMediaPickerDialog } from "@/crm/components/CrmMediaPickerDialog";
 
 const emptyForm = (): Partial<CrmMarketingNewsItem> => ({
   title: "",
@@ -32,6 +33,8 @@ export default function CrmMarketingNewsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<Partial<CrmMarketingNewsItem>>(emptyForm);
   const [saving, setSaving] = useState(false);
+  /** Попап медиабиблиотеки: фото или видео для новости */
+  const [mediaPick, setMediaPick] = useState<"image" | "video" | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -208,12 +211,45 @@ export default function CrmMarketingNewsPage() {
               </div>
             </div>
             <div>
-              <Label className="text-xs">Изображение (URL)</Label>
-              <Input className="h-8 text-sm mt-1" value={form.image_url ?? ""} onChange={(e) => setForm({ ...form, image_url: e.target.value })} placeholder="https://…" />
+              <Label className="text-xs">Изображение</Label>
+              <div className="flex gap-2 mt-1 flex-wrap items-stretch">
+                <div className="flex-1 min-w-0 rounded-md border border-input bg-muted/30 px-3 py-1.5 text-sm flex items-center min-h-8 truncate" title={form.image_url ?? ""}>
+                  {form.image_url ? (
+                    <span className="truncate">{resolveCrmMediaAssetUrl(form.image_url)}</span>
+                  ) : (
+                    <span className="text-muted-foreground">Не выбрано — только из медиабиблиотеки</span>
+                  )}
+                </div>
+                <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 gap-1" onClick={() => setMediaPick("image")}>
+                  Выбрать
+                </Button>
+                {form.image_url ? (
+                  <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0" onClick={() => setForm({ ...form, image_url: "" })}>
+                    Очистить
+                  </Button>
+                ) : null}
+              </div>
             </div>
             <div>
-              <Label className="text-xs">Видео (ссылка)</Label>
-              <Input className="h-8 text-sm mt-1" value={form.video_url ?? ""} onChange={(e) => setForm({ ...form, video_url: e.target.value })} placeholder="https://youtube.com/…" />
+              <Label className="text-xs">Видео</Label>
+              <div className="flex gap-2 mt-1 flex-wrap items-stretch">
+                <div className="flex-1 min-w-0 rounded-md border border-input bg-muted/30 px-3 py-1.5 text-sm flex items-center min-h-8 truncate" title={form.video_url ?? ""}>
+                  {form.video_url ? (
+                    <span className="truncate">{resolveCrmMediaAssetUrl(form.video_url)}</span>
+                  ) : (
+                    <span className="text-muted-foreground">Не выбрано — файл видео из медиабиблиотеки</span>
+                  )}
+                </div>
+                <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 gap-1" onClick={() => setMediaPick("video")}>
+                  Выбрать
+                </Button>
+                {form.video_url ? (
+                  <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0" onClick={() => setForm({ ...form, video_url: "" })}>
+                    Очистить
+                  </Button>
+                ) : null}
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">Внешние ссылки (YouTube и т.д.) не задаются здесь — загрузите MP4/WebM в библиотеку или вставьте ссылку в текст HTML.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -251,6 +287,26 @@ export default function CrmMarketingNewsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <CrmMediaPickerDialog
+        key={mediaPick ?? "closed"}
+        open={mediaPick !== null}
+        accept={mediaPick ?? undefined}
+        onOpenChange={(v) => {
+          if (!v) setMediaPick(null);
+        }}
+        onPick={(file) => {
+          const raw = resolveCrmMediaAssetUrl(file.url).trim();
+          if (!raw) {
+            toast.error("У выбранного файла нет URL");
+            return;
+          }
+          const target = mediaPick;
+          if (target === "image") setForm((prev) => ({ ...prev, image_url: raw }));
+          else if (target === "video") setForm((prev) => ({ ...prev, video_url: raw }));
+          setMediaPick(null);
+        }}
+      />
     </div>
   );
 }

@@ -12,13 +12,38 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronRight, FolderOpen, Loader2 } from "lucide-react";
 import { CrmMediaFilePreview } from "./CrmMediaFilePreview";
 
+type MediaAccept = "image" | "video";
+
+function extFromOriginalName(name: string): string {
+  const base = name.split(/[/\\]/).pop() || name;
+  const i = base.lastIndexOf(".");
+  return i > 0 ? base.slice(i + 1).toLowerCase() : "";
+}
+
+const VIDEO_EXT = new Set(["mp4", "webm", "mkv", "mov", "avi", "m4v", "ogv"]);
+const IMAGE_EXT = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "ico", "avif", "heic", "tif", "tiff"]);
+
+function fileMatchesAccept(file: CrmMediaFile, accept?: MediaAccept): boolean {
+  if (!accept) return true;
+  const mime = (file.mime_type || "").toLowerCase();
+  const ext = extFromOriginalName(file.original_name);
+  if (accept === "video") {
+    return mime.startsWith("video/") || VIDEO_EXT.has(ext);
+  }
+  if (mime.startsWith("video/") || VIDEO_EXT.has(ext)) return false;
+
+  return mime.startsWith("image/") || IMAGE_EXT.has(ext);
+}
+
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onPick: (file: CrmMediaFile) => void;
+  /** Ограничение списка файлов справа */
+  accept?: MediaAccept;
 };
 
-export function CrmMediaPickerDialog({ open, onOpenChange, onPick }: Props) {
+export function CrmMediaPickerDialog({ open, onOpenChange, onPick, accept }: Props) {
   const [stack, setStack] = useState<CrmMediaFolder[]>([]);
   const current = stack[stack.length - 1] ?? null;
   const parentId = current?.id ?? null;
@@ -42,7 +67,8 @@ export function CrmMediaPickerDialog({ open, onOpenChange, onPick }: Props) {
     enabled: open && browseId > 0,
   });
 
-  const files = filesRes?.data ?? [];
+  const filesAll = filesRes?.data ?? [];
+  const files = accept ? filesAll.filter((f) => fileMatchesAccept(f, accept)) : filesAll;
 
   const enter = (f: CrmMediaFolder) => {
     if (f.slug === "__trash__") return;
@@ -114,6 +140,9 @@ export function CrmMediaPickerDialog({ open, onOpenChange, onPick }: Props) {
               <p className="text-sm text-muted-foreground">Откройте папку слева.</p>
             )}
             {lfiles && browseId > 0 && <Loader2 className="h-6 w-6 animate-spin" />}
+            {browseId > 0 && !lfiles && files.length === 0 && filesAll.length > 0 && accept && (
+              <p className="text-sm text-muted-foreground mt-2">В этой папке нет файлов нужного типа (открывайте другую папку).</p>
+            )}
             {browseId > 0 && !lfiles && (
               <ScrollArea className="h-[58vh]">
                 <div className="grid grid-cols-3 gap-2 pr-2">
