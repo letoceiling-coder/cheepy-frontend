@@ -15,9 +15,10 @@ import type {
   UtilitySettings,
 } from '../settingsProfiles';
 import { getSettingsProfileForBlockType, normalizeBlockProfileSettings } from '../settingsProfiles';
-import { AdvantagesItemsField, CategoryImageOverridesField, CategoryTreeField, CtaEditor, HotDealsSettingsField, LinksEditor, MediaPickerField, ProductFeedField, ProductPickerField, SettingField } from './settings/SharedProfileFields';
+import { AdvantagesItemsField, CategoryImageOverridesField, CategoryTreeField, CtaEditor, HotDealsSettingsField, LinksEditor, MediaPickerField, ProductFeedField, ProductPickerField, SettingField, SocialLinksEditor } from './settings/SharedProfileFields';
 import { CrmMediaPickerDialog } from '@/crm/components/CrmMediaPickerDialog';
 import { resolveCrmMediaAssetUrl, type CrmMediaFile, type SystemProductItem } from '@/lib/api';
+import { HEADER_DEFAULT_SETTINGS } from '@/shared/layoutDefaults';
 
 interface SettingsPanelProps {
   block: BlockConfig | null;
@@ -184,6 +185,13 @@ function HeaderSettingsForm({ block, onUpdateSettings }: { block: BlockConfig; o
           <Switch checked={Boolean(s.showCart)} onCheckedChange={(v) => update({ showCart: v })} />
         </SettingField>
       </div>
+
+      <SettingField label="Ссылки соцсетей">
+        <SocialLinksEditor
+          links={s.socialLinks ?? HEADER_DEFAULT_SETTINGS.socialLinks}
+          onChange={(v) => update({ socialLinks: v })}
+        />
+      </SettingField>
 
       <SettingField label="Текст ссылки доставки (верхняя строка)">
         <Input value={String(s.deliveryCtaText ?? '')} onChange={(e) => update({ deliveryCtaText: e.target.value })} className="h-8 text-xs" />

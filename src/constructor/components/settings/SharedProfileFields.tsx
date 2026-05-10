@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { adminCatalogApi, adminSystemProductsApi, crmMediaApi, fetchCrmMediaBlobUrl, resolveCrmMediaAssetUrl, type CatalogCategoryItem, type CrmMediaFile, type CrmMediaFolder, type SystemProductItem } from '@/lib/api';
 import { CrmMediaPickerDialog } from '@/crm/components/CrmMediaPickerDialog';
 import type { BlockScheduleSetting, CtaSetting, LinkItemSetting, MediaItemSetting, ProductFeedSettings } from '@/constructor/settingsProfiles';
+import type { SocialLinkItem } from '@/constructor/types';
 import { IconPickerDialog } from '@/constructor/components/settings/IconPickerDialog';
 import { SchedulePlannerDialog } from '@/constructor/components/settings/SchedulePlannerDialog';
 import * as LucideIcons from 'lucide-react';
@@ -172,6 +173,103 @@ export function LinksEditor({ links, onChange }: { links: LinkItemSetting[]; onC
           <div className="col-span-2 flex items-center justify-end gap-1">
             <Switch checked={Boolean(link.enabled)} onCheckedChange={(v) => onChange(links.map((x, i) => (i === idx ? { ...x, enabled: v } : x)))} />
             <Button type="button" variant="outline" size="sm" className="h-8 px-2 text-xs text-destructive" onClick={() => onChange(links.filter((_, i) => i !== idx))}>×</Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const SOCIAL_NETWORK_OPTIONS: { value: SocialLinkItem['network']; label: string }[] = [
+  { value: 'youtube', label: 'YouTube' },
+  { value: 'vk', label: 'VK' },
+  { value: 'ok', label: 'OK' },
+  { value: 'telegram', label: 'Telegram' },
+  { value: 'custom', label: 'Другая' },
+];
+
+export function SocialLinksEditor({
+  links,
+  onChange,
+}: {
+  links: SocialLinkItem[];
+  onChange: (next: SocialLinkItem[]) => void;
+}) {
+  const list = links ?? [];
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] text-muted-foreground leading-snug">
+        Ссылки показываются в шапке при включённой опции «Соцсети в меню». Укажите полный URL (https://…).
+      </p>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-7 text-xs"
+        onClick={() =>
+          onChange([
+            ...list,
+            { id: uid('social'), network: 'custom', label: 'Ссылка', url: '', enabled: true },
+          ])
+        }
+      >
+        Добавить соцсеть
+      </Button>
+      {list.map((link, idx) => (
+        <div key={link.id || idx} className="grid grid-cols-12 gap-2 items-center">
+          <Select
+            value={link.network}
+            onValueChange={(v) =>
+              onChange(
+                list.map((x, i) =>
+                  i === idx ? { ...x, network: v as SocialLinkItem['network'] } : x,
+                ),
+              )
+            }
+          >
+            <SelectTrigger className="col-span-3 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SOCIAL_NETWORK_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            className="col-span-3 h-8 text-xs"
+            value={link.label}
+            placeholder="Подпись / aria"
+            onChange={(e) =>
+              onChange(list.map((x, i) => (i === idx ? { ...x, label: e.target.value } : x)))
+            }
+          />
+          <Input
+            className="col-span-4 h-8 text-xs"
+            value={link.url}
+            placeholder="https://…"
+            onChange={(e) =>
+              onChange(list.map((x, i) => (i === idx ? { ...x, url: e.target.value } : x)))
+            }
+          />
+          <div className="col-span-2 flex items-center justify-end gap-1">
+            <Switch
+              checked={Boolean(link.enabled)}
+              onCheckedChange={(v) =>
+                onChange(list.map((x, i) => (i === idx ? { ...x, enabled: v } : x)))
+              }
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 px-2 text-xs text-destructive"
+              onClick={() => onChange(list.filter((_, i) => i !== idx))}
+            >
+              ×
+            </Button>
           </div>
         </div>
       ))}
