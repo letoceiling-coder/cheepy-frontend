@@ -21,6 +21,7 @@ type Draft = {
 };
 
 const OLLAMA_DEFAULT_BASE_URL = "https://ollama.siteaacess.store/v1";
+const OPENROUTER_DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
 
 function formatTs(iso: string | null): string {
   if (!iso) return "—";
@@ -53,6 +54,22 @@ export default function CrmAiIntegrationsTab() {
   const [ollamaRemoteModels, setOllamaRemoteModels] = useState<AiProviderModelOption[]>([]);
   const [ollamaModelsLoading, setOllamaModelsLoading] = useState(false);
 
+  const [openrouterRemoteModels, setOpenrouterRemoteModels] = useState<AiProviderModelOption[]>([]);
+  const [openrouterModelsLoading, setOpenrouterModelsLoading] = useState(false);
+
+  const openrouterProvider = useMemo(() => items.find((i) => i.name === "openrouter"), [items]);
+  const openrouterDraft = drafts["openrouter"];
+
+  const openrouterSelectOptions = useMemo(() => {
+    const fallback = openrouterProvider?.models ?? [];
+    const opts = openrouterRemoteModels.length > 0 ? openrouterRemoteModels : fallback;
+    const dm = openrouterDraft?.default_model?.trim();
+    if (dm && !opts.some((o) => o.id === dm)) {
+      return [...opts, { id: dm, label: `${dm} (текущая)` }];
+    }
+    return opts;
+  }, [openrouterProvider, openrouterRemoteModels, openrouterDraft?.default_model]);
+
   const ollamaProvider = useMemo(() => items.find((i) => i.name === "ollama"), [items]);
   const ollamaDraft = drafts["ollama"];
 
@@ -65,6 +82,20 @@ export default function CrmAiIntegrationsTab() {
     }
     return opts;
   }, [ollamaProvider, ollamaRemoteModels, ollamaDraft?.default_model]);
+
+  const refreshOpenrouterModels = useCallback(async () => {
+    setOpenrouterModelsLoading(true);
+    try {
+      const res = await crmAiProvidersApi.openrouterModels();
+      setOpenrouterRemoteModels(res.data);
+    } catch (e) {
+      setOpenrouterRemoteModels([]);
+      const msg = e instanceof ApiError ? e.message : "Не удалось загрузить список моделей OpenRouter";
+      toast.error(msg);
+    } finally {
+      setOpenrouterModelsLoading(false);
+    }
+  }, []);
 
   const refreshOllamaModels = useCallback(async () => {
     setOllamaModelsLoading(true);
@@ -102,7 +133,7 @@ export default function CrmAiIntegrationsTab() {
           next[p.name] = {
             default_model: p.default_model,
             api_key: "",
-            base_url: p.base_url || (p.name === "ollama" ? OLLAMA_DEFAULT_BASE_URL : ""),
+            base_url: p.base_url || (p.name === "ollama" ? OLLAMA_DEFAULT_BASE_URL : p.name === "openrouter" ? OPENROUTER_DEFAULT_BASE_URL : ""),
           };
         }
         setDrafts(next);
@@ -149,6 +180,14 @@ export default function CrmAiIntegrationsTab() {
     }
   }, [ollamaProvider?.has_api_key, refreshOllamaModels]);
 
+  useEffect(() => {
+    if (openrouterProvider?.has_api_key) {
+      void refreshOpenrouterModels();
+    } else {
+      setOpenrouterRemoteModels([]);
+    }
+  }, [openrouterProvider?.has_api_key, refreshOpenrouterModels]);
+
   const setDraft = (name: string, partial: Partial<Draft>) => {
     setDrafts((prev) => ({
       ...prev,
@@ -187,8 +226,12 @@ export default function CrmAiIntegrationsTab() {
       if (trimmed !== "") {
         payload.api_key = trimmed;
       }
-      if (name === "ollama" || name === "openai" || name === "xai") {
-        payload.base_url = name === "ollama" && d.base_url.trim() === "" ? OLLAMA_DEFAULT_BASE_URL : d.base_url.trim();
+      if (name === "ollama" || name === "openai" || name === "xai" || name === "openrouter") {
+        if (name === "ollama") {
+          payload.base_url = d.base_url.trim() === "" ? OLLAMA_DEFAULT_BASE_URL : d.base_url.trim();
+        } else {
+          payload.base_url = d.base_url.trim();
+        }
       }
 
       await crmAiProvidersApi.update(name, payload);
@@ -267,7 +310,8 @@ export default function CrmAiIntegrationsTab() {
         {items.map((p) => {
           const d = drafts[p.name];
           if (!d) return null;
-          const showBaseUrl = p.name === "ollama" || p.name === "openai" || p.name === "xai";
+          const showBaseUrl =
+            p.name === "ollama" || p.name === "openai" || p.name === "xai" || p.name === "openrouter";
           return (
             <div
               key={p.name}
@@ -296,7 +340,7 @@ export default function CrmAiIntegrationsTab() {
 
               <div className="space-y-1.5">
                 <Label className="text-xs">Модель по умолчанию</Label>
-                {p.name === "ollama" ? (
+                {p.name === "ollama" || p.name === "openrouter" ? (
                   <>
                     <div className="flex gap-2 items-stretch sm:items-center">
                       <select
@@ -304,7 +348,7 @@ export default function CrmAiIntegrationsTab() {
                         value={d.default_model}
                         onChange={(e) => setDraft(p.name, { default_model: e.target.value })}
                       >
-                        {ollamaSelectOptions.map((m) => (
+                        {(p.name === "ollama" ? ollamaSelectOptions : openrouterSelectOptions).map((m) => (
                           <option key={m.id} value={m.id}>
                             {m.label}
                           </option>
@@ -315,20 +359,47 @@ export default function CrmAiIntegrationsTab() {
                         variant="outline"
                         size="sm"
                         className="h-9 shrink-0 px-3"
-                        onClick={() => void refreshOllamaModels()}
-                        disabled={!p.has_api_key || ollamaModelsLoading}
+                        onClick={() =>
+                          void (p.name === "ollama" ? refreshOllamaModels() : refreshOpenrouterModels())
+                        }
+                        disabled={
+                          !p.has_api_key ||
+                          (p.name === "ollama" ? ollamaModelsLoading : openrouterModelsLoading)
+                        }
                         title={
                           !p.has_api_key
-                            ? "Сначала сохраните Token для Ollama"
+                            ? p.name === "ollama"
+                              ? "Сначала сохраните Token для Ollama"
+                              : "Сначала сохраните API-ключ OpenRouter"
                             : "Запросить список с GET …/v1/models"
                         }
                       >
-                        {ollamaModelsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Обновить"}
+                        {p.name === "ollama" ? (
+                          ollamaModelsLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            "Обновить"
+                          )
+                        ) : openrouterModelsLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "Обновить"
+                        )}
                       </Button>
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      Выпадающий список строится по ответу Ollama (сохранённые Base URL и Token). Если список
-                      пустой — проверьте токен и нажмите «Обновить».
+                      {p.name === "ollama" ? (
+                        <>
+                          Выпадающий список строится по ответу Ollama (сохранённые Base URL и Token). Если список
+                          пустой — проверьте токен и нажмите «Обновить».
+                        </>
+                      ) : (
+                        <>
+                          Список подгружается с OpenRouter (нужен сохранённый ключ). Модели с пометкой «— бесплатно»
+                          — по суффиксу <code className="text-[10px]">:free</code> или нулевой цене prompt/completion в
+                          каталоге провайдера.
+                        </>
+                      )}
                     </p>
                   </>
                 ) : (
@@ -344,7 +415,7 @@ export default function CrmAiIntegrationsTab() {
                     ))}
                   </select>
                 )}
-                {p.name === "ollama" ? (
+                {p.name === "ollama" || p.name === "openrouter" ? (
                   <p className="text-[11px] text-muted-foreground">
                     Имя модели — как <code className="text-[10px]">id</code> в ответе{" "}
                     <code className="text-[10px]">GET /v1/models</code>.
@@ -355,12 +426,20 @@ export default function CrmAiIntegrationsTab() {
               {showBaseUrl ? (
                 <div className="space-y-1.5">
                   <Label className="text-xs">
-                    {p.name === "ollama" ? "Base URL" : "Свой base URL (необязательно)"}
+                    {p.name === "ollama"
+                      ? "Base URL"
+                      : p.name === "openrouter"
+                        ? "Base URL (необязательно)"
+                        : "Свой base URL (необязательно)"}
                   </Label>
                   <Input
                     type="url"
                     placeholder={
-                      p.name === "ollama" ? OLLAMA_DEFAULT_BASE_URL : "Пусто — дефолт провайдера"
+                      p.name === "ollama"
+                        ? OLLAMA_DEFAULT_BASE_URL
+                        : p.name === "openrouter"
+                          ? OPENROUTER_DEFAULT_BASE_URL
+                          : "Пусто — дефолт провайдера"
                     }
                     className="font-mono text-xs h-8"
                     value={d.base_url}

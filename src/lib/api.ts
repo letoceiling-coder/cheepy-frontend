@@ -2872,6 +2872,8 @@ export const storeCartSyncApi = {
 export interface AiProviderModelOption {
   id: string;
   label: string;
+  /** OpenRouter: признак с сервера (/crm/ai-providers/openrouter/models). */
+  free?: boolean;
 }
 
 export interface AiProviderItem {
@@ -2949,6 +2951,8 @@ export const crmAiProvidersApi = {
     ),
   /** Список моделей с Ollama (сервер дергает сохранённые Base URL + Token). */
   ollamaModels: () => get<OllamaModelsListResponse>('/crm/ai-providers/ollama/models'),
+  /** Каталог моделей OpenRouter (нужен сохранённый API-ключ); бесплатные помечены полем free и в label. */
+  openrouterModels: () => get<OllamaModelsListResponse>('/crm/ai-providers/openrouter/models'),
 };
 
 // ──────────────────────────────────────────────
