@@ -97,11 +97,18 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+/** Опции одного HTTP-вызова к API. */
+export type ApiRequestOptions = {
+  /** Прервать запрос через N мс (AbortError → понятное сообщение). Для долгих AI-вызовов. */
+  timeoutMs?: number;
+};
+
 async function request<T>(
   method: string,
   path: string,
   body?: unknown,
-  isPublic = false
+  isPublic = false,
+  options?: ApiRequestOptions
 ): Promise<T> {
   const token = localStorage.getItem('admin_token');
   const headers: Record<string, string> = {
@@ -116,11 +123,18 @@ async function request<T>(
   }
 
   const url = `${BASE_URL}${path}`;
+  const ms = options?.timeoutMs;
+  const controller = typeof ms === 'number' && ms > 0 ? new AbortController() : null;
+  const timeoutId =
+    controller != null && typeof ms === 'number' && ms > 0 && typeof window !== 'undefined'
+      ? window.setTimeout(() => controller.abort(), ms)
+      : null;
   try {
     const res = await fetch(url, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller?.signal,
     });
 
     if (res.status === 401) {
@@ -164,10 +178,23 @@ async function request<T>(
     return data;
   } catch (e) {
     if (e instanceof ApiError) throw e;
+    const isAbort =
+      (e instanceof DOMException && e.name === 'AbortError') ||
+      (e instanceof Error && e.name === 'AbortError');
+    if (isAbort) {
+      throw new ApiError(
+        408,
+        'Таймаут ожидания ответа сервера (запрос прерван по времени). Уменьшите нагрузку, смените модель или повторите попытку.'
+      );
+    }
     if (import.meta.env.DEV) {
       console.error('[API] Network/request error:', url, e);
     }
     throw e;
+  } finally {
+    if (timeoutId !== null && typeof window !== 'undefined') {
+      window.clearTimeout(timeoutId);
+    }
   }
 }
 
@@ -224,11 +251,13 @@ export function publicCrmMediaFileUrl(fileId: number): string {
   }
 }
 
-const get = <T>(path: string, isPublic = false) => request<T>('GET', path, undefined, isPublic);
-const post = <T>(path: string, body?: unknown, isPublic = false) => request<T>('POST', path, body, isPublic);
-const put = <T>(path: string, body?: unknown) => request<T>('PUT', path, body);
-const patch = <T>(path: string, body?: unknown) => request<T>('PATCH', path, body);
-const del = <T>(path: string) => request<T>('DELETE', path);
+const get = <T>(path: string, isPublic = false, opts?: ApiRequestOptions) =>
+  request<T>('GET', path, undefined, isPublic, opts);
+const post = <T>(path: string, body?: unknown, isPublic = false, opts?: ApiRequestOptions) =>
+  request<T>('POST', path, body, isPublic, opts);
+const put = <T>(path: string, body?: unknown, opts?: ApiRequestOptions) => request<T>('PUT', path, body, false, opts);
+const patch = <T>(path: string, body?: unknown, opts?: ApiRequestOptions) => request<T>('PATCH', path, body, false, opts);
+const del = <T>(path: string, opts?: ApiRequestOptions) => request<T>('DELETE', path, undefined, false, opts);
 
 /** Multipart upload with optional progress callback. */
 export async function postFormData<T>(
@@ -1279,7 +1308,8 @@ export const adminSystemProductsApi = {
       `/admin/system-products${q.toString() ? `?${q}` : ''}`
     );
   },
-  get: (id: number) => get<SystemProductItem>(`/admin/system-products/${id}`),
+  get: (id: number) =>
+    get<SystemProductItem>(`/admin/system-products/${id}`, false, { timeoutMs: 90_000 }),
   /** Решение модерации — только статус (бэкенд: PATCH .../moderate). */
   moderate: (id: number, body: { status: SystemProductStatus }) =>
     patch<SystemProductItem>(`/admin/system-products/${id}/moderate`, body),
@@ -1357,7 +1387,7 @@ export const adminSiteAlApi = {
     conversationId?: string | null;
     agentId?: string;
     model?: string;
-  }) => post<SiteAlChatResponse>('/admin/site-al/chat', body),
+  }) => post<SiteAlChatResponse>('/admin/site-al/chat', body, false, { timeoutMs: 240_000 }),
   verifyProductPhotos: (body: SiteAlPhotoVerifyRequest) =>
     post<SiteAlPhotoVerifyResponse>("/admin/site-al/product-photos/verify", body),
 };

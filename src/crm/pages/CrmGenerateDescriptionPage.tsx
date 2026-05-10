@@ -663,6 +663,9 @@ export default function CrmGenerateDescriptionPage() {
                   ? message
                   : `${message}\n\n---\n\nПовторная попытка №${attempt}:\n— Ответ строго на русском.\n— Если предыдущая попытка дала не-русский текст или пустоту, переформулируй заново по фактам.\n— Не вставляй цену, ссылки, мусор, и не используй Markdown.\n`;
               try {
+                if (attempt === 1) {
+                  pushLog("info", `#${row.id}: запрос к ИИ отправлен — ответ может занять несколько минут (таймаут ~4 мин).`);
+                }
                 const chatRes = await retry(() => adminSiteAlApi.chat({ message: attemptMsg }), 3);
                 lastChat = chatRes;
                 const label = pickChatResolvedModelLabel(chatRes);
