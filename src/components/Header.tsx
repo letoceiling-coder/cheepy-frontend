@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, type ComponentType } from "react";
+import { useState, useEffect, useRef, useLayoutEffect, useMemo, type ComponentType } from "react";
 import { Search, User, Heart, ShoppingCart, Grid2X2, X, Circle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import MegaMenu from "./MegaMenu";
@@ -27,6 +27,13 @@ const TgIcon = () => (
 
 interface HeaderProps {
   settings?: Partial<HeaderSettings>;
+}
+
+/** Совпадает с Tailwind-классами спейсера ниже — для компенсации scrollTop при смене высоты (без «прыжка» документа). */
+function headerSpacerHeightPx(compact: boolean): number {
+  if (typeof window === "undefined") return compact ? 60 : 160;
+  const lg = window.matchMedia("(min-width: 1024px)").matches;
+  return compact ? 60 : lg ? 160 : 140;
 }
 
 const Header = ({ settings }: HeaderProps) => {
@@ -108,6 +115,7 @@ const Header = ({ settings }: HeaderProps) => {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [menuCategories, setMenuCategories] = useState<PublicMenuCategory[]>([]);
   const headerRef = useRef<HTMLDivElement>(null);
+  const prevSpacerHeightPx = useRef<number | null>(null);
   const navigate = useNavigate();
   const { totalItems } = useCart();
   const { count: favCount } = useFavorites();
@@ -115,13 +123,54 @@ const Header = ({ settings }: HeaderProps) => {
 
   const deliveryAddressLink = isAuthenticated ? "/account#delivery-addresses" : "/auth";
 
+  /** Гистерезис + порог входа в compact с учётом компенсации scrollTop при смене спейсера (иначе возврат «у верха» и цикл). */
+  const SCROLL_EXPAND_BEFORE = 24;
+
   useEffect(() => {
+    let raf = 0;
     const handleScroll = () => {
-      setIsCompact(window.scrollY > 80);
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const y = window.scrollY;
+        const spacerDelta = headerSpacerHeightPx(false) - headerSpacerHeightPx(true);
+        const compactEnterBelow = spacerDelta + SCROLL_EXPAND_BEFORE + 6;
+        setIsCompact((prev) => {
+          if (prev) {
+            return y <= SCROLL_EXPAND_BEFORE ? false : true;
+          }
+          return y > compactEnterBelow ? true : false;
+        });
+      });
     };
+    handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, []);
+
+  useLayoutEffect(() => {
+    const syncSpacer = () => {
+      const next = headerSpacerHeightPx(isCompact);
+      const prev = prevSpacerHeightPx.current;
+      if (prev !== null && prev !== next) {
+        const dh = next - prev;
+        window.scrollTo(0, Math.max(0, window.scrollY + dh));
+      }
+      prevSpacerHeightPx.current = next;
+    };
+
+    syncSpacer();
+    window.addEventListener("resize", syncSpacer);
+    const mq = window.matchMedia("(min-width: 1024px)");
+    mq.addEventListener("change", syncSpacer);
+    return () => {
+      window.removeEventListener("resize", syncSpacer);
+      mq.removeEventListener("change", syncSpacer);
+    };
+  }, [isCompact]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -343,8 +392,8 @@ const Header = ({ settings }: HeaderProps) => {
         )}
       </header>
 
-      {/* Spacer */}
-      <div className={`transition-all duration-300 ${isCompact ? "h-[60px]" : "h-[140px] lg:h-[160px]"}`} />
+      {/* Спейсер без transition: плавное изменение высоты ломает scrollHeight во время анимации и провоцирует циклы. */}
+      <div className={isCompact ? "h-[60px]" : "h-[140px] lg:h-[160px]"} />
     </>
   );
 };
