@@ -181,12 +181,10 @@ export default function CrmAiIntegrationsTab() {
   }, [ollamaProvider?.has_api_key, refreshOllamaModels]);
 
   useEffect(() => {
-    if (openrouterProvider?.has_api_key) {
-      void refreshOpenrouterModels();
-    } else {
-      setOpenrouterRemoteModels([]);
-    }
-  }, [openrouterProvider?.has_api_key, refreshOpenrouterModels]);
+    if (loading) return;
+    if (!items.some((i) => i.name === "openrouter")) return;
+    void refreshOpenrouterModels();
+  }, [loading, items, refreshOpenrouterModels]);
 
   const setDraft = (name: string, partial: Partial<Draft>) => {
     setDrafts((prev) => ({
@@ -363,15 +361,17 @@ export default function CrmAiIntegrationsTab() {
                           void (p.name === "ollama" ? refreshOllamaModels() : refreshOpenrouterModels())
                         }
                         disabled={
-                          !p.has_api_key ||
+                          (p.name === "ollama" && !p.has_api_key) ||
                           (p.name === "ollama" ? ollamaModelsLoading : openrouterModelsLoading)
                         }
                         title={
-                          !p.has_api_key
-                            ? p.name === "ollama"
+                          p.name === "openrouter"
+                            ? p.has_api_key
+                              ? "Запросить полный каталог с вашим API-ключом"
+                              : "Публичный каталог моделей без ключа (ответы агента требуют сохранённый ключ)"
+                            : !p.has_api_key
                               ? "Сначала сохраните Token для Ollama"
-                              : "Сначала сохраните API-ключ OpenRouter"
-                            : "Запросить список с GET …/v1/models"
+                              : "Запросить список с GET …/v1/models"
                         }
                       >
                         {p.name === "ollama" ? (
@@ -395,9 +395,12 @@ export default function CrmAiIntegrationsTab() {
                         </>
                       ) : (
                         <>
-                          Список подгружается с OpenRouter (нужен сохранённый ключ). Модели с пометкой «— бесплатно»
-                          — по суффиксу <code className="text-[10px]">:free</code> или нулевой цене prompt/completion в
-                          каталоге провайдера.
+                          После входа на страницу список подтягивается автоматически (без ключа — открытый каталог{" "}
+                          <code className="text-[10px]">GET /v1/models</code>). Ключ нужен только для генерации ответов
+                          агента. Бесплатные помечены «— бесплатно»
+                          (<code className="text-[10px]">:free</code> или нулевая цена prompt/completion). При ошибке или
+                          лимите у выбранной модели агент по очереди пробует резервную цепочку бесплатных моделей от более
+                          сильной к более лёгкой.
                         </>
                       )}
                     </p>

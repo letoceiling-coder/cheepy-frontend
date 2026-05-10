@@ -2933,6 +2933,13 @@ export interface OllamaModelsListResponse {
   endpoint?: string;
 }
 
+/** GET /crm/ai-providers/openrouter/models (catalog_source — public без ключа или authenticated). */
+export interface OpenRouterModelsListResponse {
+  data: AiProviderModelOption[];
+  endpoint?: string;
+  catalog_source?: 'public' | 'authenticated';
+}
+
 export const crmAiProvidersApi = {
   list: () => get<AiProvidersListResponse>('/crm/ai-providers'),
   update: (
@@ -2951,8 +2958,8 @@ export const crmAiProvidersApi = {
     ),
   /** Список моделей с Ollama (сервер дергает сохранённые Base URL + Token). */
   ollamaModels: () => get<OllamaModelsListResponse>('/crm/ai-providers/ollama/models'),
-  /** Каталог моделей OpenRouter (нужен сохранённый API-ключ); бесплатные помечены полем free и в label. */
-  openrouterModels: () => get<OllamaModelsListResponse>('/crm/ai-providers/openrouter/models'),
+  /** Полный каталог OpenRouter (/v1/models). Без сохранённого ключа сервер дергает публичный openrouter.ai. */
+  openrouterModels: () => get<OpenRouterModelsListResponse>('/crm/ai-providers/openrouter/models'),
 };
 
 // ──────────────────────────────────────────────
