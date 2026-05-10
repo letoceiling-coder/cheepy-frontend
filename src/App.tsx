@@ -21,6 +21,7 @@ import SellerPage from "./pages/SellerPage";
 import SellersListPage from "./pages/SellersListPage";
 import CategoryPage from "./pages/CategoryPage";
 import ProductPage from "./pages/ProductPage";
+import SearchPage from "./pages/SearchPage";
 import FavoritesPage from "./pages/FavoritesPage";
 import CartPage from "./pages/CartPage";
 import AccountLayout from "./pages/account/AccountLayout";
