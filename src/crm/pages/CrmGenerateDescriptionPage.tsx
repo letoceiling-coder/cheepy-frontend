@@ -664,7 +664,7 @@ export default function CrmGenerateDescriptionPage() {
                   : `${message}\n\n---\n\nПовторная попытка №${attempt}:\n— Ответ строго на русском.\n— Если предыдущая попытка дала не-русский текст или пустоту, переформулируй заново по фактам.\n— Не вставляй цену, ссылки, мусор, и не используй Markdown.\n`;
               try {
                 if (attempt === 1) {
-                  pushLog("info", `#${row.id}: запрос к ИИ отправлен — ответ может занять несколько минут (таймаут ~4 мин).`);
+                  pushLog("info", `#${row.id}: ожидание ответа модели…`);
                 }
                 const chatRes = await retry(() => adminSiteAlApi.chat({ message: attemptMsg }), 3);
                 lastChat = chatRes;
@@ -946,7 +946,13 @@ export default function CrmGenerateDescriptionPage() {
                 <span className="font-mono text-foreground">{lastResolvedModel ?? "—"}</span>
               </p>
               <p className="text-[10px] text-muted-foreground leading-snug">
-                Значение из ответа Laravel (site-al, OpenRouter и т.д.). Пока генерация не шла в этой сессии, отображается «—».
+                Скорость зависит от провайдера и модели: бесплатные варианты OpenRouter (суффикс{" "}
+                <span className="font-mono">:free</span>) часто стоят в очереди и отвечают медленнее. Для потоковой
+                обработки в CRM задайте более быструю или платную модель в разделе Интеграции → ИИ.
+              </p>
+              <p className="text-[10px] text-muted-foreground leading-snug">
+                Значение «по факту запроса» приходит из ответа Laravel (site-al, OpenRouter и т.д.); до первого успешного ответа —
+                «—».
               </p>
             </div>
 

@@ -1387,7 +1387,7 @@ export const adminSiteAlApi = {
     conversationId?: string | null;
     agentId?: string;
     model?: string;
-  }) => post<SiteAlChatResponse>('/admin/site-al/chat', body, false, { timeoutMs: 240_000 }),
+  }) => post<SiteAlChatResponse>('/admin/site-al/chat', body, false, { timeoutMs: 180_000 }),
   verifyProductPhotos: (body: SiteAlPhotoVerifyRequest) =>
     post<SiteAlPhotoVerifyResponse>("/admin/site-al/product-photos/verify", body),
 };
