@@ -1310,6 +1310,12 @@ export const adminSystemProductsApi = {
 export type SiteAlChatResponse = {
   reply: string | null;
   conversationId?: string | null;
+  /** Какой backend-маршрут ответил (site_al, openrouter, gemini, …). */
+  ai_provider?: string;
+  /** Id модели провайдера, если известно. Для OpenRouter может отличаться от настроечной при fallback. */
+  ai_model?: string;
+  /** @deprecated см. ai_model — оставлено для совместимости с OpenRouter. */
+  model_used?: string;
 };
 
 export type SiteAlPhotoVerifyOptions = {
