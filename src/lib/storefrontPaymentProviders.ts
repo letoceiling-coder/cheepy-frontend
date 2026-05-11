@@ -39,7 +39,7 @@ export function paymentProviderDisplayName(p: StoreAccountPaymentProvider): stri
   const t = p.title?.trim();
   if (t) return t;
   const key = normalizePaymentProviderKey(p.name);
-  return DISPLAY_LABELS[key] ?? p.name.trim() || key;
+  return (DISPLAY_LABELS[key] ?? p.name.trim()) || key;
 }
 
 /** Провайдеры, которые действительно подключены к магазину и нужны клиенту. */
