@@ -264,26 +264,41 @@ export default function CategoryListingContent() {
         <button
           type="button"
           onClick={() => setShowFilters(true)}
-          className="lg:hidden fixed bottom-20 right-4 z-40 gradient-primary text-primary-foreground p-3 rounded-full shadow-lg"
+          className="lg:hidden fixed bottom-20 right-4 z-[1040] gradient-primary text-primary-foreground p-3 rounded-full shadow-lg"
           aria-label="Фильтры"
         >
           <SlidersHorizontal className="w-5 h-5" />
         </button>
 
         {showFilters && (
-          <div className="fixed inset-0 z-50 lg:hidden">
-            <button type="button" className="absolute inset-0 bg-foreground/50" aria-label="Закрыть" onClick={() => setShowFilters(false)} />
-            <div className="absolute right-0 top-0 bottom-0 w-[320px] bg-background overflow-y-auto p-4 shadow-xl">
-              <div className="flex items-center justify-between mb-4">
+          <div
+            className="fixed inset-0 z-[1050] lg:hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Фильтры категории"
+          >
+            <button
+              type="button"
+              className="absolute inset-0 bg-foreground/50"
+              aria-label="Закрыть"
+              onClick={() => setShowFilters(false)}
+            />
+            <div className="absolute right-0 top-0 bottom-0 z-10 flex w-full max-w-[min(100vw,22rem)] flex-col border-l border-border bg-background shadow-xl">
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
                 <h2 className="text-lg font-bold text-foreground">Фильтры</h2>
-                <button type="button" onClick={() => setShowFilters(false)} aria-label="Закрыть">
-                  <X className="w-5 h-5" />
+                <button type="button" onClick={() => setShowFilters(false)} aria-label="Закрыть" className="rounded-lg p-2 hover:bg-secondary">
+                  <X className="h-5 w-5" />
                 </button>
               </div>
-              {filtersContent}
-              <Button onClick={() => setShowFilters(false)} className="w-full gradient-primary text-primary-foreground rounded-lg mt-4">
-                Применить
-              </Button>
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">{filtersContent}</div>
+              <div className="shrink-0 border-t border-border bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                <Button
+                  onClick={() => setShowFilters(false)}
+                  className="w-full gradient-primary text-primary-foreground rounded-lg"
+                >
+                  Применить
+                </Button>
+              </div>
             </div>
           </div>
         )}
