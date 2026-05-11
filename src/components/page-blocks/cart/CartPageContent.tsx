@@ -286,16 +286,27 @@ export default function CartPageContent() {
             {items.map((item) => {
               const pricing = getLinePricing(item);
               const displayAttrs = filterRedundantVariantAttributes(item.selectedAttributes);
+              const linePrice = `${pricing.lineTotal.toLocaleString("ru-RU")}\u00A0₽`;
+              const lineOriginal =
+                pricing.discountTotal > 0
+                  ? `${pricing.lineOriginalTotal.toLocaleString("ru-RU")}\u00A0₽`
+                  : null;
               return (
-                <div key={item.lineId} className="flex gap-4 p-4 rounded-2xl border border-border">
-                  <Link to={`/product/${item.product.id}`} className="shrink-0">
+                <div
+                  key={item.lineId}
+                  className="grid grid-cols-[auto_1fr_auto] gap-x-3 gap-y-3 p-4 rounded-2xl border border-border md:gap-x-4"
+                >
+                  <Link
+                    to={`/product/${item.product.id}`}
+                    className="row-start-1 col-start-1 shrink-0 self-start"
+                  >
                     <img
                       src={item.product.images[0]}
                       alt={item.product.name}
                       className="w-24 h-32 md:w-28 md:h-36 rounded-xl object-cover"
                     />
                   </Link>
-                  <div className="flex-1 min-w-0">
+                  <div className="row-start-1 col-start-2 min-w-0 self-start">
                     <Link
                       to={`/product/${item.product.id}`}
                       className="text-sm font-medium text-foreground line-clamp-2 hover:text-primary transition-colors mb-1 block"
@@ -305,7 +316,7 @@ export default function CartPageContent() {
                     <p className="text-xs text-muted-foreground mb-2">{item.product.seller}</p>
 
                     {item.promotions.length > 0 ? (
-                      <div className={`mb-2 inline-flex rounded-full px-2 py-1 text-[11px] font-medium ${
+                      <div className={`inline-flex rounded-full px-2 py-1 text-[11px] font-medium ${
                         pricing.promotionActive ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
                       }`}>
                         {pricing.appliedPromotion
@@ -313,8 +324,29 @@ export default function CartPageContent() {
                           : "Промо истекло, цена пересчитана"}
                       </div>
                     ) : null}
+                  </div>
 
-                    <div className="mb-2 min-w-0">
+                  <div className="row-start-1 col-start-3 flex flex-col gap-1 shrink-0 self-start">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toggleFavorite(item.product);
+                      }}
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <Heart className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeFromCart(item.lineId)}
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="row-start-2 col-span-3 min-w-0 space-y-2 md:col-span-1 md:col-start-2 md:row-start-2">
+                    <div className="min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="text-xs text-muted-foreground shrink-0">Цвет:</span>
                         <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden no-scrollbar touch-pan-x pb-0.5 -mx-0.5 px-0.5">
@@ -338,7 +370,7 @@ export default function CartPageContent() {
                       </div>
                     </div>
 
-                    <div className="mb-3 min-w-0">
+                    <div className="min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="text-xs text-muted-foreground shrink-0">Размер:</span>
                         <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden no-scrollbar touch-pan-x pb-0.5 -mx-0.5 px-0.5">
@@ -363,7 +395,7 @@ export default function CartPageContent() {
                     </div>
 
                     {displayAttrs.length > 0 ? (
-                      <div className="mb-3 flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1.5">
                         {displayAttrs.slice(0, 6).map((attr) => (
                           <span
                             key={`${attr.name}-${attr.value}`}
@@ -379,55 +411,48 @@ export default function CartPageContent() {
                         ) : null}
                       </div>
                     ) : null}
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => updateQuantity(item.lineId, item.quantity - 1)}
-                          className="w-7 h-7 rounded-lg border border-border flex items-center justify-center hover:bg-secondary"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
-                        <button
-                          type="button"
-                          onClick={() => updateQuantity(item.lineId, item.quantity + 1)}
-                          className="w-7 h-7 rounded-lg border border-border flex items-center justify-center hover:bg-secondary"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-base font-bold text-foreground">
-                          {pricing.lineTotal.toLocaleString()} ₽
-                        </span>
-                        {pricing.discountTotal > 0 && (
-                          <span className="text-xs text-muted-foreground line-through ml-2">
-                            {pricing.lineOriginalTotal.toLocaleString()} ₽
-                          </span>
-                        )}
-                      </div>
-                    </div>
                   </div>
 
-                  <div className="flex flex-col gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        toggleFavorite(item.product);
-                      }}
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      <Heart className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeFromCart(item.lineId)}
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  <div className="row-start-3 col-span-3 flex flex-col gap-2 pt-0.5 min-w-0 md:col-span-1 md:col-start-2 md:row-start-3 md:flex-row md:items-center md:justify-between md:gap-3 md:pt-0">
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(item.lineId, item.quantity - 1)}
+                        className="w-7 h-7 rounded-lg border border-border flex items-center justify-center hover:bg-secondary"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="text-sm font-medium w-6 text-center tabular-nums">{item.quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(item.lineId, item.quantity + 1)}
+                        className="w-7 h-7 rounded-lg border border-border flex items-center justify-center hover:bg-secondary"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    <div className="hidden min-w-0 text-right md:block">
+                      <span className="inline-block text-base font-bold text-foreground tabular-nums whitespace-nowrap">
+                        {linePrice}
+                      </span>
+                      {lineOriginal ? (
+                        <span className="ml-2 inline-block text-xs text-muted-foreground line-through whitespace-nowrap">
+                          {lineOriginal}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="w-full rounded-xl bg-muted/35 px-3 py-2.5 text-right md:hidden">
+                      <span className="inline-block text-lg font-bold text-foreground tabular-nums whitespace-nowrap">
+                        {linePrice}
+                      </span>
+                      {lineOriginal ? (
+                        <div className="mt-0.5 text-xs text-muted-foreground line-through whitespace-nowrap">
+                          {lineOriginal}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               );
