@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useLayoutEffect, useMemo, type ComponentType } from "react";
-import { Search, User, Heart, ShoppingCart, Grid2X2, X, Circle } from "lucide-react";
+import { Search, User, Heart, ShoppingCart, Grid2X2, X, Circle, Menu } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import MegaMenu from "./MegaMenu";
 import { HeaderSearchBar } from "@/components/HeaderSearchBar";
@@ -10,9 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { publicApi } from "@/lib/api";
 import { HEADER_DEFAULT_SETTINGS } from "@/shared/layoutDefaults";
 import type { HeaderSettings, NavLinkItem, SocialLinkItem } from "@/constructor/types";
-import { loadGlobalLayoutSettings } from "@/shared/globalLayout";
-
-const YoutubeIcon = () => (
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
 );
 const VkIcon = () => (
@@ -30,10 +28,14 @@ interface HeaderProps {
 }
 
 /** Совпадает с Tailwind-классами спейсера ниже — для компенсации scrollTop при смене высоты (без «прыжка» документа). */
-function headerSpacerHeightPx(compact: boolean): number {
-  if (typeof window === "undefined") return compact ? 60 : 160;
+function headerSpacerHeightPx(compact: boolean, extraMobileSocialStrip: boolean): number {
+  if (typeof window === "undefined") {
+    return compact ? 60 : extraMobileSocialStrip ? 172 : 140;
+  }
   const lg = window.matchMedia("(min-width: 1024px)").matches;
-  return compact ? 60 : lg ? 160 : 140;
+  if (compact) return 60;
+  if (lg) return 160;
+  return extraMobileSocialStrip ? 172 : 140;
 }
 
 const Header = ({ settings }: HeaderProps) => {
@@ -110,9 +112,15 @@ const Header = ({ settings }: HeaderProps) => {
     [effectiveSettings]
   );
 
+  const navLinks = (mergedSettings.mainNavLinks ?? []).filter((x) => x.enabled);
+  const topLinks = (mergedSettings.topLinks ?? []).filter((x) => x.enabled);
+  const socialLinks = (mergedSettings.socialLinks ?? []).filter((x) => x.enabled);
+  const hasMobileSocialStrip = Boolean(mergedSettings.showSocialLinks && socialLinks.length > 0);
+
   const [isCompact, setIsCompact] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [menuCategories, setMenuCategories] = useState<PublicMenuCategory[]>([]);
   const headerRef = useRef<HTMLDivElement>(null);
   const prevSpacerHeightPx = useRef<number | null>(null);
@@ -133,7 +141,7 @@ const Header = ({ settings }: HeaderProps) => {
       raf = requestAnimationFrame(() => {
         raf = 0;
         const y = window.scrollY;
-        const spacerDelta = headerSpacerHeightPx(false) - headerSpacerHeightPx(true);
+        const spacerDelta = headerSpacerHeightPx(false, hasMobileSocialStrip) - headerSpacerHeightPx(true, false);
         const compactEnterBelow = spacerDelta + SCROLL_EXPAND_BEFORE + 6;
         setIsCompact((prev) => {
           if (prev) {
@@ -149,11 +157,11 @@ const Header = ({ settings }: HeaderProps) => {
       window.removeEventListener("scroll", handleScroll);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [hasMobileSocialStrip]);
 
   useLayoutEffect(() => {
     const syncSpacer = () => {
-      const next = headerSpacerHeightPx(isCompact);
+      const next = headerSpacerHeightPx(isCompact, !isCompact && hasMobileSocialStrip);
       const prev = prevSpacerHeightPx.current;
       if (prev !== null && prev !== next) {
         const dh = next - prev;
@@ -170,7 +178,13 @@ const Header = ({ settings }: HeaderProps) => {
       window.removeEventListener("resize", syncSpacer);
       mq.removeEventListener("change", syncSpacer);
     };
-  }, [isCompact]);
+  }, [isCompact, hasMobileSocialStrip]);
+
+  useEffect(() => {
+    if (mobileSearchOpen) {
+      setMobileMenuOpen(false);
+    }
+  }, [mobileSearchOpen]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -201,10 +215,6 @@ const Header = ({ settings }: HeaderProps) => {
     };
   }, []);
 
-  const navLinks = (mergedSettings.mainNavLinks ?? []).filter((x) => x.enabled);
-  const topLinks = (mergedSettings.topLinks ?? []).filter((x) => x.enabled);
-  const socialLinks = (mergedSettings.socialLinks ?? []).filter((x) => x.enabled);
-
   const socialIconByNetwork: Record<SocialLinkItem["network"], ComponentType> = {
     youtube: YoutubeIcon,
     vk: VkIcon,
@@ -229,6 +239,15 @@ const Header = ({ settings }: HeaderProps) => {
       </Link>
     );
   };
+
+  const resolveSocialHref = (url: string | undefined): string | null => {
+    const raw = (url ?? "").trim();
+    if (!raw || raw === "#") return null;
+    if (/^https?:\/\//i.test(raw) || raw.startsWith("/") || raw.startsWith("#")) return raw;
+    return `https://${raw}`;
+  };
+
+  const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
     <>
@@ -271,6 +290,180 @@ const Header = ({ settings }: HeaderProps) => {
           <div className="flex items-center gap-4">
             {/* Logo */}
             <Link to="/" className="text-2xl font-extrabold text-foreground shrink-0">{mergedSettings.brandText}</Link>
+
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  className="md:hidden p-2 -ml-1 rounded-lg text-foreground hover:bg-secondary shrink-0"
+                  aria-label="Открыть меню"
+                >
+                  <Menu className="w-6 h-6" />
+                </button>
+              </SheetTrigger>
+              <SheetContent
+                side="left"
+                overlayClassName="z-[1195] bg-black/80"
+                className="z-[1200] w-[min(22rem,90vw)] max-w-[90vw] p-0 flex flex-col border-r gap-0 overflow-hidden sm:max-w-sm"
+              >
+                <SheetHeader className="p-4 pb-3 border-b border-border text-left space-y-1">
+                  <SheetTitle className="text-lg font-bold text-foreground">Меню</SheetTitle>
+                  <p className="text-xs text-muted-foreground font-normal">Каталог и разделы сайта</p>
+                </SheetHeader>
+                <nav className="flex-1 overflow-y-auto min-h-0 flex flex-col px-2 py-2" aria-label="Основная навигация">
+                  <button
+                    type="button"
+                    className="flex items-center gap-3 w-full text-left px-3 py-3 rounded-xl text-sm font-semibold text-primary-foreground mb-2"
+                    style={{
+                      background: "linear-gradient(135deg, hsl(262, 83%, 58%), hsl(280, 90%, 60%))",
+                    }}
+                    onClick={() => {
+                      closeMobileMenu();
+                      setShowCategories(true);
+                    }}
+                  >
+                    <Grid2X2 className="w-5 h-5 shrink-0" />
+                    Категории
+                  </button>
+
+                  {navLinks.map((link) => (
+                    <div key={link.id} className="border-b border-border/70 last:border-0" onClick={closeMobileMenu}>
+                      {renderNavLink(link, "block px-3 py-3 text-sm font-medium text-foreground hover:bg-secondary/80 rounded-lg")}
+                    </div>
+                  ))}
+
+                  <div className="mt-3 pt-2 border-t border-border space-y-1">
+                    <Link
+                      to={deliveryAddressLink}
+                      onClick={closeMobileMenu}
+                      className="block px-3 py-2.5 text-sm text-primary font-medium rounded-lg hover:bg-secondary/60"
+                    >
+                      {mergedSettings.deliveryCtaText}
+                    </Link>
+                    {topLinks.map((link) => (
+                      <div key={link.id} onClick={closeMobileMenu}>
+                        {renderNavLink(link, "block px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground rounded-lg")}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-2 space-y-1 border-t border-border pt-3">
+                    <Link
+                      to="/seller-help"
+                      onClick={closeMobileMenu}
+                      className="block px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground rounded-lg border border-border"
+                    >
+                      {mergedSettings.sellerCtaText}
+                    </Link>
+                    <Link to="/faq" onClick={closeMobileMenu} className="block px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground rounded-lg">
+                      {mergedSettings.wholesaleText}
+                    </Link>
+                    <Link to="/rules" onClick={closeMobileMenu} className="block px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground rounded-lg">
+                      {mergedSettings.rulesText}
+                    </Link>
+                    <Link to="/delivery" onClick={closeMobileMenu} className="block px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground rounded-lg">
+                      {mergedSettings.deliveryText}
+                    </Link>
+                    <Link to="/faq" onClick={closeMobileMenu} className="block px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground rounded-lg">
+                      {mergedSettings.supportText}
+                    </Link>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-border space-y-1">
+                    {mergedSettings.showAccount ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          closeMobileMenu();
+                          navigate("/account");
+                        }}
+                        className="flex items-center gap-3 w-full text-left px-3 py-2.5 text-sm font-medium text-foreground rounded-lg hover:bg-secondary/80"
+                      >
+                        <User className="w-5 h-5 shrink-0" />
+                        Кабинет
+                      </button>
+                    ) : null}
+                    {mergedSettings.showFavorites ? (
+                      <Link
+                        to="/favorites"
+                        onClick={closeMobileMenu}
+                        className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-foreground rounded-lg hover:bg-secondary/80 relative"
+                      >
+                        <Heart className="w-5 h-5 shrink-0 text-primary" />
+                        Избранное
+                        {favCount > 0 ? (
+                          <span className="ml-auto text-xs font-bold text-primary-foreground bg-gradient-to-r from-primary to-accent rounded-full px-2 py-0.5">
+                            {favCount}
+                          </span>
+                        ) : null}
+                      </Link>
+                    ) : null}
+                    {mergedSettings.showCart ? (
+                      <Link
+                        to="/cart"
+                        onClick={closeMobileMenu}
+                        className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-foreground rounded-lg hover:bg-secondary/80 relative"
+                      >
+                        <ShoppingCart className="w-5 h-5 shrink-0" />
+                        Корзина
+                        {totalItems > 0 ? (
+                          <span className="ml-auto text-xs font-bold text-primary-foreground bg-gradient-to-r from-primary to-accent rounded-full px-2 py-0.5">
+                            {totalItems}
+                          </span>
+                        ) : null}
+                      </Link>
+                    ) : null}
+                  </div>
+                </nav>
+
+                {mergedSettings.showSocialLinks && socialLinks.length > 0 ? (
+                  <div className="p-4 border-t border-border shrink-0 bg-muted/20">
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-2 px-1">Мы в соцсетях</p>
+                    <div className="flex flex-wrap gap-3 justify-start">
+                      {socialLinks.map((s) => {
+                        const Icon = socialIconByNetwork[s.network] ?? Circle;
+                        const href = resolveSocialHref(s.url);
+                        const pillClass =
+                          "rounded-full p-2.5 text-muted-foreground hover:text-foreground hover:bg-background border border-border bg-background/80";
+                        return href ? (
+                          href.startsWith("/") ? (
+                            <Link
+                              key={s.id}
+                              to={href}
+                              onClick={closeMobileMenu}
+                              className={pillClass}
+                              aria-label={s.label}
+                            >
+                              <Icon />
+                            </Link>
+                          ) : (
+                            <a
+                              key={s.id}
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={pillClass}
+                              aria-label={s.label}
+                            >
+                              <Icon />
+                            </a>
+                          )
+                        ) : (
+                          <span
+                            key={s.id}
+                            className="rounded-full p-2.5 text-muted-foreground/35 border border-dashed border-border"
+                            title="Задайте URL в CRM → Конструктор → шапка"
+                            aria-hidden
+                          >
+                            <Icon />
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </SheetContent>
+            </Sheet>
 
             {/* Categories button */}
             <button
@@ -358,6 +551,44 @@ const Header = ({ settings }: HeaderProps) => {
           </div>
         </div>
 
+        {hasMobileSocialStrip && !isCompact ? (
+          <div className="lg:hidden border-t border-border">
+            <div className="max-w-[1400px] mx-auto px-4 py-1.5 flex justify-center gap-3 flex-wrap text-muted-foreground">
+              {socialLinks.map((s) => {
+                const Icon = socialIconByNetwork[s.network] ?? Circle;
+                const href = resolveSocialHref(s.url);
+                const linkCls = "p-1.5 rounded-full hover:text-foreground hover:bg-secondary/60 transition-colors";
+                if (!href) {
+                  return (
+                    <span key={s.id} className={`${linkCls} opacity-35`} title="Укажите URL в конструкторе" aria-hidden>
+                      <Icon />
+                    </span>
+                  );
+                }
+                if (href.startsWith("/")) {
+                  return (
+                    <Link key={s.id} to={href} className={linkCls} aria-label={s.label}>
+                      <Icon />
+                    </Link>
+                  );
+                }
+                return (
+                  <a
+                    key={s.id}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={linkCls}
+                    aria-label={s.label}
+                  >
+                    <Icon />
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
         {/* Nav links */}
         <div
           className={`max-w-[1400px] mx-auto px-4 transition-all duration-300 hidden lg:block ${
@@ -373,8 +604,30 @@ const Header = ({ settings }: HeaderProps) => {
             <div className={`items-center gap-3 text-muted-foreground ${mergedSettings.showSocialLinks ? "flex" : "hidden"}`}>
               {socialLinks.map((s) => {
                 const Icon = socialIconByNetwork[s.network] ?? Circle;
+                const href = resolveSocialHref(s.url);
+                if (!href) {
+                  return (
+                    <span key={s.id} className="opacity-35 cursor-not-allowed" title={s.label} aria-hidden>
+                      <Icon />
+                    </span>
+                  );
+                }
+                if (href.startsWith("/")) {
+                  return (
+                    <Link key={s.id} to={href} className="hover:text-foreground transition-colors" aria-label={s.label}>
+                      <Icon />
+                    </Link>
+                  );
+                }
                 return (
-                  <a key={s.id} href={s.url || "#"} className="hover:text-foreground transition-colors" aria-label={s.label}>
+                  <a
+                    key={s.id}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-foreground transition-colors"
+                    aria-label={s.label}
+                  >
                     <Icon />
                   </a>
                 );
@@ -393,7 +646,11 @@ const Header = ({ settings }: HeaderProps) => {
       </header>
 
       {/* Спейсер без transition: плавное изменение высоты ломает scrollHeight во время анимации и провоцирует циклы. */}
-      <div className={isCompact ? "h-[60px]" : "h-[140px] lg:h-[160px]"} />
+      <div
+        className={
+          isCompact ? "h-[60px]" : hasMobileSocialStrip ? "h-[172px] lg:h-[160px]" : "h-[140px] lg:h-[160px]"
+        }
+      />
     </>
   );
 };
