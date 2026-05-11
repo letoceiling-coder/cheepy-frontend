@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useDragScroll } from "@/hooks/useDragScroll";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
@@ -6,7 +5,7 @@ import { mockProducts } from "@/data/mock-data";
 
 const HeroWithSlider = () => {
   const { ref, isVisible } = useScrollAnimation();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useDragScroll<HTMLDivElement>();
   const products = mockProducts.slice(0, 8);
   const scroll = (d: number) => scrollRef.current?.scrollBy({ left: d * 200, behavior: "smooth" });
 

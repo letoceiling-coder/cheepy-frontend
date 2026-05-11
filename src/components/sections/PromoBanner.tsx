@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { useSwipeSlides } from "@/hooks/useSwipeSlides";
 import { normalizeBlockProfileSettings, type BannerMediaSettings } from "@/constructor/settingsProfiles";
 import { useConstructorCanvasPreview } from "@/constructor/context/ConstructorCanvasPreviewContext";
 import { mediaItemsToSlides, type MediaSlide } from "@/lib/mediaItemsToSlides";
@@ -73,6 +73,15 @@ const PromoBanner = (props: PromoBannerProps) => {
 
   const [current, setCurrent] = useState(0);
   const next = useCallback(() => setCurrent((p) => (slides.length > 0 ? (p + 1) % slides.length : 0)), [slides.length]);
+  const prev = useCallback(() => setCurrent((p) => {
+    const n = slides.length;
+    return n > 0 ? (p - 1 + n) % n : 0;
+  }), [slides.length]);
+
+  const swipeBannerRef = useSwipeSlides({
+    onSwipePrev: prev,
+    onSwipeNext: next,
+  });
 
   useEffect(() => {
     setCurrent((c) => (slides.length > 0 ? c % slides.length : 0));
@@ -103,7 +112,7 @@ const PromoBanner = (props: PromoBannerProps) => {
       ) : null}
       {blockSubtitle ? <p className="text-muted-foreground text-sm mb-4">{blockSubtitle}</p> : null}
 
-      <div className="relative rounded-2xl overflow-hidden h-[280px] md:h-[360px]">
+      <div ref={swipeBannerRef} className="relative rounded-2xl overflow-hidden h-[280px] md:h-[360px] touch-pan-y">
         {slides.map((s, i) => {
           const eyebrow = (s.caption || "").trim() || "Специальное предложение";
           const headline = (s.title || "").trim() || blockTitle || "Акции и спецпредложения";

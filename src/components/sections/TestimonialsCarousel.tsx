@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Star, ChevronLeft, ChevronRight, Quote } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { useSwipeSlides } from "@/hooks/useSwipeSlides";
 
 const testimonials = [
   { name: "Мария К.", text: "Отличное качество ткани! Заказывала худи — пришло точно как на фото. Буду заказывать ещё.", rating: 5 },
@@ -14,15 +15,16 @@ const TestimonialsCarousel = () => {
   const { ref, isVisible } = useScrollAnimation();
   const [current, setCurrent] = useState(0);
 
-  const next = () => setCurrent((p) => (p + 1) % testimonials.length);
-  const prev = () => setCurrent((p) => (p - 1 + testimonials.length) % testimonials.length);
+  const next = useCallback(() => setCurrent((p) => (p + 1) % testimonials.length), []);
+  const prev = useCallback(() => setCurrent((p) => (p - 1 + testimonials.length) % testimonials.length), []);
+  const swipeRef = useSwipeSlides({ onSwipePrev: prev, onSwipeNext: next });
 
   return (
     <section ref={ref} className={`py-12 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
       <div className="bg-secondary/50 rounded-2xl p-8 md:p-12 relative overflow-hidden">
         <Quote size={80} className="absolute top-4 right-4 text-primary/5" />
         <h2 className="text-2xl font-bold text-foreground mb-8 text-center">Отзывы покупателей</h2>
-        <div className="max-w-2xl mx-auto text-center">
+        <div ref={swipeRef} className="max-w-2xl mx-auto text-center touch-pan-y">
           <div className="transition-all duration-500" key={current}>
             <div className="flex justify-center mb-4">
               {Array.from({ length: 5 }).map((_, i) => (

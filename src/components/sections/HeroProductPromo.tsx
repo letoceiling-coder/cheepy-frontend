@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import useEmblaCarousel from "embla-carousel-react";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { useStorefrontProductCards } from "@/hooks/useStorefrontProductCards";
 import { publicCrmMediaFileUrl, resolveCrmMediaAssetUrl } from "@/lib/api";
 import product1 from "@/assets/product-1.jpg";
@@ -54,6 +56,8 @@ function resolvePhotoUrl(mediaFileId: number | null | undefined, url: string | u
 }
 
 function HeroProductCard({ item, isActive }: { item: ItemProp; isActive: boolean }) {
+  const thumbStripRef = useDragScroll<HTMLDivElement>();
+
   const finalLabel = (item.label && item.label.trim()) || "Товар недели";
   const finalTitle = (item.productTitle && item.productTitle.trim()) || "Куртка демисезонная удлинённая";
   const finalDescription =
@@ -127,7 +131,10 @@ function HeroProductCard({ item, isActive }: { item: ItemProp; isActive: boolean
             />
           </div>
           {allPhotos.length > 1 ? (
-            <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 overflow-x-auto no-scrollbar bg-secondary/60">
+            <div
+              ref={thumbStripRef}
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 overflow-x-auto no-scrollbar bg-secondary/60 cursor-grab active:cursor-grabbing touch-pan-x"
+            >
               {allPhotos.map((src, i) => (
                 <button
                   key={`${src}-${i}`}
@@ -187,13 +194,30 @@ const HeroProductPromo = (props: HeroProductPromoProps) => {
   );
 
   const total = displayItems.length;
-  const [active, setActive] = useState(0);
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    loop: total > 1,
+    align: "start",
+    duration: 22,
+    ...(total > 1 ? { containScroll: "trimSnaps" as const } : {}),
+  });
+
+  const [selectedIdx, setSelectedIdx] = useState(0);
   const [hovered, setHovered] = useState(false);
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (active >= total) setActive(0);
-  }, [active, total]);
+    if (!emblaApi) return;
+    const onSelect = () => setSelectedIdx(emblaApi.selectedScrollSnap());
+    emblaApi.on("select", onSelect);
+    onSelect();
+    return () => {
+      emblaApi.off("select", onSelect);
+    };
+  }, [emblaApi]);
+
+  useEffect(() => {
+    emblaApi?.reInit();
+  }, [emblaApi, total]);
 
   const autoplayMs = (() => {
     const sec = Number(props.autoplaySeconds);
@@ -206,9 +230,10 @@ const HeroProductPromo = (props: HeroProductPromoProps) => {
       window.clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    if (autoplayMs <= 0 || total <= 1 || hovered) return;
+    if (autoplayMs <= 0 || total <= 1 || hovered || !emblaApi) return;
     timerRef.current = window.setInterval(() => {
-      setActive((v) => (v + 1) % total);
+      if (!emblaApi.canScrollNext()) emblaApi.scrollTo(0);
+      else emblaApi.scrollNext();
     }, autoplayMs);
     return () => {
       if (timerRef.current) {
@@ -216,10 +241,11 @@ const HeroProductPromo = (props: HeroProductPromoProps) => {
         timerRef.current = null;
       }
     };
-  }, [autoplayMs, total, hovered]);
+  }, [autoplayMs, total, hovered, emblaApi]);
 
-  const goPrev = () => setActive((v) => (v - 1 + total) % total);
-  const goNext = () => setActive((v) => (v + 1) % total);
+  const goPrev = () => emblaApi?.scrollPrev();
+  const goNext = () => emblaApi?.scrollNext();
+  const goTo = (i: number) => emblaApi?.scrollTo(i);
 
   return (
     <section
@@ -229,14 +255,11 @@ const HeroProductPromo = (props: HeroProductPromoProps) => {
       onMouseLeave={() => setHovered(false)}
     >
       <div className="relative">
-        <div className="overflow-hidden rounded-2xl">
-          <div
-            className="flex transition-transform duration-500 ease-out"
-            style={{ transform: `translateX(-${active * 100}%)` }}
-          >
+        <div className="overflow-hidden rounded-2xl" ref={emblaRef}>
+          <div className="flex">
             {displayItems.map((item, idx) => (
-              <div key={item.id ?? idx} className="w-full shrink-0">
-                <HeroProductCard item={item} isActive={idx === active} />
+              <div key={item.id ?? idx} className="min-w-0 shrink-0 grow-0 basis-[100%]">
+                <HeroProductCard item={item} isActive={idx === selectedIdx} />
               </div>
             ))}
           </div>
@@ -260,15 +283,15 @@ const HeroProductPromo = (props: HeroProductPromoProps) => {
             >
               <ChevronRight size={20} />
             </button>
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10">
               {displayItems.map((_, i) => (
                 <button
                   key={i}
                   type="button"
-                  onClick={() => setActive(i)}
+                  onClick={() => goTo(i)}
                   aria-label={`Перейти к слайду ${i + 1}`}
                   className={`h-2 rounded-full transition-all ${
-                    i === active ? "bg-primary w-6" : "bg-muted-foreground/40 w-2 hover:bg-muted-foreground/70"
+                    i === selectedIdx ? "bg-primary w-6" : "bg-muted-foreground/40 w-2 hover:bg-muted-foreground/70"
                   }`}
                 />
               ))}

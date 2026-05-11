@@ -1,4 +1,3 @@
-import { useState, useRef } from "react";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { useDragScroll } from "@/hooks/useDragScroll";
 import { Link } from "react-router-dom";
@@ -71,7 +70,7 @@ const reviews: Review[] = [
 ];
 
 const ReviewsSlider = () => {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useDragScroll<HTMLDivElement>();
 
   const scroll = (direction: "left" | "right") => {
     if (scrollContainerRef.current) {
