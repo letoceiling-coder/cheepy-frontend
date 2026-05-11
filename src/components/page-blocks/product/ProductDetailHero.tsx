@@ -11,6 +11,7 @@ import { useFavorites } from "@/contexts/FavoritesContext";
 import { usePublicProduct } from "@/hooks/usePublicProduct";
 import { useProductDeliveryQuote } from "@/hooks/useProductDeliveryQuote";
 import type { CartPromotionSnapshot } from "@/lib/cartPricing";
+import { filterRedundantVariantAttributes } from "@/lib/cartDisplayAttributes";
 import { useAuth } from "@/contexts/AuthContext";
 import DeliveryQuoteEntry from "@/components/page-blocks/product/DeliveryQuoteEntry";
 
@@ -140,9 +141,11 @@ export default function ProductDetailHero(
 
   const cartColor = selectedColor || storefront.colors[0] || "—";
   const cartSize = selectedSize || storefront.sizes[0] || "—";
-  const selectedAttributes = (storefront.attributes ?? [])
-    .filter((attr) => attr.name && attr.value)
-    .map((attr) => ({ name: attr.name, value: attr.value }));
+  const selectedAttributes = filterRedundantVariantAttributes(
+    (storefront.attributes ?? [])
+      .filter((attr) => attr.name && attr.value)
+      .map((attr) => ({ name: attr.name, value: attr.value })),
+  );
   const activeDealWithCommission = activeDeal && !dealCountdown.expired
     ? {
         ...activeDeal,

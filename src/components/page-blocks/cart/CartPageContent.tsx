@@ -16,6 +16,7 @@ import {
   type StorefrontCartDeliveryQuoteResponse,
 } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
+import { filterRedundantVariantAttributes } from "@/lib/cartDisplayAttributes";
 
 const FALLBACK_DELIVERY_RUB = 299;
 
@@ -284,6 +285,7 @@ export default function CartPageContent() {
           <div className="flex-1 space-y-4">
             {items.map((item) => {
               const pricing = getLinePricing(item);
+              const displayAttrs = filterRedundantVariantAttributes(item.selectedAttributes);
               return (
                 <div key={item.lineId} className="flex gap-4 p-4 rounded-2xl border border-border">
                   <Link to={`/product/${item.product.id}`} className="shrink-0">
@@ -312,52 +314,67 @@ export default function CartPageContent() {
                       </div>
                     ) : null}
 
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <span className="text-xs text-muted-foreground">Цвет:</span>
-                      <div className="flex gap-1">
-                        {item.product.colors.map((c) => (
-                          <button
-                            key={c}
-                            type="button"
-                            onClick={() => updateColor(item.lineId, c)}
-                            className={`px-2 py-0.5 rounded text-xs border transition-colors ${
-                              item.color === c ? "border-primary bg-primary/10 text-primary" : "border-border text-foreground"
-                            }`}
-                          >
-                            {c}
-                          </button>
-                        ))}
+                    <div className="mb-2 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-xs text-muted-foreground shrink-0">Цвет:</span>
+                        <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden no-scrollbar touch-pan-x pb-0.5 -mx-0.5 px-0.5">
+                          <div className="flex gap-1 flex-nowrap w-max">
+                            {item.product.colors.map((c) => (
+                              <button
+                                key={c}
+                                type="button"
+                                onClick={() => updateColor(item.lineId, c)}
+                                className={`shrink-0 px-2 py-0.5 rounded text-xs border transition-colors ${
+                                  item.color === c
+                                    ? "border-primary bg-primary/10 text-primary"
+                                    : "border-border text-foreground"
+                                }`}
+                              >
+                                {c}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 mb-3">
-                      <span className="text-xs text-muted-foreground">Размер:</span>
-                      <div className="flex gap-1">
-                        {item.product.sizes.map((s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => updateSize(item.lineId, s)}
-                            className={`w-8 h-6 rounded text-xs border transition-colors ${
-                              item.size === s ? "border-primary bg-primary/10 text-primary" : "border-border text-foreground"
-                            }`}
-                          >
-                            {s}
-                          </button>
-                        ))}
+                    <div className="mb-3 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-xs text-muted-foreground shrink-0">Размер:</span>
+                        <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden no-scrollbar touch-pan-x pb-0.5 -mx-0.5 px-0.5">
+                          <div className="flex gap-1 flex-nowrap w-max">
+                            {item.product.sizes.map((s) => (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => updateSize(item.lineId, s)}
+                                className={`shrink-0 min-w-8 h-7 px-1 rounded text-xs border transition-colors ${
+                                  item.size === s
+                                    ? "border-primary bg-primary/10 text-primary"
+                                    : "border-border text-foreground"
+                                }`}
+                              >
+                                {s}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {item.selectedAttributes.length > 0 ? (
+                    {displayAttrs.length > 0 ? (
                       <div className="mb-3 flex flex-wrap gap-1.5">
-                        {item.selectedAttributes.slice(0, 6).map((attr) => (
-                          <span key={`${attr.name}-${attr.value}`} className="rounded bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">
+                        {displayAttrs.slice(0, 6).map((attr) => (
+                          <span
+                            key={`${attr.name}-${attr.value}`}
+                            className="rounded bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground"
+                          >
                             {attr.name}: <span className="text-foreground">{attr.value}</span>
                           </span>
                         ))}
-                        {item.selectedAttributes.length > 6 ? (
+                        {displayAttrs.length > 6 ? (
                           <span className="rounded bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">
-                            +{item.selectedAttributes.length - 6} атр.
+                            +{displayAttrs.length - 6} атр.
                           </span>
                         ) : null}
                       </div>
