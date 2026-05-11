@@ -90,44 +90,51 @@ function HeroProductCard({ item, isActive }: { item: ItemProp; isActive: boolean
   return (
     <div className="rounded-2xl bg-secondary overflow-hidden">
       <div className="grid grid-cols-1 md:grid-cols-2">
-        <div className="p-8 md:p-12 flex flex-col justify-center">
-          <span className="text-xs uppercase tracking-widest text-primary font-medium">{finalLabel}</span>
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mt-3 leading-tight">{finalTitle}</h2>
-          <p className="text-muted-foreground mt-3 leading-relaxed line-clamp-4">{finalDescription}</p>
-          <div className="flex items-baseline gap-3 mt-5 flex-wrap">
-            <span className="text-3xl font-bold text-foreground">{finalPrice}</span>
-            {finalOldPrice ? <span className="text-lg text-muted-foreground line-through">{finalOldPrice}</span> : null}
-            {finalDiscount ? <span className="text-sm font-bold text-destructive">{finalDiscount}</span> : null}
+        <div className="order-2 md:order-1 p-4 pb-5 sm:p-6 md:p-12 flex flex-col justify-center min-w-0">
+          <span className="text-[10px] sm:text-xs uppercase tracking-widest text-primary font-medium">{finalLabel}</span>
+          <h2 className="text-xl sm:text-2xl md:text-4xl font-bold text-foreground mt-2 md:mt-3 leading-tight line-clamp-3 md:line-clamp-none">
+            {finalTitle}
+          </h2>
+          <p className="text-sm sm:text-base text-muted-foreground mt-2 md:mt-3 leading-snug md:leading-relaxed line-clamp-2 md:line-clamp-4">
+            {finalDescription}
+          </p>
+          <div className="flex items-baseline gap-2 sm:gap-3 mt-3 md:mt-5 flex-wrap">
+            <span className="text-2xl md:text-3xl font-bold text-foreground">{finalPrice}</span>
+            {finalOldPrice ? <span className="text-sm md:text-lg text-muted-foreground line-through">{finalOldPrice}</span> : null}
+            {finalDiscount ? <span className="text-xs md:text-sm font-bold text-destructive">{finalDiscount}</span> : null}
           </div>
           <a
             href={ctaUrl}
             target={ctaTarget}
             rel={ctaTarget === "_blank" ? "noopener noreferrer" : undefined}
-            className="mt-6 h-12 px-8 rounded-xl gradient-primary text-primary-foreground font-semibold inline-flex items-center gap-2 hover:opacity-90 transition-opacity group w-fit"
+            className="mt-4 md:mt-6 h-11 md:h-12 px-6 md:px-8 rounded-xl gradient-primary text-primary-foreground text-sm md:text-base font-semibold inline-flex items-center justify-center gap-2 hover:opacity-90 transition-opacity group w-full sm:w-auto md:w-fit shrink-0"
           >
             {ctaText}
-            <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+            <ArrowRight size={16} className="transition-transform group-hover:translate-x-1 shrink-0" />
           </a>
         </div>
 
-        <div className="flex flex-col">
-          <div className="relative bg-muted/30 h-[320px] md:h-[420px] flex items-center justify-center overflow-hidden">
+        <div className="order-1 md:order-2 flex flex-col min-h-0">
+          <div
+            className="relative bg-muted/30 flex items-center justify-center overflow-hidden
+              h-[min(36svh,240px)] sm:h-[min(38svh,280px)] md:h-[420px]"
+          >
             <img
               src={currentPhoto}
               alt={finalTitle}
-              className="max-h-full max-w-full w-auto h-auto object-contain"
+              className="w-full h-full max-h-full object-contain object-center p-2 sm:p-3 md:p-4"
               loading="lazy"
             />
           </div>
           {allPhotos.length > 1 ? (
-            <div className="flex items-center gap-2 px-4 py-3 overflow-x-auto no-scrollbar bg-secondary/60">
+            <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 overflow-x-auto no-scrollbar bg-secondary/60">
               {allPhotos.map((src, i) => (
                 <button
                   key={`${src}-${i}`}
                   type="button"
                   onClick={() => setPhotoIdx(i)}
                   aria-label={`Фото ${i + 1}`}
-                  className={`shrink-0 h-14 w-14 rounded-md overflow-hidden border-2 transition-colors ${
+                  className={`shrink-0 h-11 w-11 sm:h-14 sm:w-14 rounded-md overflow-hidden border-2 transition-colors ${
                     i === photoIdx ? "border-primary" : "border-transparent hover:border-border"
                   }`}
                 >
@@ -217,7 +224,7 @@ const HeroProductPromo = (props: HeroProductPromoProps) => {
   return (
     <section
       ref={ref}
-      className={`py-12 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+      className={`py-6 sm:py-8 md:py-12 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -241,7 +248,7 @@ const HeroProductPromo = (props: HeroProductPromoProps) => {
               type="button"
               onClick={goPrev}
               aria-label="Предыдущий товар"
-              className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/90 hover:bg-background border border-border shadow flex items-center justify-center transition-opacity"
+              className="absolute left-1.5 sm:left-2 md:left-4 top-[min(18svh,120px)] md:top-1/2 md:-translate-y-1/2 -translate-y-1/2 h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-background/90 hover:bg-background border border-border shadow flex items-center justify-center transition-opacity z-10"
             >
               <ChevronLeft size={20} />
             </button>
@@ -249,7 +256,7 @@ const HeroProductPromo = (props: HeroProductPromoProps) => {
               type="button"
               onClick={goNext}
               aria-label="Следующий товар"
-              className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/90 hover:bg-background border border-border shadow flex items-center justify-center transition-opacity"
+              className="absolute right-1.5 sm:right-2 md:right-4 top-[min(18svh,120px)] md:top-1/2 md:-translate-y-1/2 -translate-y-1/2 h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-background/90 hover:bg-background border border-border shadow flex items-center justify-center transition-opacity z-10"
             >
               <ChevronRight size={20} />
             </button>
