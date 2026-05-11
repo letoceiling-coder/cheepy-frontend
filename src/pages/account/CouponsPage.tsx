@@ -30,7 +30,7 @@ const CouponsPage = () => {
       {loading ? (
         <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Загрузка купонов…</p>
       ) : coupons.length === 0 ? (
-        <div className="p-4 rounded-2xl border border-border text-sm text-muted-foreground">Активных купонов пока нет.</div>
+        <div className="p-4 rounded-2xl border border-border text-sm text-muted-foreground">Купонов пока нет.</div>
       ) : activeCoupons.length > 0 && (
         <>
           <h3 className="text-sm font-semibold text-foreground mb-3">Активные</h3>

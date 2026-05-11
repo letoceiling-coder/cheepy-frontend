@@ -2743,6 +2743,14 @@ export interface AccountPaymentMethod {
   is_default: boolean;
 }
 
+/** Строка из ответа `/store/account/payment-methods` → `providers` (витрина). */
+export interface StoreAccountPaymentProvider {
+  name: string;
+  /** false/undefined — не показываем в ЛК как доступный способ. */
+  is_active?: boolean;
+  title?: string;
+}
+
 export interface AccountOrderItem {
   id: number;
   product_name: string;
@@ -2856,7 +2864,7 @@ export const storeAccountApi = {
     storefrontRequest<{ data: AccountPickupPoint }>("POST", "/store/account/pickup-points", payload, true),
   deletePickupPoint: (id: number) => storefrontRequest<void>("DELETE", `/store/account/pickup-points/${id}`, undefined, true),
   paymentMethods: () =>
-    storefrontRequest<{ data: AccountPaymentMethod[]; providers: { name: string; is_active: boolean }[] }>(
+    storefrontRequest<{ data: AccountPaymentMethod[]; providers: StoreAccountPaymentProvider[] }>(
       "GET",
       "/store/account/payment-methods",
       undefined,

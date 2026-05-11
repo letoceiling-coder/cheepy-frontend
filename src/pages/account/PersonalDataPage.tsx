@@ -269,17 +269,24 @@ const PersonalDataPage = () => {
         <span className="text-sm text-foreground">Подписка на акции и скидки</span>
       </label>
 
-      {/* Social */}
+      {/* Social — только отображение из API, без кнопок-заглушек */}
       <div>
         <h3 className="text-lg font-semibold text-foreground mb-3">Социальные сети</h3>
-        <div className="flex gap-3">
-          {(summary?.integrations.social ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Активных интеграций соцсетей нет.</p>
-          ) : summary?.integrations.social.map(s => (
-            <button key={s} className="px-4 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors">
-              Привязать {s}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-2">
+          {summary?.integrations.social && summary.integrations.social.length > 0 ? (
+            summary.integrations.social.map((s) => (
+              <span
+                key={s}
+                className="inline-flex items-center px-3 py-1.5 rounded-lg border border-border bg-muted/40 text-xs text-foreground capitalize"
+              >
+                {s}
+              </span>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              По данным профиля нет привязанных входов через соцсети. Если поддержка появится, список обновится автоматически.
+            </p>
+          )}
         </div>
       </div>
 
