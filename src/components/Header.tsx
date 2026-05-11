@@ -31,14 +31,12 @@ interface HeaderProps {
 }
 
 /** Совпадает с Tailwind-классами спейсера ниже — для компенсации scrollTop при смене высоты (без «прыжка» документа). */
-function headerSpacerHeightPx(compact: boolean, extraMobileSocialStrip: boolean): number {
-  if (typeof window === "undefined") {
-    return compact ? 60 : extraMobileSocialStrip ? 172 : 140;
-  }
+function headerSpacerHeightPx(compact: boolean): number {
+  if (typeof window === "undefined") return compact ? 60 : 144;
   const lg = window.matchMedia("(min-width: 1024px)").matches;
   if (compact) return 60;
   if (lg) return 160;
-  return extraMobileSocialStrip ? 172 : 140;
+  return 144;
 }
 
 const Header = ({ settings }: HeaderProps) => {
@@ -118,7 +116,6 @@ const Header = ({ settings }: HeaderProps) => {
   const navLinks = (mergedSettings.mainNavLinks ?? []).filter((x) => x.enabled);
   const topLinks = (mergedSettings.topLinks ?? []).filter((x) => x.enabled);
   const socialLinks = (mergedSettings.socialLinks ?? []).filter((x) => x.enabled);
-  const hasMobileSocialStrip = Boolean(mergedSettings.showSocialLinks && socialLinks.length > 0);
 
   const [isCompact, setIsCompact] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
@@ -144,7 +141,7 @@ const Header = ({ settings }: HeaderProps) => {
       raf = requestAnimationFrame(() => {
         raf = 0;
         const y = window.scrollY;
-        const spacerDelta = headerSpacerHeightPx(false, hasMobileSocialStrip) - headerSpacerHeightPx(true, false);
+        const spacerDelta = headerSpacerHeightPx(false) - headerSpacerHeightPx(true);
         const compactEnterBelow = spacerDelta + SCROLL_EXPAND_BEFORE + 6;
         setIsCompact((prev) => {
           if (prev) {
@@ -160,11 +157,11 @@ const Header = ({ settings }: HeaderProps) => {
       window.removeEventListener("scroll", handleScroll);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [hasMobileSocialStrip]);
+  }, []);
 
   useLayoutEffect(() => {
     const syncSpacer = () => {
-      const next = headerSpacerHeightPx(isCompact, !isCompact && hasMobileSocialStrip);
+      const next = headerSpacerHeightPx(isCompact);
       const prev = prevSpacerHeightPx.current;
       if (prev !== null && prev !== next) {
         const dh = next - prev;
@@ -181,7 +178,7 @@ const Header = ({ settings }: HeaderProps) => {
       window.removeEventListener("resize", syncSpacer);
       mq.removeEventListener("change", syncSpacer);
     };
-  }, [isCompact, hasMobileSocialStrip]);
+  }, [isCompact]);
 
   useEffect(() => {
     if (mobileSearchOpen) {
@@ -258,9 +255,24 @@ const Header = ({ settings }: HeaderProps) => {
         ref={headerRef}
         className={`fixed top-0 left-0 right-0 z-[1000] bg-background border-b border-border transition-all duration-300 ${isCompact ? "py-2" : "py-0"}`}
       >
-        {/* Top bar */}
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <div className="md:hidden border-b border-border bg-background shrink-0">
+            <div className="max-w-[1400px] mx-auto px-3 h-11 flex items-center">
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  className="p-2 -ml-1 rounded-lg text-foreground hover:bg-secondary min-h-11 min-w-11 flex items-center justify-center"
+                  aria-label="Открыть меню"
+                >
+                  <Menu className="w-6 h-6" />
+                </button>
+              </SheetTrigger>
+            </div>
+          </div>
+
+        {/* Top bar — только планшет/десктоп; на мобилке ссылки в боковом меню */}
         <div
-          className={`max-w-[1400px] mx-auto px-4 transition-all duration-300 ${
+          className={`max-md:hidden max-w-[1400px] mx-auto px-4 transition-all duration-300 ${
             isCompact || !mergedSettings.showTopBar ? "max-h-0 opacity-0 overflow-hidden" : "max-h-12 opacity-100 py-2"
           }`}
         >
@@ -294,16 +306,6 @@ const Header = ({ settings }: HeaderProps) => {
             {/* Logo */}
             <Link to="/" className="text-2xl font-extrabold text-foreground shrink-0">{mergedSettings.brandText}</Link>
 
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <button
-                  type="button"
-                  className="md:hidden p-2 -ml-1 rounded-lg text-foreground hover:bg-secondary shrink-0"
-                  aria-label="Открыть меню"
-                >
-                  <Menu className="w-6 h-6" />
-                </button>
-              </SheetTrigger>
               <SheetContent
                 side="left"
                 overlayClassName="z-[1195] bg-black/80"
@@ -314,6 +316,14 @@ const Header = ({ settings }: HeaderProps) => {
                   <p className="text-xs text-muted-foreground font-normal">Каталог и разделы сайта</p>
                 </SheetHeader>
                 <nav className="flex-1 overflow-y-auto min-h-0 flex flex-col px-2 py-2" aria-label="Основная навигация">
+                  <Link
+                    to={deliveryAddressLink}
+                    onClick={closeMobileMenu}
+                    className="block px-3 py-3 mb-2 text-sm font-semibold text-primary rounded-xl bg-primary/10 border border-primary/20 hover:bg-primary/15"
+                  >
+                    {mergedSettings.deliveryCtaText}
+                  </Link>
+
                   <button
                     type="button"
                     className="flex items-center gap-3 w-full text-left px-3 py-3 rounded-xl text-sm font-semibold text-primary-foreground mb-2"
@@ -336,13 +346,6 @@ const Header = ({ settings }: HeaderProps) => {
                   ))}
 
                   <div className="mt-3 pt-2 border-t border-border space-y-1">
-                    <Link
-                      to={deliveryAddressLink}
-                      onClick={closeMobileMenu}
-                      className="block px-3 py-2.5 text-sm text-primary font-medium rounded-lg hover:bg-secondary/60"
-                    >
-                      {mergedSettings.deliveryCtaText}
-                    </Link>
                     {topLinks.map((link) => (
                       <div key={link.id} onClick={closeMobileMenu}>
                         {renderNavLink(link, "block px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground rounded-lg")}
@@ -466,7 +469,6 @@ const Header = ({ settings }: HeaderProps) => {
                   </div>
                 ) : null}
               </SheetContent>
-            </Sheet>
 
             {/* Categories button */}
             <button
@@ -554,43 +556,7 @@ const Header = ({ settings }: HeaderProps) => {
           </div>
         </div>
 
-        {hasMobileSocialStrip && !isCompact ? (
-          <div className="lg:hidden border-t border-border">
-            <div className="max-w-[1400px] mx-auto px-4 py-1.5 flex justify-center gap-3 flex-wrap text-muted-foreground">
-              {socialLinks.map((s) => {
-                const Icon = socialIconByNetwork[s.network] ?? Circle;
-                const href = resolveSocialHref(s.url);
-                const linkCls = "p-1.5 rounded-full hover:text-foreground hover:bg-secondary/60 transition-colors";
-                if (!href) {
-                  return (
-                    <span key={s.id} className={`${linkCls} opacity-35`} title="Укажите URL в конструкторе" aria-hidden>
-                      <Icon />
-                    </span>
-                  );
-                }
-                if (href.startsWith("/")) {
-                  return (
-                    <Link key={s.id} to={href} className={linkCls} aria-label={s.label}>
-                      <Icon />
-                    </Link>
-                  );
-                }
-                return (
-                  <a
-                    key={s.id}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={linkCls}
-                    aria-label={s.label}
-                  >
-                    <Icon />
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
+        </Sheet>
 
         {/* Nav links */}
         <div
@@ -649,11 +615,7 @@ const Header = ({ settings }: HeaderProps) => {
       </header>
 
       {/* Спейсер без transition: плавное изменение высоты ломает scrollHeight во время анимации и провоцирует циклы. */}
-      <div
-        className={
-          isCompact ? "h-[60px]" : hasMobileSocialStrip ? "h-[172px] lg:h-[160px]" : "h-[140px] lg:h-[160px]"
-        }
-      />
+      <div className={isCompact ? "h-[60px]" : "h-[144px] lg:h-[160px]"} />
     </>
   );
 };
