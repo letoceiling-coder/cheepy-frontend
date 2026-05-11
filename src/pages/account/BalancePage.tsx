@@ -20,12 +20,12 @@ const BalancePage = () => {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-foreground mb-4">Баланс</h2>
+      <h2 className="text-xl font-bold text-foreground mb-4">Бонусный счёт</h2>
 
       <div className="gradient-primary rounded-2xl p-6 text-primary-foreground mb-6">
-        <p className="text-sm opacity-80 mb-1">Текущий баланс</p>
+        <p className="text-sm opacity-80 mb-1">Бонусные рубли</p>
         <p className="text-3xl font-bold mb-4">{balance.toLocaleString()} ₽</p>
-        <p className="text-sm opacity-80">Внутренний баланс и бонусные рубли можно использовать только на сайте.</p>
+        <p className="text-sm opacity-80">Бонусные рубли (1 ₽ = 1 бонус) можно использовать только при оплате заказов на сайте по правилам магазина.</p>
       </div>
 
       <h3 className="text-lg font-semibold text-foreground mb-3">История операций</h3>

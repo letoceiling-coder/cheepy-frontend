@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Save, MapPin, Plus, Trash2, Loader2 } from "lucide-react";
+import { Save, MapPin, Plus, Trash2, Loader2, Wallet } from "lucide-react";
 import { storeAccountApi, type AccountAddress, type AccountPickupPoint, type AccountSummary } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -136,7 +137,7 @@ const PersonalDataPage = () => {
       <div className="rounded-2xl border border-border p-6">
         <h2 className="text-xl font-bold text-foreground mb-2">Личный кабинет</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Войдите или зарегистрируйтесь, чтобы управлять адресами, заказами, оплатой, балансом, купонами и реферальной программой.
+          Войдите или зарегистрируйтесь, чтобы управлять адресами, заказами, оплатой, бонусным счётом, купонами и реферальной программой.
         </p>
         <Button asChild className="gradient-primary text-primary-foreground rounded-lg">
           <a href="/auth">Войти</a>
@@ -149,6 +150,23 @@ const PersonalDataPage = () => {
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-foreground">Личные данные</h2>
       {loading && <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Загрузка профиля…</p>}
+
+      {summary?.wallet != null ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+              <Wallet className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">Бонусный счёт</p>
+              <p className="text-lg font-bold text-primary tabular-nums">{summary.wallet.balance.toLocaleString("ru-RU")} ₽</p>
+            </div>
+          </div>
+          <Button asChild variant="outline" size="sm" className="rounded-lg shrink-0">
+            <Link to="/account/balance">История операций</Link>
+          </Button>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>

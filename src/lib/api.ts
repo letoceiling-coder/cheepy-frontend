@@ -2307,6 +2307,31 @@ export const crmStoreInsightsApi = {
       `/crm/store-users${q.toString() ? `?${q}` : ""}`
     );
   },
+  /**
+   * Один пользователь витрины (та же сущность, что в storeUsers).
+   * Сначала GET /crm/store-users/{id}; при 404 — поиск постранично (если на бэке ещё нет show-действия).
+   */
+  storeUser: async (id: string): Promise<CrmStoreUserRow> => {
+    const enc = encodeURIComponent(id);
+    try {
+      const r = await get<{ data: CrmStoreUserRow }>(`/crm/store-users/${enc}`);
+      return r.data;
+    } catch (e) {
+      if (!(e instanceof ApiError)) throw e;
+      if (e.status !== 404 && e.status !== 405) throw e;
+    }
+    const perPage = 100;
+    const maxPages = 50;
+    for (let page = 1; page <= maxPages; page++) {
+      const r = await get<{ data: CrmStoreUserRow[]; meta: CrmStoreCommerceMeta }>(
+        `/crm/store-users?page=${page}&per_page=${perPage}`
+      );
+      const row = r.data.find((u) => String(u.id) === String(id));
+      if (row) return row;
+      if (page >= r.meta.last_page) break;
+    }
+    throw new ApiError(404, "Пользователь не найден");
+  },
   catalogSellers: (params?: { page?: number; per_page?: number; search?: string }) => {
     const q = new URLSearchParams();
     if (params?.page) q.set("page", String(params.page));
@@ -2652,8 +2677,14 @@ export function getStorefrontAuthToken(): string | null {
 export const storefrontAuthApi = {
   login: (login: string, password: string) =>
     storefrontRequest<{ token: string; user: StorefrontUser }>("POST", "/store/auth/login", { login, password }, false),
-  register: (payload: { name: string; email: string; password: string; phone?: string; account_type?: "customer" | "seller" }) =>
-    storefrontRequest<{ token: string; user: StorefrontUser }>("POST", "/store/auth/register", payload, false),
+  register: (payload: {
+    name: string;
+    email: string;
+    password: string;
+    phone?: string;
+    account_type?: "customer" | "seller";
+    referral_code?: string;
+  }) => storefrontRequest<{ token: string; user: StorefrontUser }>("POST", "/store/auth/register", payload, false),
   me: () => storefrontRequest<{ user: StorefrontUser }>("GET", "/store/auth/me", undefined, true),
   refresh: () => storefrontRequest<{ token: string }>("POST", "/store/auth/refresh", {}, true),
   socialLinkSession: (provider: string) =>
@@ -2843,12 +2874,15 @@ export const storeAccountApi = {
     ),
   coupons: () => storefrontRequest<{ data: AccountCoupon[] }>("GET", "/store/account/coupons", undefined, true),
   referral: () =>
-    storefrontRequest<{ code: string; link: string; stats: { clicks: number; registrations: number; rewarded_amount: number } }>(
-      "GET",
-      "/store/account/referral",
-      undefined,
-      true
-    ),
+    storefrontRequest<{
+      code: string;
+      link: string;
+      /** Сумма бонусов пригласившему (₽); если сервер не отдаёт поле — на витрине берёт запасное значение. */
+      referrer_reward_rub?: number;
+      stats: { clicks: number; registrations: number; rewarded_amount: number };
+    }>("GET", "/store/account/referral", undefined, true),
+  attachReferral: (payload: { code: string }) =>
+    storefrontRequest<{ ok: boolean }>("POST", "/store/account/referral/attach", payload, true),
   socialProviders: () => storefrontRequest<{ providers: { id: string; title: string; enabled: boolean }[] }>(
     "GET",
     "/store/account/social-providers",
@@ -2932,9 +2966,9 @@ export interface StorefrontCartDeliveryQuoteResponse {
   free_delivery_threshold_rub?: number | null;
 }
 
-export const storeCartDeliveryQuoteApi = {
-  create: (payload: { items: { product_id: string; quantity: number }[] }) =>
-    storefrontRequest<StorefrontCartDeliveryQuoteResponse>("POST", "/store/cart-delivery-quote", payload, true),
+export const storefrontReferralTrackingApi = {
+  track: (payload: { code: string; visitor_id?: string }) =>
+    storefrontRequest<{ ok: boolean }>("POST", "/store/referral/track", payload, false),
 };
 
 export interface StoreCheckoutItemPayload {
@@ -2943,6 +2977,11 @@ export interface StoreCheckoutItemPayload {
   color?: string;
   size?: string;
 }
+
+export const storeCartDeliveryQuoteApi = {
+  create: (payload: { items: { product_id: string; quantity: number }[] }) =>
+    storefrontRequest<StorefrontCartDeliveryQuoteResponse>("POST", "/store/cart-delivery-quote", payload, true),
+};
 
 export interface StoreCheckoutResponse {
   payment_id: number;

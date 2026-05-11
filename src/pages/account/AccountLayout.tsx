@@ -1,15 +1,17 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { User, Package, CreditCard, Wallet, Heart, Tag, FileText, Users, Lock, LogOut, Sparkles } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { useAuth } from "@/contexts/AuthContext";
+import { storeAccountApi } from "@/lib/api";
 
 const authNavItems = [
   { to: "/account", icon: User, label: "Личные данные", end: true },
   { to: "/account/orders", icon: Package, label: "Мои заказы" },
   { to: "/account/payment", icon: CreditCard, label: "Способы оплаты" },
-  { to: "/account/balance", icon: Wallet, label: "Баланс" },
+  { to: "/account/balance", icon: Wallet, label: "Бонусный счёт" },
   { to: "/account/favorites", icon: Heart, label: "Избранное" },
   { to: "/account/preferences", icon: Sparkles, label: "Предпочтения" },
   { to: "/account/coupons", icon: Tag, label: "Купоны" },
@@ -26,6 +28,14 @@ const guestNavItems = [
 const AccountLayout = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const navItems = isAuthenticated ? authNavItems : guestNavItems;
+
+  const hasCustomerJwt = typeof localStorage !== "undefined" && !!localStorage.getItem("customer_token");
+  const { data: shellSummary } = useQuery({
+    queryKey: ["account-shell-summary", user?.id],
+    queryFn: () => storeAccountApi.summary(),
+    enabled: isAuthenticated && hasCustomerJwt,
+    staleTime: 45_000,
+  });
 
   return (
     <div className="min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
@@ -44,6 +54,11 @@ const AccountLayout = () => {
                 <div className="min-w-0">
                   <p className="font-semibold text-foreground text-sm truncate">{user?.name || "Гость"}</p>
                   <p className="text-xs text-muted-foreground truncate">{user?.email || "Войдите для полного доступа"}</p>
+                  {isAuthenticated && hasCustomerJwt && shellSummary?.wallet != null ? (
+                    <p className="text-xs font-semibold text-primary mt-1">
+                      Бонусный счёт: {shellSummary.wallet.balance.toLocaleString("ru-RU")} ₽
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
@@ -69,7 +84,7 @@ const AccountLayout = () => {
               </nav>
               {!isAuthenticated && (
                 <p className="mt-3 px-4 text-xs leading-relaxed text-muted-foreground">
-                  Заказы, оплата, баланс, купоны и реферальная программа доступны после входа.
+                  Заказы, оплата, бонусный счёт, купоны и реферальная программа доступны после входа.
                 </p>
               )}
             </div>

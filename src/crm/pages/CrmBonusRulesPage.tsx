@@ -28,6 +28,9 @@ const DEFAULTS = {
   seller_bonus: {
     enabled_for_seller_campaigns: false,
   },
+  referral_reward: {
+    referrer_reward_rub: 500,
+  },
 } as const;
 
 type KnownKey = keyof typeof DEFAULTS;
@@ -86,6 +89,13 @@ function mergeSeller(cfg: Record<string, unknown>): (typeof DEFAULTS)["seller_bo
   };
 }
 
+function mergeReferralReward(cfg: Record<string, unknown>): (typeof DEFAULTS)["referral_reward"] {
+  const d = DEFAULTS.referral_reward;
+  return {
+    referrer_reward_rub: Math.max(0, Math.round(num(cfg.referrer_reward_rub, d.referrer_reward_rub))),
+  };
+}
+
 function normalizeConfig(key: KnownKey, raw: Record<string, unknown>): Record<string, unknown> {
   switch (key) {
     case "purchase_bonus":
@@ -96,6 +106,8 @@ function normalizeConfig(key: KnownKey, raw: Record<string, unknown>): Record<st
       return mergeMiniGame(raw);
     case "seller_bonus":
       return mergeSeller(raw);
+    case "referral_reward":
+      return mergeReferralReward(raw);
     default: {
       const _never: never = key;
       return _never;
@@ -320,6 +332,25 @@ function KnownRuleFields({
           onChange(normalizeConfig(ruleKey, { ...c, requires_validated_prize_event }))
         }
       />
+    );
+  }
+  if (ruleKey === "referral_reward") {
+    const c = mergeReferralReward(config);
+    return (
+      <div className="space-y-5">
+        <NumberField
+          id={`${ruleKey}-referrer`}
+          label="Бонус пригласившему"
+          hint="Сколько бонусных рублей начислить на счёт реферера после первой оплаченной покупки приглашённого."
+          suffix="₽"
+          min={0}
+          integerOnly
+          value={c.referrer_reward_rub}
+          onChange={(referrer_reward_rub) =>
+            onChange(normalizeConfig(ruleKey, { ...c, referrer_reward_rub }))
+          }
+        />
+      </div>
     );
   }
   const c = mergeSeller(config);

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { toast } from "sonner";
 import { ApiError, authApi, storefrontAuthApi, type StorefrontUser } from "@/lib/api";
+import { clearReferralCode, peekReferralCode, tryAttachStoredReferral } from "@/lib/referralCapture";
 
 export interface AuthUserProfile {
   id?: number;
@@ -98,6 +99,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (linked) {
           toast.success(`Аккаунт ${linked.toUpperCase()} привязан к профилю`);
         }
+        void tryAttachStoredReferral();
       }
     }
 
@@ -119,7 +121,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const register = async (name: string, email: string, phone: string, password: string, accountType: "customer" | "seller" = "customer") => {
     try {
-      const payload: { name: string; email: string; password: string; phone?: string; account_type?: "customer" | "seller" } = {
+      const ref = peekReferralCode();
+      const payload: {
+        name: string;
+        email: string;
+        password: string;
+        phone?: string;
+        account_type?: "customer" | "seller";
+        referral_code?: string;
+      } = {
         name: name.trim(),
         email: email.trim(),
         password,
@@ -127,8 +137,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
       const ph = phone.trim();
       if (ph) payload.phone = ph;
+      if (ref) payload.referral_code = ref;
       const r = await storefrontAuthApi.register(payload);
       localStorage.setItem("customer_token", r.token);
+      clearReferralCode();
       setUser(mapStoreUserToProfile(r.user));
       setIsAuthenticated(true);
     } catch (e) {

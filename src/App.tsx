@@ -24,6 +24,7 @@ import ProductPage from "./pages/ProductPage";
 import SearchPage from "./pages/SearchPage";
 import FavoritesPage from "./pages/FavoritesPage";
 import CartPage from "./pages/CartPage";
+import ReferralBootstrap from "@/components/ReferralBootstrap";
 import AccountLayout from "./pages/account/AccountLayout";
 import PersonalDataPage from "./pages/account/PersonalDataPage";
 import OrdersPage from "./pages/account/OrdersPage";
@@ -489,6 +490,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <CartProvider>
+              <ReferralBootstrap />
               <ScrollToTop />
               <AnimatedRoutes />
             </CartProvider>
