@@ -331,6 +331,14 @@ export interface PaginatedResponse<T> {
   meta: { total: number; per_page: number; current_page: number; last_page: number };
 }
 
+export type PublicProductColorVariant = {
+  id: string;
+  color: string;
+  thumbnail: string | null;
+  title: string;
+  is_current: boolean;
+};
+
 export interface Product {
   id: string | number;
   external_id: string;
@@ -344,6 +352,10 @@ export interface Product {
   category: { id: number; name: string; slug: string } | null;
   seller: { id: number; name: string; slug: string } | null;
   parsed_at: string | null;
+  /** Публичный каталог: число видимых вариантов цвета (группа с донора). */
+  color_variants_count?: number;
+  /** До 4 миниатюр других вариантов для сетки. */
+  color_variant_thumbnails?: string[];
 }
 
 /** Ответ батча POST /public/products/storefront-cards — цены уже с комиссией. */
@@ -357,6 +369,8 @@ export interface StorefrontProductCardPayload {
   list_position?: number;
   category?: { name: string; slug: string } | null;
   seller?: { name: string; slug: string } | null;
+  color_variants_count?: number;
+  color_variant_thumbnails?: string[];
 }
 
 export interface ProductFull extends Product {
@@ -380,6 +394,8 @@ export interface ProductFull extends Product {
   }>;
   attributes: Array<{ name: string; value: string; type: string }>;
   brand: { id: number; name: string; slug: string; logo_url: string | null } | null;
+  /** Варианты цвета (донор .similar_products → видимые на витрине SKU). */
+  color_variants?: PublicProductColorVariant[];
 }
 
 export interface Category {

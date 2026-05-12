@@ -17,4 +17,8 @@ export interface StorefrontProduct {
   material: string;
   brand: string;
   attributes?: Array<{ name: string; value: string; type?: string }>;
+  /** С донора: варианты цвета с ссылками на карточки (если API отдал). */
+  colorVariants?: Array<{ id: string; color: string; thumbnail: string | null; title: string; is_current: boolean }>;
+  colorVariantsCount?: number;
+  colorVariantThumbnails?: string[];
 }

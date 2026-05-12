@@ -12,6 +12,8 @@ interface Product {
   rating: number;
   reviews: number;
   seller: string;
+  colorVariantsCount?: number;
+  colorVariantThumbnails?: string[];
 }
 
 const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?: "grid" | "list" }) => {
@@ -80,6 +82,16 @@ const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?
               <span>{product.reviews} отзывов</span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">{product.seller}</p>
+            {(product.colorVariantThumbnails?.length ?? 0) > 0 ? (
+              <div className="flex flex-wrap items-center gap-1 mt-1.5" aria-label="Доступные цвета">
+                {product.colorVariantThumbnails!.slice(0, 4).map((src, i) => (
+                  <img key={i} src={src} alt="" className="h-8 w-6 object-cover rounded border border-border" />
+                ))}
+                {typeof product.colorVariantsCount === "number" && product.colorVariantsCount > 1 ? (
+                  <span className="text-[10px] text-muted-foreground">{product.colorVariantsCount} цв.</span>
+                ) : null}
+              </div>
+            ) : null}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
@@ -188,6 +200,17 @@ const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?
           <span>{product.reviews} отзывов</span>
         </div>
         <p className="text-xs text-muted-foreground mt-1">{product.seller}</p>
+
+        {(product.colorVariantThumbnails?.length ?? 0) > 0 ? (
+          <div className="flex flex-wrap items-center gap-1 mt-2" aria-label="Доступные цвета">
+            {product.colorVariantThumbnails!.slice(0, 4).map((src, i) => (
+              <img key={i} src={src} alt="" className="h-9 w-7 object-cover rounded border border-border" />
+            ))}
+            {typeof product.colorVariantsCount === "number" && product.colorVariantsCount > 1 ? (
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap">{product.colorVariantsCount} цв.</span>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="mt-auto pt-3 min-h-[32px] flex items-center">
           <button

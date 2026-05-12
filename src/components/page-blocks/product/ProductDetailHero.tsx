@@ -91,7 +91,8 @@ export default function ProductDetailHero(
 
   useEffect(() => {
     if (!storefront) return;
-    setSelectedColor(storefront.colors[0] ?? "");
+    const fromVariant = storefront.colorVariants?.find((v) => v.is_current)?.color;
+    setSelectedColor(fromVariant ?? storefront.colors[0] ?? "");
     setSelectedSize(storefront.sizes[0] ?? "");
     setActiveImage(0);
     setQuantity(1);
@@ -268,7 +269,55 @@ export default function ProductDetailHero(
           </div>
         ) : null}
 
-        {storefront.colors.length > 0 ? (
+        {storefront.colorVariants && storefront.colorVariants.length > 0 ? (
+          <div className="mb-4">
+            <p className="text-sm font-medium text-foreground mb-2">
+              Цвет:{" "}
+              <span className="text-muted-foreground">
+                {storefront.colorVariants.find((v) => v.is_current)?.color ||
+                  selectedColor ||
+                  storefront.colors[0] ||
+                  "—"}
+              </span>
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {storefront.colorVariants.map((v) => {
+                const tile = (
+                  <span
+                    className={`block h-16 w-12 overflow-hidden rounded-lg border-2 bg-secondary transition-colors ${
+                      v.is_current ? "border-primary" : "border-border"
+                    }`}
+                  >
+                    {v.thumbnail ? (
+                      <img src={v.thumbnail} alt={v.color || v.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center px-1 text-center text-[10px] text-muted-foreground leading-tight">
+                        {v.color || "…"}
+                      </span>
+                    )}
+                  </span>
+                );
+                if (v.is_current) {
+                  return (
+                    <span key={v.id} className="rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-background" title={v.title}>
+                      {tile}
+                    </span>
+                  );
+                }
+                return (
+                  <Link
+                    key={v.id}
+                    to={`/product/${v.id}`}
+                    className="rounded-lg border-2 border-transparent hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    title={v.color || v.title}
+                  >
+                    {tile}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ) : storefront.colors.length > 0 ? (
           <div className="mb-4">
             <p className="text-sm font-medium text-foreground mb-2">
               Цвет: <span className="text-muted-foreground">{selectedColor || storefront.colors[0]}</span>

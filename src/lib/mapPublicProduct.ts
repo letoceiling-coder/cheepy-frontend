@@ -64,6 +64,8 @@ export function storefrontSearchHitToProduct(hit: StorefrontProductCardPayload):
     category: hit.category ? { id: 0, name: hit.category.name, slug: hit.category.slug } : null,
     seller: hit.seller ? { id: 0, name: hit.seller.name, slug: hit.seller.slug } : null,
     parsed_at: null,
+    color_variants_count: hit.color_variants_count,
+    color_variant_thumbnails: hit.color_variant_thumbnails,
   };
 }
 
@@ -86,6 +88,9 @@ export function publicListProductToStorefront(p: Product): StorefrontProduct {
     material: "",
     brand: "",
     attributes: [],
+    colorVariantsCount: typeof p.color_variants_count === "number" ? p.color_variants_count : undefined,
+    colorVariantThumbnails:
+      Array.isArray(p.color_variant_thumbnails) && p.color_variant_thumbnails.length > 0 ? p.color_variant_thumbnails : undefined,
   };
 }
 
@@ -102,7 +107,23 @@ export function productFullToStorefront(full: ProductFull): StorefrontProduct {
   const price = full.price_raw ?? parseRuPrice(full.price);
 
   const sizes = splitList(full.size_range).length > 0 ? splitList(full.size_range) : attrsByKeyword(attrs, ["размер", "size"]);
-  const colors = splitList(full.color).length > 0 ? splitList(full.color) : attrsByKeyword(attrs, ["цвет", "color"]);
+  const colorsFromAttrs = splitList(full.color).length > 0 ? splitList(full.color) : attrsByKeyword(attrs, ["цвет", "color"]);
+  const apiVariants = full.color_variants;
+  const colorVariants =
+    apiVariants && apiVariants.length > 0
+      ? apiVariants.map((v) => ({
+          id: v.id,
+          color: v.color,
+          thumbnail: v.thumbnail,
+          title: v.title,
+          is_current: v.is_current,
+        }))
+      : undefined;
+  const colorsFromVariants = colorVariants?.map((v) => v.color).filter(Boolean) ?? [];
+  const colors =
+    colorsFromVariants.length > 0
+      ? [...new Set([...colorsFromVariants, ...colorsFromAttrs])]
+      : colorsFromAttrs;
 
   return {
     id: full.id,
@@ -120,5 +141,6 @@ export function productFullToStorefront(full: ProductFull): StorefrontProduct {
     material: attrByKeyword(attrs, ["материал", "material"]) ?? "",
     brand: full.brand?.name ?? "",
     attributes: attrs,
+    colorVariants,
   };
 }
