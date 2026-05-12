@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { Clock, Heart, ShoppingCart, Share2, Star, Minus, Plus, Shield, Truck, RotateCcw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { publicApi, PUBLIC_STORE_HOME_PAGE_KEY } from "@/lib/api";
-import { productFullToStorefront } from "@/lib/mapPublicProduct";
+import { publicApi, PUBLIC_STORE_HOME_PAGE_KEY, type ProductFull } from "@/lib/api";
+import { productFullToStorefront, dedupeColorVariantsByPublicId } from "@/lib/mapPublicProduct";
+import type { StorefrontProduct } from "@/types/storefront-product";
 import { extractHotDealsSettingsFromPageLayout, getActiveHotDealForProduct } from "@/lib/hotDeals";
 import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
@@ -70,9 +71,76 @@ export default function ProductDetailHero(
     staleTime: 60_000,
   });
   const hotDealSettings = useMemo(() => extractHotDealsSettingsFromPageLayout(homeLayout), [homeLayout]);
+
+  const colorVariantsUnique = useMemo(
+    () => (storefront?.colorVariants?.length ? dedupeColorVariantsByPublicId(storefront.colorVariants) : []),
+    [storefront],
+  );
+
+  const variantIds = useMemo(() => colorVariantsUnique.map((v) => String(v.id)), [colorVariantsUnique]);
+
+  const variantProductQueries = useQueries({
+    queries: variantIds.map((vid) => ({
+      queryKey: ["public-product", vid] as const,
+      queryFn: () => publicApi.product(vid),
+      enabled: Boolean(vid && /^\d+$/.test(vid) && colorVariantsUnique.length > 0),
+      staleTime: 60_000,
+    })),
+  });
+
+  const variantProductById = useMemo(() => {
+    const m = new Map<string, ProductFull>();
+    for (const q of variantProductQueries) {
+      const p = q.data?.product;
+      if (p) m.set(String(p.id), p);
+    }
+    return m;
+  }, [variantProductQueries]);
+
+  const [selectedColorVariantId, setSelectedColorVariantId] = useState("");
+
+  const displayFull = useMemo((): ProductFull | null => {
+    if (!full) return null;
+    const sid = selectedColorVariantId.trim();
+    if (!sid || String(full.id) === sid) return full;
+    return variantProductById.get(sid) ?? null;
+  }, [full, selectedColorVariantId, variantProductById]);
+
+  const displayStorefront = useMemo((): StorefrontProduct | null => {
+    if (!full || !storefront) return null;
+    const sid = selectedColorVariantId.trim();
+    if (!sid || String(full.id) === sid) return storefront;
+    const loaded = variantProductById.get(sid);
+    if (loaded) return productFullToStorefront(loaded);
+    const v = colorVariantsUnique.find((x) => String(x.id) === sid);
+    if (v) {
+      return {
+        ...storefront,
+        id: v.id,
+        name: v.title || storefront.name,
+        price: storefront.price,
+        images: v.thumbnail ? [v.thumbnail] : storefront.images,
+        colors: v.color ? [v.color] : storefront.colors,
+      };
+    }
+    return storefront;
+  }, [full, storefront, selectedColorVariantId, variantProductById, colorVariantsUnique]);
+
   const routeNumericId = Number(id);
   const productNumericId = Number(full?.id);
+  const dealTargetNumeric = useMemo(() => {
+    const s = selectedColorVariantId.trim();
+    if (s && /^\d+$/.test(s)) {
+      const n = Number(s);
+      if (Number.isFinite(n)) return n;
+    }
+    if (Number.isFinite(routeNumericId)) return routeNumericId;
+    if (Number.isFinite(productNumericId)) return productNumericId;
+    return NaN;
+  }, [selectedColorVariantId, routeNumericId, productNumericId]);
+
   const activeDeal =
+    getActiveHotDealForProduct(hotDealSettings ?? undefined, Number.isFinite(dealTargetNumeric) ? dealTargetNumeric : undefined) ??
     getActiveHotDealForProduct(hotDealSettings ?? undefined, Number.isFinite(routeNumericId) ? routeNumericId : undefined) ??
     getActiveHotDealForProduct(hotDealSettings ?? undefined, Number.isFinite(productNumericId) ? productNumericId : undefined);
   const dealCountdown = useCountdown(activeDeal?.endsAt);
@@ -91,12 +159,23 @@ export default function ProductDetailHero(
 
   useEffect(() => {
     if (!storefront) return;
-    const fromVariant = storefront.colorVariants?.find((v) => v.is_current)?.color;
-    setSelectedColor(fromVariant ?? storefront.colors[0] ?? "");
+    const routeId = String(id ?? "").trim();
+    if (colorVariantsUnique.length > 0) {
+      const byRoute = colorVariantsUnique.find((v) => String(v.id) === routeId);
+      const current = colorVariantsUnique.find((v) => v.is_current);
+      const pick = byRoute ?? current ?? colorVariantsUnique[0];
+      const pickId = String(pick?.id ?? "");
+      setSelectedColorVariantId(pickId);
+      setSelectedColor(pick?.color ?? storefront.colors[0] ?? "");
+    } else {
+      setSelectedColorVariantId("");
+      const fromVariant = storefront.colorVariants?.find((v) => v.is_current)?.color;
+      setSelectedColor(fromVariant ?? storefront.colors[0] ?? "");
+    }
     setSelectedSize(storefront.sizes[0] ?? "");
     setActiveImage(0);
     setQuantity(1);
-  }, [storefront?.id, setQuantity]);
+  }, [storefront?.id, id, setQuantity, colorVariantsUnique, storefront]);
 
   useEffect(() => {
     if (full?.id) pushRecentProductId(full.id);
@@ -134,24 +213,30 @@ export default function ProductDetailHero(
     );
   }
 
-  const images = storefront.images.length > 0 ? storefront.images : [];
+  const presentation = displayStorefront ?? storefront;
+
+  const images = presentation.images.length > 0 ? presentation.images : [];
   const discount =
-    storefront.oldPrice && storefront.oldPrice > storefront.price
-      ? Math.round((1 - storefront.price / storefront.oldPrice) * 100)
+    presentation.oldPrice && presentation.oldPrice > presentation.price
+      ? Math.round((1 - presentation.price / presentation.oldPrice) * 100)
       : 0;
 
-  const cartColor = selectedColor || storefront.colors[0] || "—";
-  const cartSize = selectedSize || storefront.sizes[0] || "—";
+  const selectedVariantMeta = colorVariantsUnique.find((v) => String(v.id) === selectedColorVariantId.trim());
+  const cartColor =
+    colorVariantsUnique.length > 0
+      ? selectedVariantMeta?.color ?? presentation.colors[0] ?? "—"
+      : selectedColor || presentation.colors[0] || "—";
+  const cartSize = selectedSize || presentation.sizes[0] || "—";
   const selectedAttributes = filterRedundantVariantAttributes(
-    (storefront.attributes ?? [])
+    (presentation.attributes ?? [])
       .filter((attr) => attr.name && attr.value)
       .map((attr) => ({ name: attr.name, value: attr.value })),
   );
   const activeDealWithCommission = activeDeal && !dealCountdown.expired
     ? {
         ...activeDeal,
-        originalPrice: storefront.price,
-        salePrice: Math.max(1, Math.round(storefront.price * (1 - activeDeal.discountPercent / 100))),
+        originalPrice: presentation.price,
+        salePrice: Math.max(1, Math.round(presentation.price * (1 - activeDeal.discountPercent / 100))),
       }
     : null;
   const cartPromotion: CartPromotionSnapshot | undefined = activeDealWithCommission
@@ -178,9 +263,10 @@ export default function ProductDetailHero(
       }
     : undefined;
 
-  const seller = full.seller;
-  const shownPrice = activeDealWithCommission ? activeDealWithCommission.salePrice : storefront.price;
-  const shownOldPrice = activeDealWithCommission ? activeDealWithCommission.originalPrice : storefront.oldPrice;
+  const viewFull = displayFull ?? full;
+  const seller = viewFull.seller;
+  const shownPrice = activeDealWithCommission ? activeDealWithCommission.salePrice : presentation.price;
+  const shownOldPrice = activeDealWithCommission ? activeDealWithCommission.originalPrice : presentation.oldPrice;
   const shownDiscount = activeDealWithCommission ? activeDealWithCommission.discountPercent : discount;
 
   return (
@@ -188,7 +274,7 @@ export default function ProductDetailHero(
       <div className="flex flex-col md:flex-row-reverse md:items-start md:gap-3">
         <div className="aspect-[3/4] max-h-[500px] rounded-2xl overflow-hidden bg-secondary mb-3 md:mb-0 md:flex-1 md:min-w-0 flex items-center justify-center">
           {images.length > 0 ? (
-            <img src={images[activeImage] ?? images[0]} alt={storefront.name} className="w-full h-full object-contain" />
+            <img src={images[activeImage] ?? images[0]} alt={presentation.name} className="w-full h-full object-contain" />
           ) : (
             <span className="text-muted-foreground text-sm">Нет фото</span>
           )}
@@ -213,29 +299,29 @@ export default function ProductDetailHero(
 
       <div>
         <div className="flex items-start justify-between gap-4 mb-3">
-          <h1 className="text-xl md:text-2xl font-bold text-foreground">{storefront.name}</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">{presentation.name}</h1>
           <button
             type="button"
-            onClick={() => navigator.share?.({ title: storefront.name, url: window.location.href }).catch(() => {})}
+            onClick={() => navigator.share?.({ title: presentation.name, url: window.location.href }).catch(() => {})}
             className="shrink-0 p-2 rounded-lg border border-border text-muted-foreground hover:text-primary transition-colors"
           >
             <Share2 className="w-5 h-5" />
           </button>
         </div>
 
-        {storefront.rating > 0 ? (
+        {presentation.rating > 0 ? (
           <div className="flex items-center gap-2 mb-4">
             <div className="flex items-center gap-0.5">
               {[1, 2, 3, 4, 5].map((s) => (
                 <Star
                   key={s}
-                  className={`w-4 h-4 ${s <= Math.round(storefront.rating) ? "fill-yellow-500 text-yellow-500" : "text-border"}`}
+                  className={`w-4 h-4 ${s <= Math.round(presentation.rating) ? "fill-yellow-500 text-yellow-500" : "text-border"}`}
                 />
               ))}
             </div>
             <span className="text-sm text-muted-foreground">
-              {storefront.rating}
-              {storefront.reviews > 0 ? ` · ${storefront.reviews} отзывов` : ""}
+              {presentation.rating}
+              {presentation.reviews > 0 ? ` · ${presentation.reviews} отзывов` : ""}
             </span>
           </div>
         ) : null}
@@ -269,67 +355,62 @@ export default function ProductDetailHero(
           </div>
         ) : null}
 
-        {storefront.colorVariants && storefront.colorVariants.length > 0 ? (
+        {colorVariantsUnique.length > 0 ? (
           <div className="mb-4">
             <p className="text-sm font-medium text-foreground mb-2">
               Цвет:{" "}
               <span className="text-muted-foreground">
-                {storefront.colorVariants.find((v) => v.is_current)?.color ||
-                  selectedColor ||
-                  storefront.colors[0] ||
-                  "—"}
+                {selectedVariantMeta?.color || selectedColor || presentation.colors[0] || "—"}
               </span>
             </p>
             <div className="flex flex-wrap gap-2">
-              {storefront.colorVariants.map((v) => {
-                const tile = (
-                  <span
-                    className={`block h-16 w-12 overflow-hidden rounded-lg border-2 bg-secondary transition-colors ${
-                      v.is_current ? "border-primary" : "border-border"
-                    }`}
-                  >
-                    {v.thumbnail ? (
-                      <img src={v.thumbnail} alt={v.color || v.title} className="h-full w-full object-cover" />
-                    ) : (
-                      <span className="flex h-full w-full items-center justify-center px-1 text-center text-[10px] text-muted-foreground leading-tight">
-                        {v.color || "…"}
-                      </span>
-                    )}
-                  </span>
-                );
-                if (v.is_current) {
-                  return (
-                    <span key={v.id} className="rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-background" title={v.title}>
-                      {tile}
-                    </span>
-                  );
-                }
+              {colorVariantsUnique.map((v) => {
+                const isSelected = String(v.id) === selectedColorVariantId.trim();
                 return (
-                  <Link
+                  <button
                     key={v.id}
-                    to={`/product/${v.id}`}
-                    className="rounded-lg border-2 border-transparent hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    title={v.color || v.title}
+                    type="button"
+                    onClick={() => {
+                      setSelectedColorVariantId(String(v.id));
+                      setSelectedColor(v.color || "");
+                      setActiveImage(0);
+                    }}
+                    className={`rounded-lg border-2 border-transparent p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "hover:border-primary/40"
+                    }`}
+                    title={v.title || v.color}
                   >
-                    {tile}
-                  </Link>
+                    <span
+                      className={`block h-16 w-12 overflow-hidden rounded-lg border-2 bg-secondary transition-colors ${
+                        isSelected ? "border-primary" : "border-border"
+                      }`}
+                    >
+                      {v.thumbnail ? (
+                        <img src={v.thumbnail} alt={v.color || v.title} className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center px-1 text-center text-[10px] text-muted-foreground leading-tight">
+                          {v.color || "…"}
+                        </span>
+                      )}
+                    </span>
+                  </button>
                 );
               })}
             </div>
           </div>
-        ) : storefront.colors.length > 0 ? (
+        ) : presentation.colors.length > 0 ? (
           <div className="mb-4">
             <p className="text-sm font-medium text-foreground mb-2">
-              Цвет: <span className="text-muted-foreground">{selectedColor || storefront.colors[0]}</span>
+              Цвет: <span className="text-muted-foreground">{selectedColor || presentation.colors[0]}</span>
             </p>
             <div className="flex gap-2 flex-wrap">
-              {storefront.colors.map((c) => (
+              {presentation.colors.map((c) => (
                 <button
                   key={c}
                   type="button"
                   onClick={() => setSelectedColor(c)}
                   className={`px-4 py-2 rounded-lg text-sm border transition-colors ${
-                    (selectedColor || storefront.colors[0]) === c
+                    (selectedColor || presentation.colors[0]) === c
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border text-foreground hover:border-primary/50"
                   }`}
@@ -341,21 +422,21 @@ export default function ProductDetailHero(
           </div>
         ) : null}
 
-        {storefront.sizes.length > 0 ? (
+        {presentation.sizes.length > 0 ? (
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-medium text-foreground">
-                Размер: <span className="text-muted-foreground">{selectedSize || storefront.sizes[0]}</span>
+                Размер: <span className="text-muted-foreground">{selectedSize || presentation.sizes[0]}</span>
               </p>
             </div>
             <div className="flex gap-2 flex-wrap">
-              {storefront.sizes.map((s) => (
+              {presentation.sizes.map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => setSelectedSize(s)}
                   className={`w-12 h-10 rounded-lg text-sm font-medium border transition-colors ${
-                    (selectedSize || storefront.sizes[0]) === s
+                    (selectedSize || presentation.sizes[0]) === s
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border text-foreground hover:border-primary/50"
                   }`}
@@ -390,7 +471,7 @@ export default function ProductDetailHero(
 
         <div className="flex gap-3 mb-6">
           <Button
-            onClick={() => addToCart(storefront, cartColor, cartSize, {
+            onClick={() => addToCart(presentation, cartColor, cartSize, {
               quantity,
               selectedAttributes,
               promotions: cartPromotion ? [cartPromotion] : [],
@@ -402,14 +483,14 @@ export default function ProductDetailHero(
           </Button>
           <button
             type="button"
-            onClick={() => toggleFavorite(storefront)}
+            onClick={() => toggleFavorite(presentation)}
             className={`w-12 h-12 rounded-xl border flex items-center justify-center transition-colors ${
-              isFavorite(storefront.id)
+              isFavorite(presentation.id)
                 ? "border-primary bg-primary/10 text-primary"
                 : "border-border text-muted-foreground hover:text-primary hover:border-primary"
             }`}
           >
-            <Heart className={`w-5 h-5 ${isFavorite(storefront.id) ? "fill-primary" : ""}`} />
+            <Heart className={`w-5 h-5 ${isFavorite(presentation.id) ? "fill-primary" : ""}`} />
           </button>
         </div>
 

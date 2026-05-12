@@ -1,6 +1,19 @@
 import type { Product, ProductFull } from "@/lib/api";
 import type { StorefrontProduct } from "@/types/storefront-product";
 
+/** Убирает дубликаты по публичному id (например повторы в product_similar у донора). */
+export function dedupeColorVariantsByPublicId<T extends { id: string }>(variants: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const v of variants) {
+    const k = String(v.id);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(v);
+  }
+  return out;
+}
+
 function parseRuPrice(raw: string | null | undefined): number {
   if (raw == null || raw === "") return 0;
   const digits = String(raw).replace(/\s/g, "").replace(/[^\d.,]/g, "").replace(",", ".");
@@ -111,13 +124,15 @@ export function productFullToStorefront(full: ProductFull): StorefrontProduct {
   const apiVariants = full.color_variants;
   const colorVariants =
     apiVariants && apiVariants.length > 0
-      ? apiVariants.map((v) => ({
-          id: v.id,
-          color: v.color,
-          thumbnail: v.thumbnail,
-          title: v.title,
-          is_current: v.is_current,
-        }))
+      ? dedupeColorVariantsByPublicId(
+          apiVariants.map((v) => ({
+            id: v.id,
+            color: v.color,
+            thumbnail: v.thumbnail,
+            title: v.title,
+            is_current: v.is_current,
+          })),
+        )
       : undefined;
   const colorsFromVariants = colorVariants?.map((v) => v.color).filter(Boolean) ?? [];
   const colors =
