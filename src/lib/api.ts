@@ -159,15 +159,8 @@ async function request<T>(
         console.error('[API] Error:', res.status, url, error);
       }
       const errObj = error as { message?: string; error?: string; errors?: Record<string, string[]> };
-      const rawMessage = typeof errObj.message === "string" ? errObj.message.trim() : "";
-      const rawError = typeof errObj.error === "string" ? errObj.error.trim() : "";
-      const msg =
-        (rawMessage && rawMessage !== "Bad Request" ? rawMessage : "") ||
-        (rawError && rawError !== "Bad Request" ? rawError : "") ||
-        rawMessage ||
-        rawError ||
-        res.statusText;
-      throw new ApiError(res.status, msg, errObj.errors);
+      const { summary, errors } = summarizeLaravelValidationBody(errObj, res.statusText);
+      throw new ApiError(res.status, summary, errors);
     }
 
     if (res.status === 204) return undefined as T;
@@ -206,6 +199,89 @@ export class ApiError extends Error {
   ) {
     super(message);
   }
+}
+
+/** Подписи полей для валидации Laravel (витрина + общие). */
+const VALIDATION_FIELD_LABEL_RU: Record<string, string> = {
+  name: "Имя",
+  email: "Email",
+  password: "Пароль",
+  phone: "Телефон",
+  login: "Логин",
+  account_type: "Тип аккаунта",
+  referral_code: "Реферальный код",
+};
+
+/**
+ * Перевод типичных фраз валидатора Laravel в короткий русский текст (значение после названия поля).
+ */
+function translateValidatorSnippet(field: string, raw: string): string {
+  const s = String(raw).trim();
+  if (!s) return "Некорректное значение";
+  // Уже по-русски или с кириллицей — оставляем как есть
+  if (/[а-яёА-ЯЁ]/.test(s)) return s;
+
+  if (/has already been taken|already been taken/i.test(s)) {
+    if (field === "email") return "уже зарегистрирован";
+    if (field === "phone") return "уже зарегистрирован";
+    return "уже занято";
+  }
+  if (/must be a valid email|valid email address/i.test(s)) return "укажите корректный адрес";
+  if (/confirmation|match/i.test(s) && /password/i.test(s)) return "пароли не совпадают";
+  const minM = s.match(/at least (\d+) characters/i);
+  if (minM) return `минимум ${minM[1]} символов`;
+  if (/must be at least \d+ characters/i.test(s)) return "пароль слишком короткий";
+  if (/is required|must be present|required field/i.test(s)) {
+    const byField: Record<string, string> = {
+      name: "обязательно",
+      email: "обязательно",
+      password: "обязательно",
+      phone: "обязательно",
+      login: "обязательно",
+    };
+    return byField[field] ?? "обязательное поле";
+  }
+  if (/too long|may not be greater than/i.test(s)) return "слишком длинное значение";
+  if (/The given data was invalid/i.test(s)) return "";
+  if (/^Bad Request$/i.test(s)) return "";
+  return s;
+}
+
+function summarizeLaravelValidationBody(
+  errObj: { message?: string; error?: string; errors?: Record<string, string[]> },
+  statusText: string,
+): { summary: string; errors?: Record<string, string[]> } {
+  const rawErrors = errObj.errors && typeof errObj.errors === "object" ? errObj.errors : undefined;
+  const rawMessage =
+    (typeof errObj.message === "string" ? errObj.message.trim() : "") ||
+    (typeof errObj.error === "string" ? errObj.error.trim() : "") ||
+    statusText;
+
+  if (rawErrors && Object.keys(rawErrors).length > 0) {
+    const parts: string[] = [];
+    for (const [field, msgs] of Object.entries(rawErrors)) {
+      if (!Array.isArray(msgs)) continue;
+      const label = VALIDATION_FIELD_LABEL_RU[field] ?? field;
+      for (const m of msgs) {
+        const raw = String(m);
+        if (/[а-яёА-ЯЁ]/.test(raw)) {
+          parts.push(raw.trim());
+          continue;
+        }
+        const snippet = translateValidatorSnippet(field, raw);
+        if (snippet) parts.push(`${label}: ${snippet}`);
+      }
+    }
+    if (parts.length > 0) {
+      return { summary: parts.join(" · "), errors: rawErrors };
+    }
+  }
+
+  let fallback = rawMessage;
+  if (/The given data was invalid/i.test(fallback)) fallback = "Проверьте введённые данные";
+  if (/^Bad Request$/i.test(fallback) || !fallback) fallback = "Запрос отклонён";
+
+  return { summary: fallback, errors: rawErrors };
 }
 
 /** Превью через JWT, если публичный /storage в <img> даёт 404 или mixed content. */
@@ -2671,14 +2747,11 @@ async function storefrontRequest<T>(
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: res.statusText }));
-    const errObj = error as { message?: string; error?: string; details?: string };
-    let msg =
-      (typeof errObj.message === "string" && errObj.message.trim()) ||
-      (typeof errObj.error === "string" && errObj.error.trim()) ||
-      res.statusText;
+    const errObj = error as { message?: string; error?: string; details?: string; errors?: Record<string, string[]> };
+    let { summary: msg, errors: errRecord } = summarizeLaravelValidationBody(errObj, res.statusText);
     const detail = typeof errObj.details === "string" ? errObj.details.trim() : "";
     if (detail) msg = `${msg} (${detail})`;
-    throw new ApiError(res.status, msg);
+    throw new ApiError(res.status, msg, errRecord);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;

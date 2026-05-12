@@ -145,7 +145,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsAuthenticated(true);
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Не удалось зарегистрироваться";
-      toast.error(msg);
+      if (e instanceof ApiError && e.status === 422) {
+        toast.error(msg, { duration: 9000 });
+      } else {
+        toast.error(msg);
+      }
       throw e;
     }
   };
