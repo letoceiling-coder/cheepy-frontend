@@ -537,7 +537,13 @@ export default function ProductDetailHero(
                         />
                       ))}
                     </div>
-                  ) : deliveryQuote?.needs_address && deliveryQuoteEnabled ? (
+                  ) : null}
+                  {!deliveryQuoteLoading && deliveryQuoteEnabled && deliveryQuote?.warnings?.length ? (
+                    <p className="text-xs text-amber-700 dark:text-amber-400 leading-snug sm:pl-7 text-balance">
+                      {deliveryQuote.warnings.join(" ")}
+                    </p>
+                  ) : null}
+                  {!deliveryQuote?.quotes?.length && deliveryQuote?.needs_address && deliveryQuoteEnabled ? (
                     <p className="text-xs text-muted-foreground leading-snug sm:pl-7 text-balance">
                       Укажите адрес доставки в разделе{" "}
                       <Link to="/account#delivery-addresses" className="text-primary hover:underline font-medium">
@@ -545,9 +551,9 @@ export default function ProductDetailHero(
                       </Link>{" "}
                       в личном кабинете. Для расчёта берётся адрес по умолчанию.
                     </p>
-                  ) : (
+                  ) : !deliveryQuote?.quotes?.length && !deliveryQuote?.warnings?.length ? (
                     <p className="text-xs text-muted-foreground sm:pl-7 leading-snug">Доставка по договорённости</p>
-                  )}
+                  ) : null}
                 </>
               )}
             </div>

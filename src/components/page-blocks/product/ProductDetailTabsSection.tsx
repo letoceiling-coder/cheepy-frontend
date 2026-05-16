@@ -141,6 +141,12 @@ export default function ProductDetailTabsSection(props: { quantity?: number } = 
                 </div>
               ) : null}
 
+              {!deliveryQuoteLoading && deliveryQuoteEnabled && deliveryQuote?.warnings?.length ? (
+                <p className="text-sm text-amber-700 dark:text-amber-400 leading-snug text-balance">
+                  {deliveryQuote.warnings.join(" ")}
+                </p>
+              ) : null}
+
               {!deliveryQuoteLoading && deliveryQuoteEnabled && deliveryQuote?.needs_address ? (
                 <p className="text-sm text-muted-foreground leading-snug text-balance">
                   Чтобы увидеть ориентировочную стоимость доставки, задайте адрес в разделе{" "}
