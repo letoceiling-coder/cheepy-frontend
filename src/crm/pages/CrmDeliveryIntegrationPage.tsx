@@ -14,7 +14,21 @@ import {
 } from "@/lib/api";
 import { ArrowLeft, Loader2, CheckCircle2, XCircle, Zap, ExternalLink } from "lucide-react";
 
-const KNOWN_SLUGS = ["cdek", "nova_poshta", "dhl", "russian_post"] as const;
+const KNOWN_SLUGS = ["cdek", "yandex_delivery", "nova_poshta", "dhl", "russian_post"] as const;
+
+const YANDEX_DELIVERY_DOCS = `По официальной документации Яндекс Доставки (https://yandex.com/support/delivery-profile/ru/api/):
+
+1. Войдите в личный кабинет https://dostavka.yandex.ru/auth/ → вкладка «Интеграции» → «Получить токен».
+
+2. Вставьте OAuth-токен в поле ниже (Authorization: Bearer …).
+
+3. Экспресс / доставка в течение дня: расчёт через POST …/offers/calculate на b2b.taxi.yandex.net.
+
+4. Доставка по России: укажите platform_station_id склада (выдаёт менеджер) и тариф time_interval или self_pickup; расчёт через pricing-calculator.
+
+5. Задайте координаты и адрес отправителя (склад/Садовод) — для экспресс-тарифов.
+
+6. Сохраните, включите интеграцию и нажмите «Проверить API».`;
 
 const RUSSIAN_POST_DOCS = `По спецификации API «Отправка» Почты России (otpravka-api.pochta.ru):
 
@@ -137,7 +151,7 @@ export default function CrmDeliveryIntegrationPage() {
 
   const handleTest = async () => {
     if (!detail) return;
-    if (detail.name !== "cdek" && detail.name !== "russian_post") return;
+    if (detail.name !== "cdek" && detail.name !== "russian_post" && detail.name !== "yandex_delivery") return;
     setTesting(true);
     setTestResult(null);
     try {
@@ -167,9 +181,11 @@ export default function CrmDeliveryIntegrationPage() {
   const docsBody =
     detail.name === "cdek"
       ? CDEK_DOCS
-      : detail.name === "russian_post"
-        ? RUSSIAN_POST_DOCS
-        : "Документация будет добавлена при подключении службы.";
+      : detail.name === "yandex_delivery"
+        ? YANDEX_DELIVERY_DOCS
+        : detail.name === "russian_post"
+          ? RUSSIAN_POST_DOCS
+          : "Документация будет добавлена при подключении службы.";
   const envForHints = String(form.environment ?? "production");
   const liveCdek =
     detail.name === "cdek" ? cdekLiveEndpoints(envForHints) : null;
@@ -306,17 +322,24 @@ export default function CrmDeliveryIntegrationPage() {
         )}
       </section>
 
-      {(detail.name === "cdek" || detail.name === "russian_post") && schema.length > 0 && (
+      {(detail.name === "cdek" || detail.name === "russian_post" || detail.name === "yandex_delivery") &&
+        schema.length > 0 && (
         <section className="rounded-lg border border-border bg-card p-4">
           <h2 className="text-sm font-medium mb-3">Проверка подключения</h2>
           <p className="text-xs text-muted-foreground mb-3">
             {detail.name === "cdek"
               ? "Запрос токена OAuth 2.0 (client_credentials) к точке из поля выше; ключи не отображаются в ответе."
-              : "Проверяется наличие токена и переключатель активности интеграции (расширенные вызовы API см. в спецификации Почты России)."}
+              : detail.name === "yandex_delivery"
+                ? "Тестовый запрос к API Яндекс Доставки (offers/calculate и/или pricing-calculator по выбранным режимам)."
+                : "Проверяется наличие токена и переключатель активности интеграции (расширенные вызовы API см. в спецификации Почты России)."}
           </p>
           <Button variant="outline" onClick={() => void handleTest()} disabled={testing}>
             {testing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
-            {detail.name === "cdek" ? "Проверить OAuth" : "Проверить токен"}
+            {detail.name === "cdek"
+              ? "Проверить OAuth"
+              : detail.name === "yandex_delivery"
+                ? "Проверить API"
+                : "Проверить токен"}
           </Button>
           {testResult && (
             <div

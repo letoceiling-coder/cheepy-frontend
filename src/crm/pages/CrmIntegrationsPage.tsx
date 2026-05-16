@@ -30,6 +30,10 @@ const DELIVERY_UI: Record<
   { icon: string; description: string }
 > = {
   cdek: { icon: "📦", description: "Доставка по России и СНГ (OAuth API v2)" },
+  yandex_delivery: {
+    icon: "🟡",
+    description: "Экспресс и доставка по России (API Яндекс Доставки, Bearer-токен из ЛК)",
+  },
   nova_poshta: { icon: "📨", description: "Украинская служба доставки" },
   dhl: { icon: "🚀", description: "Международная доставка" },
   russian_post: { icon: "📬", description: "Тарифы и отправления (API «Отправка» Почты России)" },
@@ -268,7 +272,9 @@ export default function CrmIntegrationsPage() {
                       ) : (
                         <WifiOff className="h-3 w-3" />
                       )}
-                      {row.name === "cdek" ? `OAuth OK: ${fmtSync(row.last_successful_auth_at)}` : `Статус: ${row.status === "connected" ? "настроено" : "не настроено"}`}
+                      {row.name === "cdek" || row.name === "yandex_delivery"
+                        ? `Проверка: ${fmtSync(row.last_successful_auth_at)}`
+                        : `Статус: ${row.status === "connected" ? "настроено" : "не настроено"}`}
                     </div>
                     <Button
                       size="sm"
