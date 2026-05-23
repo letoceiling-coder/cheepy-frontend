@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSwipeSlides } from "@/hooks/useSwipeSlides";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { normalizeBlockProfileSettings, type BannerMediaSettings } from "@/constructor/settingsProfiles";
 import { useConstructorCanvasPreview } from "@/constructor/context/ConstructorCanvasPreviewContext";
 import { mediaItemsToSlides, type MediaSlide } from "@/lib/mediaItemsToSlides";
