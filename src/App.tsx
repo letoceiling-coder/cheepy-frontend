@@ -20,7 +20,7 @@ import BrandsListPage from "./pages/BrandsListPage";
 import SellerPage from "./pages/SellerPage";
 import SellersListPage from "./pages/SellersListPage";
 import CategoryPage from "./pages/CategoryPage";
-import CategoriesPage from "./pages/CategoriesPage";
+import StoreCategoriesPage from "./pages/CategoriesPage";
 import ProductPage from "./pages/ProductPage";
 import SearchPage from "./pages/SearchPage";
 import FavoritesPage from "./pages/FavoritesPage";
@@ -321,7 +321,7 @@ function AnimatedRoutes() {
         <Route path="/auth" element={<PageTransition><AuthPage /></PageTransition>} />
         <Route path="/search" element={<PageTransition><SearchPage /></PageTransition>} />
         <Route path="/category/all" element={<Navigate to="/categories" replace />} />
-        <Route path="/categories" element={<PageTransition><CategoriesPage /></PageTransition>} />
+        <Route path="/categories" element={<PageTransition><StoreCategoriesPage /></PageTransition>} />
         <Route path="/category/:slug" element={<PageTransition><CategoryPage /></PageTransition>} />
         <Route path="/product/:id" element={<PageTransition><ProductPage /></PageTransition>} />
         <Route path="/favorites" element={<PageTransition><FavoritesPage /></PageTransition>} />
