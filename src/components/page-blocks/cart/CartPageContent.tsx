@@ -305,7 +305,7 @@ export default function CartPageContent() {
           <h2 className="text-xl font-bold text-foreground mb-2">Корзина пуста</h2>
           <p className="text-sm text-muted-foreground mb-6">Добавьте товары, чтобы оформить заказ</p>
           <Link to="/">
-            <Button className="gradient-primary text-primary-foreground rounded-lg">На главную</Button>
+            <Button>На главную</Button>
           </Link>
         </div>
       ) : (
@@ -662,7 +662,8 @@ export default function CartPageContent() {
                   ) : null}
                   <Button
                     type="button"
-                    className="w-full gradient-primary text-primary-foreground rounded-xl py-3 h-auto text-sm font-semibold inline-flex items-center justify-center gap-2"
+                    size="lg"
+                    className="w-full"
                     disabled={
                       checkoutLoading ||
                       (Boolean(isAuthenticated && cartQuote?.needs_address)) ||
@@ -684,7 +685,7 @@ export default function CartPageContent() {
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground text-center">Для оформления заказа необходимо войти</p>
                   <Link to="/auth" className="block">
-                    <Button className="w-full gradient-primary text-primary-foreground rounded-xl py-3 h-auto text-sm font-semibold">
+                    <Button size="lg" className="w-full">
                       Войти и оформить
                     </Button>
                   </Link>

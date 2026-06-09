@@ -104,7 +104,7 @@ const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?
             </button>
             <a
               href={`/product/${product.id}`}
-              className="gradient-primary text-primary-foreground text-sm font-medium px-4 py-2 rounded-full hover:opacity-90 transition-opacity whitespace-nowrap"
+              className="gradient-primary text-primary-foreground text-sm font-semibold px-4 py-2 hover:opacity-90 transition-opacity whitespace-nowrap"
             >
               В корзину
             </a>
@@ -220,7 +220,7 @@ const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?
               e.stopPropagation();
               navigate(`/product/${product.id}`);
             }}
-            className={`w-full gradient-primary text-primary-foreground text-xs py-1.5 rounded-full font-medium transition-opacity duration-200 hover:opacity-90 ${
+            className={`w-full gradient-primary text-primary-foreground text-xs py-2 font-semibold transition-opacity duration-200 hover:opacity-90 ${
               isHovered ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
           >

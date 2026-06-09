@@ -35,7 +35,7 @@ const Newsletter = () => {
           </div>
           <button
             type="submit"
-            className="bg-primary text-primary-foreground px-6 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap"
+            className="gradient-primary text-primary-foreground px-6 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity whitespace-nowrap"
           >
             Подписаться
           </button>

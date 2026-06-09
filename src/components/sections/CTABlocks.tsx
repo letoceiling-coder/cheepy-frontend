@@ -34,7 +34,7 @@ const CTABlocks = () => {
           <p className="text-sm text-muted-foreground mb-5">
             Если у вас возникли вопросы, пожалуйста свяжитесь с нами
           </p>
-          <button className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
+          <button className="gradient-primary text-primary-foreground px-6 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity">
             Связаться
           </button>
           <div className="mt-3">

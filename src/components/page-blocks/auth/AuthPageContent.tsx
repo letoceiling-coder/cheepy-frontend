@@ -228,7 +228,7 @@ export default function AuthPageContent() {
               </button>
             </div>
 
-            <Button type="submit" className="w-full gradient-primary text-primary-foreground rounded-lg py-3 h-auto text-sm font-semibold">
+            <Button type="submit" size="lg" className="w-full">
               Войти
             </Button>
           </form>
@@ -339,7 +339,7 @@ export default function AuthPageContent() {
               </div>
             )}
 
-            <Button type="submit" className="w-full gradient-primary text-primary-foreground rounded-lg py-3 h-auto text-sm font-semibold">
+            <Button type="submit" size="lg" className="w-full">
               Зарегистрироваться
             </Button>
           </form>
@@ -375,7 +375,7 @@ export default function AuthPageContent() {
                   />
                 </div>
 
-                <Button type="submit" className="w-full gradient-primary text-primary-foreground rounded-lg py-3 h-auto text-sm font-semibold">
+                <Button type="submit" size="lg" className="w-full">
                   Далее
                 </Button>
 

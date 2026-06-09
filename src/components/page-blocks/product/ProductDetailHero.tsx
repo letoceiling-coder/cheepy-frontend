@@ -449,7 +449,8 @@ export default function ProductDetailHero(
               selectedAttributes,
               promotions: cartPromotion ? [cartPromotion] : [],
             })}
-            className="flex-1 gradient-primary text-primary-foreground rounded-xl py-3 h-auto text-sm font-semibold gap-2"
+            className="flex-1 w-full"
+            size="lg"
           >
             <ShoppingCart className="w-4 h-4" />
             Добавить в корзину

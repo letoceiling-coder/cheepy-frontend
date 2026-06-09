@@ -71,7 +71,7 @@ export default function FavoritesPageContent() {
           <h2 className="text-xl font-bold text-foreground mb-2">В избранном пусто</h2>
           <p className="text-sm text-muted-foreground mb-6">Добавляйте товары, нажимая ♡ на карточке</p>
           <Link to="/">
-            <Button className="gradient-primary text-primary-foreground rounded-lg">На главную</Button>
+            <Button>На главную</Button>
           </Link>
         </div>
       ) : cardsQuery.isPending ? (

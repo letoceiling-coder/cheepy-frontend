@@ -62,7 +62,7 @@ const SpecialOffers = () => {
             <h3 className="text-xl font-bold text-primary-foreground mb-1">{large.title}</h3>
             <p className="text-sm text-primary-foreground/80 mb-4">{large.subtitle}</p>
             <div className="flex items-end justify-between">
-              <button className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity">
+              <button className="gradient-primary text-primary-foreground px-6 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity">
                 {large.cta}
               </button>
               <CountdownTimer endsAt={large.endsAt} />
@@ -85,7 +85,7 @@ const SpecialOffers = () => {
                 <p className="text-xs text-primary-foreground/70">{promo.subtitle}</p>
               </div>
               <div className="flex items-end justify-between">
-                <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-xs font-semibold hover:opacity-90 transition-opacity">
+                <button className="gradient-primary text-primary-foreground px-4 py-2 text-xs font-semibold hover:opacity-90 transition-opacity">
                   {promo.cta}
                 </button>
                 <CountdownTimer endsAt={promo.endsAt} />
@@ -109,7 +109,7 @@ const SpecialOffers = () => {
               <h3 className="text-base font-bold text-primary-foreground mb-0.5">{promo.title}</h3>
               <p className="text-xs text-primary-foreground/70 mb-3">{promo.subtitle}</p>
               <div className="flex items-end justify-between">
-                <button className="bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-xs font-semibold">
+                <button className="gradient-primary text-primary-foreground px-4 py-1.5 text-xs font-semibold hover:opacity-90 transition-opacity">
                   {promo.cta}
                 </button>
                 <CountdownTimer endsAt={promo.endsAt} />
