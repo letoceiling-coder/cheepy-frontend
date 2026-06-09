@@ -94,6 +94,8 @@ const HeroSlider = ({
     setCurrent((c) => (slides.length > 0 ? c % slides.length : 0));
   }, [slides.length]);
 
+  const overlayStrength = Math.min(1, Math.max(0.55, (typeof overlayOpacity === "number" ? overlayOpacity : 85) / 100));
+
   if (slides.length === 0) {
     return (
       <div className={`relative rounded-2xl overflow-hidden mb-8 ${className ?? ""}`} aria-busy aria-label="Загрузка промо-блока">
@@ -116,31 +118,43 @@ const HeroSlider = ({
           >
             <img src={slide.imageUrl} alt={slide.alt} className="w-full h-full object-cover" />
             <div
-              className="absolute inset-0 bg-gradient-to-r from-foreground/60 to-transparent flex items-center"
-              style={{ opacity: Math.min(1, Math.max(0, (typeof overlayOpacity === "number" ? overlayOpacity : 60) / 100)) }}
-            >
-              <div className="px-10 md:px-16 max-w-[480px]">
-                {slide.subtitle ? <p className="text-primary-foreground/80 text-sm mb-1">{slide.subtitle}</p> : null}
-                {slide.title ? <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-primary-foreground mb-4">{slide.title}</h2> : null}
-                {slide.ctaText ? (
-                  slide.ctaUrl ? (
-                    <a
-                      href={slide.ctaUrl}
-                      target={slide.ctaTarget}
-                      rel={slide.ctaTarget === "_blank" ? "noreferrer" : undefined}
-                      className="cheepy-btn-primary cheepy-btn-primary-sm"
-                    >
-                      {slide.ctaText}
-                    </a>
-                  ) : (
-                    <button
-                      type="button"
-                      className="cheepy-btn-primary cheepy-btn-primary-sm"
-                    >
-                      {slide.ctaText}
-                    </button>
-                  )
-                ) : null}
+              className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-black/10"
+              style={{ opacity: overlayStrength }}
+              aria-hidden
+            />
+            <div className="absolute inset-0 flex items-center">
+              <div className="px-8 md:px-14 lg:px-16 max-w-[540px]">
+                <div className="inline-flex flex-col items-start rounded-2xl bg-black/40 px-6 py-5 md:px-8 md:py-6 backdrop-blur-[3px] shadow-[0_12px_40px_rgba(0,0,0,0.45)]">
+                  {slide.subtitle ? (
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/90 drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)]">
+                      {slide.subtitle}
+                    </p>
+                  ) : null}
+                  {slide.title ? (
+                    <h2 className="mb-5 text-2xl font-bold leading-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] md:text-3xl lg:text-4xl">
+                      {slide.title}
+                    </h2>
+                  ) : null}
+                  {slide.ctaText ? (
+                    slide.ctaUrl ? (
+                      <a
+                        href={slide.ctaUrl}
+                        target={slide.ctaTarget}
+                        rel={slide.ctaTarget === "_blank" ? "noreferrer" : undefined}
+                        className="cheepy-btn-primary cheepy-btn-primary-lg shadow-[0_8px_28px_rgba(88,97,254,0.55)]"
+                      >
+                        {slide.ctaText}
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        className="cheepy-btn-primary cheepy-btn-primary-lg shadow-[0_8px_28px_rgba(88,97,254,0.55)]"
+                      >
+                        {slide.ctaText}
+                      </button>
+                    )
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>

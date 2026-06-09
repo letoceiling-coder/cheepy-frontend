@@ -189,7 +189,7 @@ function PopularCategories({ title, subtitle, feed }: Props) {
           <h2 className="text-lg font-bold text-foreground">{String(title || "ПОПУЛЯРНЫЕ КАТЕГОРИИ")}</h2>
           {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
         </div>
-        <Link to="/category/all" className="text-sm text-primary hover:underline ml-auto shrink-0">
+        <Link to="/categories" className="text-sm text-primary hover:underline ml-auto shrink-0">
           Все категории
         </Link>
       </div>

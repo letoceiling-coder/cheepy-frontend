@@ -124,13 +124,21 @@ const PromoBanner = (props: PromoBannerProps) => {
               className={`absolute inset-0 transition-opacity duration-700 ${i === current ? "opacity-100 z-[1]" : "opacity-0 pointer-events-none z-0"}`}
             >
               <img src={s.imageUrl} alt={s.alt} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-r from-foreground/80 via-foreground/50 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-black/10" aria-hidden />
               <div className="absolute inset-0 flex items-center">
                 <div className="px-8 md:px-14 max-w-lg">
-                  <span className="text-xs uppercase tracking-widest text-primary-foreground/70 font-medium">{eyebrow}</span>
-                  <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mt-3 leading-tight">{headline}</h2>
-                  {description ? <p className="text-primary-foreground/80 mt-3 text-sm">{description}</p> : null}
-                  <CtaControl slide={s} />
+                  <div className="inline-flex flex-col items-start rounded-2xl bg-black/40 px-6 py-5 md:px-8 md:py-6 backdrop-blur-[3px] shadow-[0_12px_40px_rgba(0,0,0,0.45)]">
+                    <span className="text-xs font-semibold uppercase tracking-[0.14em] text-white/90 drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)]">
+                      {eyebrow}
+                    </span>
+                    <h2 className="mt-3 text-3xl font-bold leading-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] md:text-4xl">
+                      {headline}
+                    </h2>
+                    {description ? (
+                      <p className="mt-3 text-sm text-white/90 drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)]">{description}</p>
+                    ) : null}
+                    <CtaControl slide={s} />
+                  </div>
                 </div>
               </div>
             </div>

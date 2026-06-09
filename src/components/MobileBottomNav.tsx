@@ -11,7 +11,7 @@ const MobileBottomNav = () => {
   // Профиль всегда ведёт на /account (без авторизации; только /admin защищён)
   const items = [
     { icon: Home, label: "Главная", to: "/" },
-    { icon: Grid2X2, label: "Категории", to: "/category/all" },
+    { icon: Grid2X2, label: "Категории", to: "/categories" },
     { icon: Heart, label: "Избранное", to: "/favorites", badge: favCount },
     { icon: ShoppingCart, label: "Корзина", to: "/cart", badge: totalItems },
     { icon: User, label: "Профиль", to: "/account" },
@@ -22,7 +22,10 @@ const MobileBottomNav = () => {
       <div className="flex items-center justify-around py-2">
         {items.map(item => {
           const Icon = item.icon;
-          const isActive = location.pathname === item.to || (item.to !== "/" && location.pathname.startsWith(item.to));
+          const isActive =
+            location.pathname === item.to ||
+            (item.to === "/categories" && location.pathname.startsWith("/category/")) ||
+            (item.to !== "/" && item.to !== "/categories" && location.pathname.startsWith(item.to));
           return (
             <Link
               key={item.label}

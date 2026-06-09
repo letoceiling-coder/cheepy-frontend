@@ -4,7 +4,6 @@ import { Search, LayoutGrid, Store, Package } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { publicApi } from "@/lib/api";
 import { useConstructorCanvasPreview } from "@/constructor/context/ConstructorCanvasPreviewContext";
-import { CHEEPY_BTN_PRIMARY_ICON } from "@/lib/buttonStyles";
 
 type HeaderSearchBarProps = {
   placeholder: string;
@@ -57,41 +56,34 @@ export function HeaderSearchBar({ placeholder, compact = false, autoFocus }: Hea
 
   return (
     <div ref={rootRef} className={compact ? "relative w-full min-w-0" : "relative flex-1 min-w-0"}>
-      <div className="relative">
-        <input
-          type="search"
-          value={value}
-          autoFocus={autoFocus}
-          autoComplete="off"
-          aria-autocomplete="list"
-          aria-expanded={showPanel}
-          placeholder={placeholder}
-          onChange={(e) => {
-            setValue(e.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              runSearch();
-            }
-            if (e.key === "Escape") setOpen(false);
-          }}
-          className={
-            compact
-              ? "w-full border-2 border-primary/30 rounded-full py-2 pl-4 pr-10 text-sm focus:outline-none focus:border-primary transition-colors bg-background text-foreground placeholder:text-muted-foreground"
-              : "w-full border-2 border-primary/30 rounded-full py-2.5 pl-5 pr-12 text-sm focus:outline-none focus:border-primary transition-colors bg-background text-foreground placeholder:text-muted-foreground"
-          }
-        />
-        <button
-          type="button"
-          aria-label="Искать"
-          onClick={() => runSearch()}
-          className={`absolute right-1 top-1/2 -translate-y-1/2 ${CHEEPY_BTN_PRIMARY_ICON}`}
-        >
-          <Search className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
-        </button>
+      <div className={`cheepy-header-search w-full ${compact ? "cheepy-header-search--compact" : ""}`}>
+        <div className="cheepy-header-search__inner">
+          <input
+            type="search"
+            value={value}
+            autoFocus={autoFocus}
+            autoComplete="off"
+            aria-autocomplete="list"
+            aria-expanded={showPanel}
+            placeholder={placeholder}
+            onChange={(e) => {
+              setValue(e.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                runSearch();
+              }
+              if (e.key === "Escape") setOpen(false);
+            }}
+            className="cheepy-header-search__input"
+          />
+          <button type="button" aria-label="Искать" onClick={() => runSearch()} className="cheepy-header-search__btn">
+            <Search className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
+          </button>
+        </div>
       </div>
 
       {showPanel ? (

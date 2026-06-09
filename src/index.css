@@ -106,6 +106,66 @@
     min-width: 2.5rem;
     min-height: 2.5rem;
   }
+
+  .cheepy-header-search {
+    border-radius: 10px;
+    padding: 1px;
+    background: linear-gradient(135.87deg, #5861fe 9.35%, #a542f3 101.96%);
+  }
+
+  .cheepy-header-search__inner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 9px;
+    background: hsl(var(--background));
+    padding: 4px 4px 4px 16px;
+  }
+
+  .cheepy-header-search--compact .cheepy-header-search__inner {
+    padding: 3px 3px 3px 12px;
+    gap: 6px;
+  }
+
+  .cheepy-header-search__input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: hsl(var(--foreground));
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .cheepy-header-search__input::placeholder {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .cheepy-header-search__btn {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135.87deg, #5861fe 9.35%, #a542f3 101.96%);
+    color: #ffffff;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+  }
+
+  .cheepy-header-search--compact .cheepy-header-search__btn {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 7px;
+  }
+
+  .cheepy-header-search__btn:hover {
+    opacity: 0.9;
+  }
 }
 
 @layer utilities {

@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Outlet, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
@@ -20,6 +20,7 @@ import BrandsListPage from "./pages/BrandsListPage";
 import SellerPage from "./pages/SellerPage";
 import SellersListPage from "./pages/SellersListPage";
 import CategoryPage from "./pages/CategoryPage";
+import CategoriesPage from "./pages/CategoriesPage";
 import ProductPage from "./pages/ProductPage";
 import SearchPage from "./pages/SearchPage";
 import FavoritesPage from "./pages/FavoritesPage";
@@ -319,6 +320,8 @@ function AnimatedRoutes() {
         <Route path="/" element={<PageTransition><Index /></PageTransition>} />
         <Route path="/auth" element={<PageTransition><AuthPage /></PageTransition>} />
         <Route path="/search" element={<PageTransition><SearchPage /></PageTransition>} />
+        <Route path="/category/all" element={<Navigate to="/categories" replace />} />
+        <Route path="/categories" element={<PageTransition><CategoriesPage /></PageTransition>} />
         <Route path="/category/:slug" element={<PageTransition><CategoryPage /></PageTransition>} />
         <Route path="/product/:id" element={<PageTransition><ProductPage /></PageTransition>} />
         <Route path="/favorites" element={<PageTransition><FavoritesPage /></PageTransition>} />

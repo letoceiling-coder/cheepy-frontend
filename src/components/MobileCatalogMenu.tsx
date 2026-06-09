@@ -74,23 +74,34 @@ const MobileCatalogMenu = ({ open, onClose }: MobileCatalogMenuProps) => {
         <div className="flex-1 overflow-y-auto">
           {!activeCategory ? (
             <div className="py-2">
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => {
-                    if ((cat.children ?? []).length > 0) {
-                      setActiveCategory(cat);
-                    }
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-secondary/60 transition-colors"
-                >
-                  <CategoryIcon icon={cat.icon || "grid"} className="w-5 h-5 shrink-0 text-muted-foreground" />
-                  <span className="flex-1 text-left">{cat.name}</span>
-                  {(cat.children ?? []).length > 0 && (
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  )}
-                </button>
-              ))}
+              {categories.map((cat) => {
+                const hasChildren = (cat.children ?? []).length > 0;
+                if (hasChildren) {
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setActiveCategory(cat)}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-secondary/60 transition-colors"
+                    >
+                      <CategoryIcon icon={cat.icon || "grid"} className="w-5 h-5 shrink-0 text-muted-foreground" />
+                      <span className="flex-1 text-left">{cat.name}</span>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  );
+                }
+                return (
+                  <Link
+                    key={cat.id}
+                    to={`/category/${encodeURIComponent(cat.slug)}`}
+                    onClick={handleClose}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-secondary/60 transition-colors"
+                  >
+                    <CategoryIcon icon={cat.icon || "grid"} className="w-5 h-5 shrink-0 text-muted-foreground" />
+                    <span className="flex-1 text-left">{cat.name}</span>
+                  </Link>
+                );
+              })}
             </div>
           ) : (
             <div className="py-2 animate-slide-in-right">
