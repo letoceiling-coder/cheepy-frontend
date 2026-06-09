@@ -16,6 +16,7 @@ import { filterRedundantVariantAttributes } from "@/lib/cartDisplayAttributes";
 import { useAuth } from "@/contexts/AuthContext";
 import DeliveryQuoteEntry from "@/components/page-blocks/product/DeliveryQuoteEntry";
 import ColorSwatchPicker from "@/components/page-blocks/product/ColorSwatchPicker";
+import ColorVariantThumbnails from "@/components/page-blocks/product/ColorVariantThumbnails";
 
 const RECENT_KEY = "cheepy_recent_product_ids";
 
@@ -223,6 +224,14 @@ export default function ProductDetailHero(
       : 0;
 
   const selectedVariantMeta = colorVariantsUnique.find((v) => String(v.id) === selectedColorVariantId.trim());
+
+  const selectColorVariant = (variantId: string) => {
+    const variant = colorVariantsUnique.find((v) => String(v.id) === variantId);
+    setSelectedColorVariantId(variantId);
+    setSelectedColor(variant?.color || "");
+    setActiveImage(0);
+  };
+
   const cartColor =
     colorVariantsUnique.length > 0
       ? selectedVariantMeta?.color ?? presentation.colors[0] ?? "—"
@@ -357,20 +366,23 @@ export default function ProductDetailHero(
         ) : null}
 
         {colorVariantsUnique.length > 0 ? (
-          <ColorSwatchPicker
-            activeLabel={selectedVariantMeta?.color || selectedColor || presentation.colors[0] || "—"}
-            options={colorVariantsUnique.map((v) => ({
-              key: String(v.id),
-              label: v.color || v.title || "—",
-            }))}
-            selectedKey={selectedColorVariantId.trim()}
-            onSelect={(variantId) => {
-              const variant = colorVariantsUnique.find((v) => String(v.id) === variantId);
-              setSelectedColorVariantId(variantId);
-              setSelectedColor(variant?.color || "");
-              setActiveImage(0);
-            }}
-          />
+          <div className="mb-4">
+            <ColorSwatchPicker
+              className="mb-3"
+              activeLabel={selectedVariantMeta?.color || selectedColor || presentation.colors[0] || "—"}
+              options={colorVariantsUnique.map((v) => ({
+                key: String(v.id),
+                label: v.color || v.title || "—",
+              }))}
+              selectedKey={selectedColorVariantId.trim()}
+              onSelect={selectColorVariant}
+            />
+            <ColorVariantThumbnails
+              variants={colorVariantsUnique}
+              selectedKey={selectedColorVariantId.trim()}
+              onSelect={selectColorVariant}
+            />
+          </div>
         ) : presentation.colors.length > 0 ? (
           <ColorSwatchPicker
             activeLabel={selectedColor || presentation.colors[0] || "—"}

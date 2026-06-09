@@ -11,15 +11,22 @@ type ColorSwatchPickerProps = {
   options: ColorSwatchOption[];
   selectedKey: string;
   onSelect: (key: string) => void;
+  className?: string;
 };
 
-export default function ColorSwatchPicker({ activeLabel, options, selectedKey, onSelect }: ColorSwatchPickerProps) {
+export default function ColorSwatchPicker({
+  activeLabel,
+  options,
+  selectedKey,
+  onSelect,
+  className = "mb-4",
+}: ColorSwatchPickerProps) {
   if (options.length === 0) return null;
 
   const displayLabel = formatColorLabel(activeLabel);
 
   return (
-    <div className="mb-4">
+    <div className={className}>
       <p className="text-sm font-medium text-foreground mb-2">
         Цвет: <span className="text-muted-foreground">{displayLabel}</span>
       </p>
