@@ -17,6 +17,7 @@ import {
 } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { filterRedundantVariantAttributes } from "@/lib/cartDisplayAttributes";
+import ColorSwatchPicker from "@/components/page-blocks/product/ColorSwatchPicker";
 
 const FALLBACK_DELIVERY_RUB = 299;
 
@@ -286,6 +287,8 @@ export default function CartPageContent() {
             {items.map((item) => {
               const pricing = getLinePricing(item);
               const displayAttrs = filterRedundantVariantAttributes(item.selectedAttributes);
+              const colorOptions =
+                item.product.colors.length > 0 ? item.product.colors : item.color ? [item.color] : [];
               const linePrice = `${pricing.lineTotal.toLocaleString("ru-RU")}\u00A0₽`;
               const lineOriginal =
                 pricing.discountTotal > 0
@@ -346,29 +349,17 @@ export default function CartPageContent() {
                   </div>
 
                   <div className="row-start-2 col-span-3 min-w-0 space-y-2 md:col-span-1 md:col-start-2 md:row-start-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-xs text-muted-foreground shrink-0">Цвет:</span>
-                        <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden no-scrollbar touch-pan-x pb-0.5 -mx-0.5 px-0.5">
-                          <div className="flex gap-1 flex-nowrap w-max">
-                            {item.product.colors.map((c) => (
-                              <button
-                                key={c}
-                                type="button"
-                                onClick={() => updateColor(item.lineId, c)}
-                                className={`shrink-0 px-2 py-0.5 rounded text-xs border transition-colors ${
-                                  item.color === c
-                                    ? "border-primary bg-primary/10 text-primary"
-                                    : "border-border text-foreground"
-                                }`}
-                              >
-                                {c}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    {colorOptions.length > 0 ? (
+                      <ColorSwatchPicker
+                        layout="inline"
+                        size="sm"
+                        className="min-w-0"
+                        activeLabel={item.color || colorOptions[0]}
+                        options={colorOptions.map((c) => ({ key: c, label: c }))}
+                        selectedKey={item.color || colorOptions[0]}
+                        onSelect={(c) => updateColor(item.lineId, c)}
+                      />
+                    ) : null}
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
