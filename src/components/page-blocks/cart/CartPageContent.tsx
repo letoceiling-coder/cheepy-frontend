@@ -65,18 +65,31 @@ export default function CartPageContent() {
     })),
   });
 
-  const sizesByProductId = useMemo(() => {
-    const map = new Map<string, string[]>();
+  const storefrontByProductId = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof productFullToStorefront>>();
     for (const query of cartProductQueries) {
       const product = query.data?.product;
       if (!product) continue;
-      const storefront = productFullToStorefront(product);
-      if (storefront.sizes.length > 0) {
-        map.set(String(product.id), storefront.sizes);
-      }
+      map.set(String(product.id), productFullToStorefront(product));
     }
     return map;
   }, [cartProductQueries]);
+
+  const sizesByProductId = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const [id, storefront] of storefrontByProductId) {
+      if (storefront.sizes.length > 0) map.set(id, storefront.sizes);
+    }
+    return map;
+  }, [storefrontByProductId]);
+
+  const colorsByProductId = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const [id, storefront] of storefrontByProductId) {
+      if (storefront.colors.length > 0) map.set(id, storefront.colors);
+    }
+    return map;
+  }, [storefrontByProductId]);
 
   const mapCheckoutItems = useCallback(
     () =>
@@ -314,8 +327,12 @@ export default function CartPageContent() {
             {items.map((item) => {
               const pricing = getLinePricing(item);
               const displayAttrs = filterRedundantVariantAttributes(item.selectedAttributes);
-              const colorOptions =
-                item.product.colors.length > 0 ? item.product.colors : item.color ? [item.color] : [];
+              const colorOptions = [
+                ...new Set([
+                  ...(colorsByProductId.get(String(item.product.id)) ?? item.product.colors),
+                  ...(item.color ? [item.color] : []),
+                ]),
+              ].filter(Boolean);
               const sizeOptions =
                 sizesByProductId.get(String(item.product.id)) ??
                 (item.product.sizes.length > 0 ? item.product.sizes : item.size ? [item.size] : []);
@@ -382,7 +399,7 @@ export default function CartPageContent() {
                   <div className="row-start-2 col-span-3 min-w-0 space-y-2 md:col-span-1 md:col-start-2 md:row-start-2">
                     {colorOptions.length > 0 ? (
                       <ColorSwatchPicker
-                        layout="inline"
+                        layout="compact"
                         size="sm"
                         className="min-w-0"
                         activeLabel={item.color || colorOptions[0]}
@@ -397,8 +414,7 @@ export default function CartPageContent() {
                         <p className="text-xs font-medium text-foreground mb-1.5">
                           Размер: <span className="text-muted-foreground">{activeSize}</span>
                         </p>
-                        <div className="min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar touch-pan-x pb-0.5 -mx-0.5 px-0.5">
-                          <div className="flex gap-1.5 flex-nowrap w-max">
+                        <div className="flex flex-wrap gap-1.5">
                             {sizeOptions.map((s) => (
                               <button
                                 key={s}
@@ -413,7 +429,6 @@ export default function CartPageContent() {
                                 {s}
                               </button>
                             ))}
-                          </div>
                         </div>
                       </div>
                     ) : null}
