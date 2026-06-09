@@ -15,9 +15,10 @@ import {
   type StoreOrderPreviewResponse,
   type StorefrontCartDeliveryQuoteResponse,
 } from "@/lib/api";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { filterRedundantVariantAttributes } from "@/lib/cartDisplayAttributes";
 import ColorSwatchPicker from "@/components/page-blocks/product/ColorSwatchPicker";
+import { productFullToStorefront } from "@/lib/mapPublicProduct";
 
 const FALLBACK_DELIVERY_RUB = 299;
 
@@ -50,6 +51,32 @@ export default function CartPageContent() {
   const [couponError, setCouponError] = useState<string | null>(null);
 
   const cartKey = useMemo(() => cartItemsRequestKey(items), [items]);
+
+  const uniqueProductIds = useMemo(
+    () => [...new Set(items.map((item) => String(item.product.id)).filter((id) => id && /^\d+$/.test(id)))],
+    [items],
+  );
+
+  const cartProductQueries = useQueries({
+    queries: uniqueProductIds.map((productId) => ({
+      queryKey: ["public-product", productId] as const,
+      queryFn: () => publicApi.product(productId),
+      staleTime: 60_000,
+    })),
+  });
+
+  const sizesByProductId = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const query of cartProductQueries) {
+      const product = query.data?.product;
+      if (!product) continue;
+      const storefront = productFullToStorefront(product);
+      if (storefront.sizes.length > 0) {
+        map.set(String(product.id), storefront.sizes);
+      }
+    }
+    return map;
+  }, [cartProductQueries]);
 
   const mapCheckoutItems = useCallback(
     () =>
@@ -289,6 +316,10 @@ export default function CartPageContent() {
               const displayAttrs = filterRedundantVariantAttributes(item.selectedAttributes);
               const colorOptions =
                 item.product.colors.length > 0 ? item.product.colors : item.color ? [item.color] : [];
+              const sizeOptions =
+                sizesByProductId.get(String(item.product.id)) ??
+                (item.product.sizes.length > 0 ? item.product.sizes : item.size ? [item.size] : []);
+              const activeSize = item.size || sizeOptions[0] || "—";
               const linePrice = `${pricing.lineTotal.toLocaleString("ru-RU")}\u00A0₽`;
               const lineOriginal =
                 pricing.discountTotal > 0
@@ -361,20 +392,22 @@ export default function CartPageContent() {
                       />
                     ) : null}
 
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-xs text-muted-foreground shrink-0">Размер:</span>
-                        <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden no-scrollbar touch-pan-x pb-0.5 -mx-0.5 px-0.5">
-                          <div className="flex gap-1 flex-nowrap w-max">
-                            {item.product.sizes.map((s) => (
+                    {sizeOptions.length > 0 ? (
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-foreground mb-1.5">
+                          Размер: <span className="text-muted-foreground">{activeSize}</span>
+                        </p>
+                        <div className="min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar touch-pan-x pb-0.5 -mx-0.5 px-0.5">
+                          <div className="flex gap-1.5 flex-nowrap w-max">
+                            {sizeOptions.map((s) => (
                               <button
                                 key={s}
                                 type="button"
                                 onClick={() => updateSize(item.lineId, s)}
-                                className={`shrink-0 min-w-8 h-7 px-1 rounded text-xs border transition-colors ${
-                                  item.size === s
+                                className={`shrink-0 min-w-10 h-8 px-2 rounded-lg text-xs font-medium border transition-colors ${
+                                  activeSize === s
                                     ? "border-primary bg-primary/10 text-primary"
-                                    : "border-border text-foreground"
+                                    : "border-border text-foreground hover:border-primary/50"
                                 }`}
                               >
                                 {s}
@@ -383,7 +416,7 @@ export default function CartPageContent() {
                           </div>
                         </div>
                       </div>
-                    </div>
+                    ) : null}
 
                     {displayAttrs.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5">

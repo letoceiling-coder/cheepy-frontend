@@ -29,6 +29,46 @@ function splitList(raw: string | null | undefined): string[] {
     .filter(Boolean);
 }
 
+/** Разбивает размерный ряд: «46-48-50», «46 48 50», «46,48» и т.п. */
+export function splitSizeList(raw: string | null | undefined): string[] {
+  if (!raw || !String(raw).trim()) return [];
+  return String(raw)
+    .split(/[,;/|\s\-–—]+/g)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function sortSizes(sizes: string[]): string[] {
+  return [...sizes].sort((a, b) => {
+    const na = Number(a);
+    const nb = Number(b);
+    if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+    return a.localeCompare(b, "ru");
+  });
+}
+
+/** Собирает все доступные размеры из size_range и атрибутов карточки. */
+export function resolveProductSizes(
+  sizeRange: string | null | undefined,
+  attrs: Array<{ name: string; value: string; type?: string }> | undefined,
+): string[] {
+  const fromAttrs = attrsByKeyword(attrs, ["размер", "size", "размеры", "sizes"]);
+  const fromRange = splitSizeList(sizeRange);
+  const seen = new Set<string>();
+  const merged: string[] = [];
+
+  for (const raw of [...fromAttrs, ...fromRange]) {
+    const parts = splitSizeList(raw);
+    for (const part of parts.length > 0 ? parts : [raw.trim()]) {
+      if (!part || seen.has(part)) continue;
+      seen.add(part);
+      merged.push(part);
+    }
+  }
+
+  return sortSizes(merged);
+}
+
 function attrByKeyword(attrs: Array<{ name: string; value: string; type?: string }> | undefined, needles: string[]): string | undefined {
   if (!attrs?.length) return undefined;
   const nl = needles.map((n) => n.toLowerCase());
@@ -119,7 +159,7 @@ export function productFullToStorefront(full: ProductFull): StorefrontProduct {
 
   const price = full.price_raw ?? parseRuPrice(full.price);
 
-  const sizes = splitList(full.size_range).length > 0 ? splitList(full.size_range) : attrsByKeyword(attrs, ["размер", "size"]);
+  const sizes = resolveProductSizes(full.size_range, attrs);
   const colorsFromAttrs = splitList(full.color).length > 0 ? splitList(full.color) : attrsByKeyword(attrs, ["цвет", "color"]);
   const apiVariants = full.color_variants;
   const colorVariants =
