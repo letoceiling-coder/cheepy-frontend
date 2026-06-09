@@ -17,9 +17,9 @@ export const HEADER_DEFAULT_SETTINGS: HeaderSettings = {
   showAccount: true,
   topLinks: [],
   mainNavLinks: [
-    { id: 'main-men', label: 'Мужское', url: '/category/muzhskoe', enabled: true, target: '_self' },
-    { id: 'main-women', label: 'Женское', url: '/category/zhenskoe', enabled: true, target: '_self' },
-    { id: 'main-shoes', label: 'Обувь и одежда', url: '/category/odezhda', enabled: true, target: '_self' },
+    { id: 'main-men', label: 'Мужское', url: '/category/muzhskaya-odezhda', enabled: true, target: '_self' },
+    { id: 'main-women', label: 'Женское', url: '/category/jenskaya-odezhda', enabled: true, target: '_self' },
+    { id: 'main-shoes', label: 'Обувь и одежда', url: '/category/jenskaya-odezhda', enabled: true, target: '_self' },
     { id: 'main-favorites', label: 'Избранное', url: '/favorites', enabled: true, target: '_self' },
     { id: 'main-delivery', label: 'Доставка', url: '/delivery', enabled: true, target: '_self' },
     { id: 'main-rules', label: 'Правила площадки', url: '/rules', enabled: true, target: '_self' },

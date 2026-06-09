@@ -13,6 +13,7 @@ import type { HeaderSettings, NavLinkItem, SocialLinkItem } from "@/constructor/
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { loadGlobalLayoutSettings } from "@/shared/globalLayout";
 import { CHEEPY_BTN_PRIMARY_SM } from "@/lib/buttonStyles";
+import { normalizeCategoryPath } from "@/lib/categorySlugAliases";
 
 const YoutubeIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
@@ -104,13 +105,19 @@ const Header = ({ settings }: HeaderProps) => {
 
   const effectiveSettings = settings ?? globalSettings ?? {};
   const mergedSettings = useMemo<HeaderSettings>(
-    () => ({
-      ...HEADER_DEFAULT_SETTINGS,
-      ...effectiveSettings,
-      topLinks: effectiveSettings?.topLinks ?? HEADER_DEFAULT_SETTINGS.topLinks,
-      mainNavLinks: effectiveSettings?.mainNavLinks ?? HEADER_DEFAULT_SETTINGS.mainNavLinks,
-      socialLinks: effectiveSettings?.socialLinks ?? HEADER_DEFAULT_SETTINGS.socialLinks,
-    }),
+    () => {
+      const rawMainNav = effectiveSettings?.mainNavLinks ?? HEADER_DEFAULT_SETTINGS.mainNavLinks;
+      return {
+        ...HEADER_DEFAULT_SETTINGS,
+        ...effectiveSettings,
+        topLinks: effectiveSettings?.topLinks ?? HEADER_DEFAULT_SETTINGS.topLinks,
+        mainNavLinks: rawMainNav.map((link) => ({
+          ...link,
+          url: normalizeCategoryPath(link.url),
+        })),
+        socialLinks: effectiveSettings?.socialLinks ?? HEADER_DEFAULT_SETTINGS.socialLinks,
+      };
+    },
     [effectiveSettings]
   );
 
