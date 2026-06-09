@@ -67,7 +67,7 @@ const PersonAddresses = () => {
           <h2 className="text-xl font-bold text-foreground">Мои адреса</h2>
           <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium">{addresses.length}</span>
         </div>
-        <Button onClick={handleAdd} size="sm" className="gradient-primary text-primary-foreground rounded-xl text-xs shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
+        <Button onClick={handleAdd} size="sm" className="text-xs shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
           <Plus className="w-3 h-3 mr-1.5" /> Добавить
         </Button>
       </div>
@@ -86,7 +86,7 @@ const PersonAddresses = () => {
             <Input placeholder="Квартира" className="rounded-xl h-9 text-sm" />
           </div>
           <div className="flex gap-2">
-            <Button onClick={handleSaveNew} size="sm" className="gradient-primary text-primary-foreground rounded-xl text-xs">Сохранить</Button>
+            <Button onClick={handleSaveNew} size="sm" className="text-xs">Сохранить</Button>
             <Button onClick={() => setShowAdd(false)} variant="outline" size="sm" className="rounded-xl text-xs">Отмена</Button>
           </div>
         </div>

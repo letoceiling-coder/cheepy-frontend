@@ -14,7 +14,7 @@ const CombinedMediaBanner = () => {
           <div className="absolute bottom-4 left-4 right-4">
             <span className="text-[11px] text-primary-foreground/70 font-semibold uppercase tracking-wider">Коллекция 2025</span>
             <h3 className="text-lg font-bold text-primary-foreground mt-1">Новый сезон уже здесь</h3>
-            <button className="mt-2 h-8 px-4 gradient-primary text-primary-foreground rounded-lg font-semibold text-xs inline-flex items-center gap-1.5 hover:opacity-90 transition-opacity">
+            <button className="mt-2 cheepy-btn-primary cheepy-btn-primary-sm inline-flex items-center gap-1.5">
               Смотреть <ArrowRight size={12} />
             </button>
           </div>

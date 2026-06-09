@@ -79,7 +79,7 @@ const PersonPassword = () => {
       <Button
         onClick={handleSubmit}
         disabled={submitting}
-        className="gradient-primary text-primary-foreground rounded-xl px-8 mt-6 shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-60"
+        className="mt-6 shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-60"
       >
         {submitting ? (
           <span className="flex items-center gap-2">

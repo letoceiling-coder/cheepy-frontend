@@ -35,7 +35,7 @@ const BlogPage = () => {
           <button
             key={c}
             onClick={() => setActive(c)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200 ${active === c ? "gradient-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"}`}
+            className={`px-4 py-2 rounded-[10px] text-sm font-medium whitespace-nowrap transition-all duration-200 ${active === c ? "cheepy-btn-primary cheepy-btn-primary-sm" : "bg-secondary text-foreground hover:bg-secondary/80"}`}
           >
             {c}
           </button>

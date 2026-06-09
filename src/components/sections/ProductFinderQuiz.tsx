@@ -81,7 +81,7 @@ const ProductFinderQuiz = () => {
                 <p className="text-xs text-muted-foreground mb-3">Ответьте на 3 простых вопроса и получите персональную подборку товаров</p>
                 <button
                   onClick={() => setStarted(true)}
-                  className="h-9 px-5 gradient-primary text-primary-foreground rounded-lg font-semibold text-sm flex items-center gap-2 hover:opacity-90 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+                  className="cheepy-btn-primary cheepy-btn-primary-sm flex items-center gap-2 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
                 >
                   Начать подбор <ArrowRight size={14} />
                 </button>
@@ -130,7 +130,7 @@ const ProductFinderQuiz = () => {
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <button className="h-8 px-4 gradient-primary text-primary-foreground rounded-lg font-semibold text-xs flex items-center gap-1.5 hover:opacity-90 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0">
+                  <button className="cheepy-btn-primary cheepy-btn-primary-sm flex items-center gap-1.5 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0">
                     Смотреть все <ArrowRight size={12} />
                   </button>
                   <button onClick={reset} className="h-8 px-3 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">

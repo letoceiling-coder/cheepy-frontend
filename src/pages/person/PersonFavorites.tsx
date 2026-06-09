@@ -104,7 +104,7 @@ const PersonFavorites = () => {
               <Button
                 onClick={() => handleAddToCart(p)}
                 size="sm"
-                className="w-full gradient-primary text-primary-foreground rounded-xl text-xs h-8 shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
+                className="w-full text-xs h-8 shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
               >
                 <ShoppingCart className="w-3 h-3 mr-1" /> В корзину
               </Button>

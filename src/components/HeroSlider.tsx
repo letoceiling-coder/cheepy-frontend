@@ -128,14 +128,14 @@ const HeroSlider = ({
                       href={slide.ctaUrl}
                       target={slide.ctaTarget}
                       rel={slide.ctaTarget === "_blank" ? "noreferrer" : undefined}
-                      className="inline-flex gradient-primary text-primary-foreground px-6 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity"
+                      className="cheepy-btn-primary cheepy-btn-primary-sm"
                     >
                       {slide.ctaText}
                     </a>
                   ) : (
                     <button
                       type="button"
-                      className="gradient-primary text-primary-foreground px-6 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity"
+                      className="cheepy-btn-primary cheepy-btn-primary-sm"
                     >
                       {slide.ctaText}
                     </button>

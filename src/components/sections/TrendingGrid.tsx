@@ -77,7 +77,7 @@ function ApiProductCard({ p }: { p: Product }) {
         >
           <Heart size={14} className={isFavorite ? "fill-primary text-primary" : ""} />
         </button>
-        <span className="absolute bottom-3 left-3 right-3 h-10 rounded-lg gradient-primary text-primary-foreground text-sm font-medium flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-300 pointer-events-none">
+        <span className="absolute bottom-3 left-3 right-3 cheepy-btn-primary cheepy-btn-primary-sm flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-300 pointer-events-none">
           <ShoppingCart size={14} /> В корзину
         </span>
       </div>
@@ -235,7 +235,7 @@ const TrendingGrid = ({ title, subtitle, feed: feedProp }: TrendingGridProps) =>
                 >
                   <Heart size={14} />
                 </button>
-                <span className="pointer-events-none absolute bottom-3 left-3 right-3 h-10 rounded-lg gradient-primary text-primary-foreground text-sm font-medium flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-300">
+                <span className="pointer-events-none absolute bottom-3 left-3 right-3 cheepy-btn-primary cheepy-btn-primary-sm flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-300">
                   <ShoppingCart size={14} /> В корзину
                 </span>
                 {p.oldPrice ? (

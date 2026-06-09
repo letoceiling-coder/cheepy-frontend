@@ -17,7 +17,7 @@ const MarketplaceCta = () => {
             <span className="text-xs uppercase tracking-widest text-primary font-medium">Для продавцов</span>
             <h2 className="text-3xl md:text-4xl font-bold text-background mt-3 leading-tight">Начните продавать на Cheepy</h2>
             <p className="text-background/60 mt-4 leading-relaxed">Присоединяйтесь к 45 000 продавцов. Миллионы покупателей ждут ваши товары.</p>
-            <button className="mt-8 h-12 px-8 rounded-xl gradient-primary text-primary-foreground font-semibold flex items-center gap-2 hover:opacity-90 transition-all duration-300 group">
+            <button className="mt-8 cheepy-btn-primary cheepy-btn-primary-lg flex items-center gap-2 transition-all duration-300 group">
               Начать продавать <ArrowRight size={16} className="transition-transform duration-300 group-hover:translate-x-1" />
             </button>
           </div>

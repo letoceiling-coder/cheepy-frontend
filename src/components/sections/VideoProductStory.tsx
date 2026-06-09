@@ -16,7 +16,7 @@ const VideoProductStory = () => {
           </video>
         </div>
         <p className="text-sm text-muted-foreground mb-3">От идеи до готового продукта — узнайте, как мы отбираем лучшие товары для вас</p>
-        <button className="h-9 px-5 gradient-primary text-primary-foreground rounded-lg font-semibold text-sm inline-flex items-center gap-2 hover:opacity-90 transition-opacity">
+        <button className="cheepy-btn-primary cheepy-btn-primary-sm inline-flex items-center gap-2">
           Узнать больше <ArrowRight size={14} />
         </button>
       </div>

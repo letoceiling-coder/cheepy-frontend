@@ -47,7 +47,7 @@ const TiltCard = ({ product }: { product: (typeof products)[0] }) => {
           <p className="text-xs font-semibold text-foreground">{product.name}</p>
           <p className="text-xs font-bold text-primary mt-0.5">{product.price}</p>
         </div>
-        <button className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center hover:opacity-90 transition-opacity">
+        <button className="cheepy-btn-primary cheepy-btn-primary-icon flex items-center justify-center">
           <ShoppingCart size={14} className="text-primary-foreground" />
         </button>
       </div>

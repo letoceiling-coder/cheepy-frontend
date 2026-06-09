@@ -15,7 +15,7 @@ const VideoHeroBanner = () => {
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 gap-2">
           <h2 className="text-2xl md:text-3xl font-bold text-primary-foreground">Весенняя коллекция 2025</h2>
           <p className="text-sm text-primary-foreground/80 max-w-md">Стиль, комфорт и качество в каждой детали</p>
-          <button className="mt-2 h-10 px-6 gradient-primary text-primary-foreground rounded-lg font-semibold text-sm flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <button className="mt-2 cheepy-btn-primary cheepy-btn-primary-sm flex items-center gap-2">
             Смотреть коллекцию <ArrowRight size={14} />
           </button>
         </div>

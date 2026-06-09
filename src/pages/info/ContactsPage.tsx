@@ -46,7 +46,7 @@ const ContactsPage = () => {
               <input placeholder="Имя" required className="h-12 px-4 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:border-primary transition-colors" />
               <input type="email" placeholder="Email" required className="h-12 px-4 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:border-primary transition-colors" />
               <textarea placeholder="Сообщение" required rows={4} className="md:col-span-2 px-4 py-3 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:border-primary transition-colors resize-none" />
-              <button type="submit" className="md:col-span-2 h-12 rounded-lg gradient-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity w-full md:w-auto md:px-8 md:justify-self-start">
+              <button type="submit" className="md:col-span-2 cheepy-btn-primary cheepy-btn-primary-lg flex items-center justify-center gap-2 w-full md:w-auto md:justify-self-start">
                 <Send size={16} /> Отправить
               </button>
             </form>

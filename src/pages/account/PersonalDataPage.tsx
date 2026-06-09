@@ -139,7 +139,7 @@ const PersonalDataPage = () => {
         <p className="text-sm text-muted-foreground mb-4">
           Войдите или зарегистрируйтесь, чтобы управлять адресами, заказами, оплатой, бонусным счётом, купонами и реферальной программой.
         </p>
-        <Button asChild className="gradient-primary text-primary-foreground rounded-lg">
+        <Button asChild className="">
           <a href="/auth">Войти</a>
         </Button>
       </div>
@@ -290,7 +290,7 @@ const PersonalDataPage = () => {
         </div>
       </div>
 
-      <Button onClick={() => void saveProfile()} disabled={saving} className="gradient-primary text-primary-foreground rounded-lg gap-2">
+      <Button onClick={() => void saveProfile()} disabled={saving} className=" gap-2">
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}Сохранить изменения
       </Button>
     </div>

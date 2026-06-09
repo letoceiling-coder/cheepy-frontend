@@ -67,7 +67,7 @@ const PersonSupport = () => {
               <div key={i} className={`flex ${m.from === "user" ? "justify-end" : "justify-start"} animate-fade-in`}>
                 <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-xs ${
                   m.from === "user"
-                    ? "gradient-primary text-primary-foreground"
+                    ? "cheepy-btn-primary cheepy-btn-primary-sm"
                     : "bg-secondary text-foreground"
                 }`}>
                   {m.text}
@@ -83,7 +83,7 @@ const PersonSupport = () => {
               placeholder="Введите сообщение..."
               className="rounded-xl text-xs h-9"
             />
-            <Button onClick={sendMessage} size="sm" className="gradient-primary text-primary-foreground rounded-xl px-3">
+            <Button onClick={sendMessage} size="sm">
               <Send className="w-3.5 h-3.5" />
             </Button>
           </div>

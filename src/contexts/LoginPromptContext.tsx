@@ -71,7 +71,7 @@ const LoginPromptModal = ({ open, onOpenChange, actionLabel }: { open: boolean; 
           <div className="flex flex-col gap-2.5">
             <button
               onClick={() => { onOpenChange(false); navigate("/auth"); }}
-              className="h-11 w-full gradient-primary text-primary-foreground rounded-xl font-semibold text-sm hover:opacity-90 transition-all duration-200"
+              className="w-full cheepy-btn-primary cheepy-btn-primary-sm transition-all duration-200"
             >
               Войти
             </button>

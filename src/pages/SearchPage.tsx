@@ -99,7 +99,7 @@ const SearchPage = () => {
                     type="button"
                     onClick={() => setPage(p)}
                     className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
-                      page === p ? "gradient-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
+                      page === p ? "cheepy-btn-primary cheepy-btn-primary-sm" : "bg-secondary text-foreground hover:bg-secondary/80"
                     }`}
                   >
                     {p}

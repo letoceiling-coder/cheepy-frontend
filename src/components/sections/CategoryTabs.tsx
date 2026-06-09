@@ -15,7 +15,7 @@ const CategoryTabs = () => {
       <h2 className="text-2xl font-bold text-foreground mb-4">По категориям</h2>
       <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-1">
         {tabs.map((t) => (
-          <button key={t} onClick={() => setActive(t)} className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200 ${active === t ? "gradient-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"}`}>
+          <button key={t} onClick={() => setActive(t)} className={`px-4 py-2 rounded-[10px] text-sm font-medium whitespace-nowrap transition-all duration-200 ${active === t ? "cheepy-btn-primary cheepy-btn-primary-sm" : "bg-secondary text-foreground hover:bg-secondary/80"}`}>
             {t}
           </button>
         ))}

@@ -87,7 +87,7 @@ const LookOfTheDay = () => {
               </div>
               <p className="text-[11px] text-primary font-medium">Скидка при покупке комплекта</p>
             </div>
-            <button className="h-10 px-5 gradient-primary text-primary-foreground rounded-lg font-semibold text-sm flex items-center gap-2 hover:opacity-90 transition-opacity shrink-0">
+            <button className="cheepy-btn-primary cheepy-btn-primary-sm flex items-center gap-2 shrink-0">
               <ShoppingCart size={15} /> Купить образ
             </button>
           </div>

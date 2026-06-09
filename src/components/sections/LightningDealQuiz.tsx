@@ -157,7 +157,7 @@ const LightningDealQuiz = () => {
               ))}
             </div>
             <div className="flex gap-2">
-              <button className="h-9 px-5 gradient-primary text-primary-foreground rounded-lg font-semibold text-sm flex items-center gap-2 hover:opacity-90 transition-opacity">
+              <button className="cheepy-btn-primary cheepy-btn-primary-sm flex items-center gap-2">
                 Забрать скидку <ArrowRight size={14} />
               </button>
               <button onClick={reset} className="h-9 px-4 rounded-lg border border-border text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">

@@ -17,7 +17,7 @@ const SplitVideoFeature = () => {
           <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">Новая коллекция</span>
           <h3 className="text-xl font-bold text-foreground leading-tight">Смотрите товар в действии</h3>
           <p className="text-sm text-muted-foreground leading-relaxed">Подробные видеообзоры помогут вам сделать правильный выбор — увидьте качество и детали вживую.</p>
-          <button className="mt-2 self-start h-9 px-5 gradient-primary text-primary-foreground rounded-lg font-semibold text-sm flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <button className="mt-2 self-start cheepy-btn-primary cheepy-btn-primary-sm flex items-center gap-2">
             Смотреть каталог <ArrowRight size={14} />
           </button>
         </div>

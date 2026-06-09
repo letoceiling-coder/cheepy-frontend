@@ -4,6 +4,7 @@ import { Search, LayoutGrid, Store, Package } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { publicApi } from "@/lib/api";
 import { useConstructorCanvasPreview } from "@/constructor/context/ConstructorCanvasPreviewContext";
+import { CHEEPY_BTN_PRIMARY_ICON } from "@/lib/buttonStyles";
 
 type HeaderSearchBarProps = {
   placeholder: string;
@@ -87,11 +88,7 @@ export function HeaderSearchBar({ placeholder, compact = false, autoFocus }: Hea
           type="button"
           aria-label="Искать"
           onClick={() => runSearch()}
-          className={
-            compact
-              ? "absolute right-1 top-1/2 -translate-y-1/2 gradient-primary p-1.5 rounded-full text-primary-foreground"
-              : "absolute right-1 top-1/2 -translate-y-1/2 gradient-primary p-2 rounded-full text-primary-foreground"
-          }
+          className={`absolute right-1 top-1/2 -translate-y-1/2 ${CHEEPY_BTN_PRIMARY_ICON}`}
         >
           <Search className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
         </button>

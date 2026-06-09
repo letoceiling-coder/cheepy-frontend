@@ -47,7 +47,7 @@ const LargeProductSlider = () => {
                 <button className={`absolute top-3 right-3 w-9 h-9 rounded-full bg-card/80 backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-destructive hover:text-destructive-foreground ${isHovered ? "opacity-100" : "opacity-0"}`}>
                   <Heart size={16} />
                 </button>
-                <button className={`absolute bottom-3 left-3 right-3 h-11 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-300 hover:opacity-90 ${isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+                <button className={`absolute bottom-3 left-3 right-3 cheepy-btn-primary cheepy-btn-primary-sm flex items-center justify-center gap-2 transition-all duration-300 ${isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
                   <ShoppingCart size={16} /> В корзину
                 </button>
               </div>

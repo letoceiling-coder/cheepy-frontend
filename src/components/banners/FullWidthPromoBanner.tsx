@@ -13,7 +13,7 @@ const FullWidthPromoBanner = () => {
           <span className="text-[11px] text-primary-foreground/70 font-semibold uppercase tracking-wider">Ограниченное время</span>
           <h2 className="text-xl md:text-2xl font-bold text-primary-foreground mt-1 leading-tight">Специальные предложения этой недели</h2>
           <p className="text-sm text-primary-foreground/80 mt-2">Лучшие товары по сниженным ценам — успейте до конца акции</p>
-          <button className="mt-4 self-start h-9 px-5 gradient-primary text-primary-foreground rounded-lg font-semibold text-sm flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <button className="mt-4 self-start cheepy-btn-primary cheepy-btn-primary-sm flex items-center gap-2">
             Смотреть <ArrowRight size={14} />
           </button>
         </div>

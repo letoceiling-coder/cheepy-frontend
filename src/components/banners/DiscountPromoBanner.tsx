@@ -37,7 +37,7 @@ const DiscountPromoBanner = () => {
               <span key={i} className="bg-primary-foreground/20 backdrop-blur-sm text-primary-foreground text-sm font-bold px-2 py-1 rounded">{v}</span>
             ))}
           </div>
-          <button className="mt-2 h-9 px-5 gradient-primary text-primary-foreground rounded-lg font-semibold text-sm flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <button className="mt-2 cheepy-btn-primary cheepy-btn-primary-sm flex items-center gap-2">
             Купить со скидкой <ArrowRight size={14} />
           </button>
         </div>

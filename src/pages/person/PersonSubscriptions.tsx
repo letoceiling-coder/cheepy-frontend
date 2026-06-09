@@ -94,7 +94,7 @@ const PersonSubscriptions = () => {
             ) : (
               <Button
                 onClick={() => handleSubscribe(plan.name)}
-                className="w-full gradient-primary text-primary-foreground rounded-xl text-xs shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
+                className="w-full cheepy-btn-primary cheepy-btn-primary-sm shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
               >
                 Подключить <ChevronRight className="w-3 h-3 ml-1" />
               </Button>

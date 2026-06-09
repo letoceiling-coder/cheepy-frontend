@@ -86,7 +86,7 @@ function MinimalGridProductCard({ p }: { p: Product }) {
         >
           <Heart className={`w-4 h-4 ${isFavorite ? "fill-primary" : ""}`} />
         </button>
-        <span className="pointer-events-none absolute bottom-2 left-2 right-14 h-8 rounded-lg gradient-primary text-primary-foreground text-xs font-medium flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+        <span className="pointer-events-none absolute bottom-2 left-2 right-14 cheepy-btn-primary cheepy-btn-primary-sm text-xs flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
           <ShoppingCart size={12} aria-hidden /> В корзину
         </span>
       </div>

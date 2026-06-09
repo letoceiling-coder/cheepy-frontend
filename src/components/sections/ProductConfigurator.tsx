@@ -52,14 +52,14 @@ const ProductConfigurator = () => {
                   <button
                     key={s}
                     onClick={() => setSize(i)}
-                    className={`w-9 h-7 rounded-md text-[11px] font-medium transition-all ${i === size ? "bg-primary text-primary-foreground" : "border border-border text-foreground hover:border-primary/40"}`}
+                    className={`w-9 h-7 rounded-md text-[11px] font-medium transition-all ${i === size ? "cheepy-btn-primary cheepy-btn-primary-sm" : "border border-border text-foreground hover:border-primary/40"}`}
                   >
                     {s}
                   </button>
                 ))}
               </div>
             </div>
-            <button className="h-9 w-full gradient-primary text-primary-foreground rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity">
+            <button className="w-full cheepy-btn-primary cheepy-btn-primary-sm">
               Добавить в корзину
             </button>
           </div>

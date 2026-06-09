@@ -150,7 +150,7 @@ const SellersSection = () => {
             onClick={() => setSortType(sortType === "rating" ? "verified" : "rating")}
             className={
               sortType === "rating"
-                ? "gradient-primary text-primary-foreground text-xs font-semibold px-2.5 py-1 rounded transition-opacity hover:opacity-90"
+                ? "cheepy-btn-primary cheepy-btn-primary-sm text-xs px-2.5 py-1 transition-opacity"
                 : "bg-secondary border border-border text-foreground text-xs font-semibold px-2.5 py-1 rounded transition-colors hover:bg-secondary/80"
             }
           >

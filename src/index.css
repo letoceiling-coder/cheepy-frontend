@@ -75,7 +75,9 @@
     color: #ffffff;
     font-weight: 600;
     border: none;
+    cursor: pointer;
     transition: opacity 0.2s ease;
+    text-decoration: none;
   }
 
   .cheepy-btn-primary:hover {
@@ -86,6 +88,24 @@
     opacity: 0.5;
     pointer-events: none;
   }
+
+  .cheepy-btn-primary-sm {
+    padding: 10px 20px;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .cheepy-btn-primary-lg {
+    padding: 16px 40px;
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  .cheepy-btn-primary-icon {
+    padding: 10px;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+  }
 }
 
 @layer utilities {
@@ -94,7 +114,8 @@
   }
 
   button.gradient-primary,
-  a.gradient-primary {
+  a.gradient-primary,
+  .cheepy-btn-primary {
     border-radius: 10px;
   }
 

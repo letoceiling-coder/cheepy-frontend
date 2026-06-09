@@ -221,12 +221,12 @@ const PersonOrders = () => {
                   {/* Actions — enhanced */}
                   <div className="flex flex-wrap gap-2">
                     {order.status === "shipped" && (
-                      <Button onClick={() => handleAction("Отследить заказ")} size="sm" className="gradient-primary text-primary-foreground rounded-xl text-xs shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-200">
+                      <Button onClick={() => handleAction("Отследить заказ")} size="sm" className="text-xs shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-200">
                         <Truck className="w-3 h-3 mr-1.5" /> Отследить
                       </Button>
                     )}
                     {order.status === "delivered" && (
-                      <Button onClick={() => handleAction("Оставить отзыв")} size="sm" className="gradient-primary text-primary-foreground rounded-xl text-xs shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-200">
+                      <Button onClick={() => handleAction("Оставить отзыв")} size="sm" className="text-xs shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-200">
                         Оставить отзыв
                       </Button>
                     )}

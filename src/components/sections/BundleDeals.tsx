@@ -61,7 +61,7 @@ const BundleDeals = () => {
                   </div>
                   <p className="text-[10px] text-primary font-medium flex items-center gap-1"><Check size={10} /> Экономия {(total - final_).toLocaleString()} ₽</p>
                 </div>
-                <button className="h-8 px-4 gradient-primary text-primary-foreground rounded-lg font-semibold text-xs flex items-center gap-1.5 hover:opacity-90 transition-opacity">
+                <button className="cheepy-btn-primary cheepy-btn-primary-sm flex items-center gap-1.5">
                   <ShoppingCart size={13} /> В корзину
                 </button>
               </div>

@@ -100,7 +100,7 @@ const PersonSecurity = () => {
             <p className={`text-xs mt-1 ${strength.textCls}`}>{strength.label}</p>
           </div>
         )}
-        <Button onClick={handleChangePassword} disabled={submitting} className="gradient-primary text-primary-foreground rounded-xl px-6 mt-4 shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-60">
+        <Button onClick={handleChangePassword} disabled={submitting} className="mt-4 shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-60">
           {submitting ? <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />Сохранение...</span> : "Изменить пароль"}
         </Button>
       </section>

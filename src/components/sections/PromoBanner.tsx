@@ -33,7 +33,7 @@ function CtaControl({ slide }: { slide: MediaSlide }) {
   const { ctaText, ctaUrl, ctaTarget } = slide;
   if (!ctaText.trim()) return null;
   const common =
-    "mt-6 inline-flex h-12 px-8 rounded-xl gradient-primary text-primary-foreground font-semibold items-center gap-2 hover:opacity-90 transition-all duration-300 group";
+    "mt-6 cheepy-btn-primary cheepy-btn-primary-lg group transition-all duration-300";
   if (ctaUrl.startsWith("/") && ctaTarget !== "_blank") {
     return (
       <Link to={ctaUrl} className={common}>

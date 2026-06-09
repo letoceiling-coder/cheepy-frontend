@@ -72,7 +72,7 @@ const DealCard = ({ deal }: { deal: ActiveHotDeal }) => {
         )}
         <Link
           to={deal.url}
-          className="mt-auto w-full gradient-primary text-primary-foreground text-xs py-2 rounded-full font-medium flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="mt-auto w-full cheepy-btn-primary cheepy-btn-primary-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
           aria-disabled={expired}
         >
           <ShoppingCart className="w-3.5 h-3.5" />

@@ -96,7 +96,7 @@ const PersonPayments = () => {
             <Button
               onClick={handleAddCard}
               disabled={submitting}
-              className="gradient-primary text-primary-foreground rounded-xl px-6 mt-4 w-full shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-60"
+              className="mt-4 w-full shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-60"
             >
               {submitting ? (
                 <span className="flex items-center gap-2">
@@ -118,7 +118,7 @@ const PersonPayments = () => {
                 <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
             </div>
-            <Button onClick={handleAddPayment} className="gradient-primary text-primary-foreground rounded-xl px-6 w-full shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
+            <Button onClick={handleAddPayment} className="w-full shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
               Добавить способ оплаты
             </Button>
             <p className="text-xs text-muted-foreground mt-3">

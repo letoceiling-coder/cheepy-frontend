@@ -43,7 +43,7 @@ const CinematicHero = () => {
             <p className="text-primary-foreground/70 text-sm uppercase tracking-widest mb-2">{slides[current].subtitle}</p>
             <h2 className="text-4xl md:text-5xl font-bold text-primary-foreground leading-tight mb-6">{slides[current].title}</h2>
             <div className="flex flex-wrap gap-3">
-              <button className="h-12 px-8 rounded-xl gradient-primary text-primary-foreground font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity group">
+              <button className="cheepy-btn-primary cheepy-btn-primary-lg flex items-center gap-2 group">
                 {slides[current].cta1} <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
               </button>
               <button className="h-12 px-8 rounded-xl border border-primary-foreground/30 text-primary-foreground font-medium hover:bg-primary-foreground/10 transition-colors">

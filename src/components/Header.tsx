@@ -12,6 +12,7 @@ import { HEADER_DEFAULT_SETTINGS } from "@/shared/layoutDefaults";
 import type { HeaderSettings, NavLinkItem, SocialLinkItem } from "@/constructor/types";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { loadGlobalLayoutSettings } from "@/shared/globalLayout";
+import { CHEEPY_BTN_PRIMARY_SM } from "@/lib/buttonStyles";
 
 const YoutubeIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
@@ -289,7 +290,7 @@ const Header = ({ settings }: HeaderProps) => {
             </div>
 
             <div className="hidden lg:flex items-center gap-6 text-muted-foreground">
-              <button className="px-3 py-1 border border-border rounded-full hover:border-primary hover:text-foreground transition-colors">
+              <button type="button" className={CHEEPY_BTN_PRIMARY_SM}>
                 {mergedSettings.sellerCtaText}
               </button>
               <span className="hover:text-foreground transition-colors cursor-pointer">{mergedSettings.wholesaleText}</span>
@@ -326,10 +327,7 @@ const Header = ({ settings }: HeaderProps) => {
 
                   <button
                     type="button"
-                    className="flex items-center gap-3 w-full text-left px-3 py-3 rounded-xl text-sm font-semibold text-primary-foreground mb-2"
-                    style={{
-                      background: "linear-gradient(135deg, hsl(262, 83%, 58%), hsl(280, 90%, 60%))",
-                    }}
+                    className={`${CHEEPY_BTN_PRIMARY_SM} w-full justify-start mb-2`}
                     onClick={() => {
                       closeMobileMenu();
                       setShowCategories(true);
@@ -472,23 +470,9 @@ const Header = ({ settings }: HeaderProps) => {
 
             {/* Categories button */}
             <button
+              type="button"
               onClick={() => setShowCategories(!showCategories)}
-              className="hidden md:flex text-primary-foreground px-5 py-2.5 rounded-full items-center gap-2 font-semibold text-sm shrink-0 transition-all duration-200"
-              style={{
-                background: showCategories
-                  ? "linear-gradient(135deg, hsl(262, 83%, 65%), hsl(280, 90%, 67%))"
-                  : "linear-gradient(135deg, hsl(262, 83%, 58%), hsl(280, 90%, 60%))",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  "linear-gradient(135deg, hsl(262, 83%, 65%), hsl(280, 90%, 67%))";
-              }}
-              onMouseLeave={(e) => {
-                if (!showCategories) {
-                  (e.currentTarget as HTMLButtonElement).style.background =
-                    "linear-gradient(135deg, hsl(262, 83%, 58%), hsl(280, 90%, 60%))";
-                }
-              }}
+              className={`hidden md:flex ${CHEEPY_BTN_PRIMARY_SM} shrink-0 transition-opacity ${showCategories ? "opacity-95 ring-2 ring-primary/25" : ""}`}
             >
               <span className="relative w-4 h-4">
                 <Grid2X2

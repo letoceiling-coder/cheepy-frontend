@@ -264,7 +264,7 @@ export default function CategoryListingContent() {
         <button
           type="button"
           onClick={() => setShowFilters(true)}
-          className="lg:hidden fixed bottom-20 right-4 z-[1040] gradient-primary text-primary-foreground p-3 rounded-full shadow-lg"
+          className="lg:hidden fixed bottom-20 right-4 z-[1040] cheepy-btn-primary cheepy-btn-primary-icon shadow-lg"
           aria-label="Фильтры"
         >
           <SlidersHorizontal className="w-5 h-5" />
@@ -294,7 +294,7 @@ export default function CategoryListingContent() {
               <div className="shrink-0 border-t border-border bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
                 <Button
                   onClick={() => setShowFilters(false)}
-                  className="w-full gradient-primary text-primary-foreground rounded-lg"
+                  className="w-full cheepy-btn-primary cheepy-btn-primary-sm"
                 >
                   Применить
                 </Button>
@@ -333,7 +333,7 @@ export default function CategoryListingContent() {
                 <button
                   type="button"
                   onClick={() => setViewMode("grid")}
-                  className={`p-2 ${viewMode === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}
+                  className={`p-2 ${viewMode === "grid" ? "cheepy-btn-primary cheepy-btn-primary-icon" : "text-muted-foreground hover:bg-secondary"}`}
                   aria-label="Сетка"
                 >
                   <Grid2X2 className="w-4 h-4" />
@@ -341,7 +341,7 @@ export default function CategoryListingContent() {
                 <button
                   type="button"
                   onClick={() => setViewMode("list")}
-                  className={`p-2 ${viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}
+                  className={`p-2 ${viewMode === "list" ? "cheepy-btn-primary cheepy-btn-primary-icon" : "text-muted-foreground hover:bg-secondary"}`}
                   aria-label="Список"
                 >
                   <LayoutList className="w-4 h-4" />
@@ -383,7 +383,7 @@ export default function CategoryListingContent() {
                   type="button"
                   onClick={() => setCurrentPage(p)}
                   className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
-                    currentPage === p ? "gradient-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
+                    currentPage === p ? "cheepy-btn-primary cheepy-btn-primary-sm" : "bg-secondary text-foreground hover:bg-secondary/80"
                   }`}
                 >
                   {p}

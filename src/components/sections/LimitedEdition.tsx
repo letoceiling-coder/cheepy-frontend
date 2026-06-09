@@ -64,7 +64,7 @@ const LimitedEdition = () => {
                     <div className="h-full rounded-full bg-destructive transition-all" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
-                <button className="mt-3 w-full h-8 gradient-primary text-primary-foreground rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
+                <button className="mt-3 w-full cheepy-btn-primary cheepy-btn-primary-sm text-xs flex items-center justify-center gap-1.5">
                   Купить <ArrowRight size={12} />
                 </button>
               </div>

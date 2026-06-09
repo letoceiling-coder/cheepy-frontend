@@ -18,7 +18,7 @@ const VideoDemoBanner = () => {
           </video>
         </div>
         <div className="text-center mt-3">
-          <button className="h-9 px-5 gradient-primary text-primary-foreground rounded-lg font-semibold text-sm inline-flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <button className="cheepy-btn-primary cheepy-btn-primary-sm inline-flex items-center gap-2">
             Купить сейчас <ArrowRight size={14} />
           </button>
         </div>

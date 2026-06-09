@@ -78,7 +78,7 @@ const BestsellerCard = ({ product }: { product: BestsellProduct }) => {
           </div>
           <button
             className={cn(
-              "p-1.5 rounded-full gradient-primary text-primary-foreground transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5 active:translate-y-0",
+              "cheepy-btn-primary cheepy-btn-primary-icon transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0",
               isHovered ? "opacity-100 scale-100" : "opacity-0 scale-90 pointer-events-none"
             )}
             aria-label="В корзину"

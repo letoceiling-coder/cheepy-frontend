@@ -17,7 +17,7 @@ const SplitVideoBanner = () => {
           <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">Видеообзор</span>
           <h2 className="text-xl font-bold text-foreground leading-tight">Посмотрите товар в деталях</h2>
           <p className="text-sm text-muted-foreground">Видео поможет оценить качество, материал и посадку до покупки.</p>
-          <button className="mt-1 self-start h-9 px-5 gradient-primary text-primary-foreground rounded-lg font-semibold text-sm flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <button className="mt-1 self-start cheepy-btn-primary cheepy-btn-primary-sm flex items-center gap-2">
             Перейти в каталог <ArrowRight size={14} />
           </button>
         </div>

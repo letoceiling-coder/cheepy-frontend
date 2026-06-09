@@ -118,7 +118,7 @@ const DealDiscoveryQuiz = () => {
                 <button
                   onClick={confirmMulti}
                   disabled={multiPicks.length === 0}
-                  className="ml-auto h-8 px-4 gradient-primary text-primary-foreground rounded-lg font-semibold text-xs flex items-center gap-1 hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="ml-auto cheepy-btn-primary cheepy-btn-primary-sm flex items-center gap-1 disabled:opacity-50"
                 >
                   Далее <ArrowRight size={12} />
                 </button>
@@ -133,7 +133,7 @@ const DealDiscoveryQuiz = () => {
             <p className="text-sm font-semibold text-foreground mb-2">Теперь у вас есть доступ к эксклюзивным предложениям!</p>
             <p className="text-xs text-muted-foreground mb-4">Мы подберём лучшие скидки и новинки специально для вас</p>
             <div className="flex justify-center gap-2">
-              <button className="h-9 px-5 gradient-primary text-primary-foreground rounded-lg font-semibold text-sm flex items-center gap-2 hover:opacity-90 transition-opacity">
+              <button className="cheepy-btn-primary cheepy-btn-primary-sm flex items-center gap-2">
                 Получить скидки <ArrowRight size={14} />
               </button>
               <button onClick={reset} className="h-9 px-4 rounded-lg border border-border text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">

@@ -71,7 +71,7 @@ const ProductComparison = () => {
               <td className="p-4" />
               {products.map((p) => (
                 <td key={p.id} className="p-4 text-center">
-                  <button className="h-9 px-5 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity">В корзину</button>
+                  <button className="cheepy-btn-primary cheepy-btn-primary-sm">В корзину</button>
                 </td>
               ))}
             </tr>

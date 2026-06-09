@@ -66,7 +66,7 @@ const ModelVideoCard = ({ id, name, price, videoSrc, className }: ModelVideoCard
         <div className="mt-auto">
           <button
             type="button"
-            className="h-9 w-full rounded-lg gradient-primary text-primary-foreground text-sm font-semibold inline-flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+            className="w-full cheepy-btn-primary cheepy-btn-primary-sm inline-flex items-center justify-center gap-2"
             aria-label={`Добавить в корзину: ${name}`}
           >
             <ShoppingCart className="h-4 w-4" />

@@ -53,7 +53,7 @@ const ProductShowcase = () => {
             )}
           </div>
           <div className="flex gap-3">
-            <button className="flex-1 h-10 rounded-xl gradient-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity text-sm">
+            <button className="flex-1 cheepy-btn-primary cheepy-btn-primary-sm flex items-center justify-center gap-2 text-sm">
               <ShoppingCart size={16} /> В корзину
             </button>
             <button

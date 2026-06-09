@@ -111,7 +111,7 @@ function HeroProductCard({ item, isActive }: { item: ItemProp; isActive: boolean
             href={ctaUrl}
             target={ctaTarget}
             rel={ctaTarget === "_blank" ? "noopener noreferrer" : undefined}
-            className="mt-4 md:mt-6 h-11 md:h-12 px-6 md:px-8 rounded-xl gradient-primary text-primary-foreground text-sm md:text-base font-semibold inline-flex items-center justify-center gap-2 hover:opacity-90 transition-opacity group w-full sm:w-auto md:w-fit shrink-0"
+            className="mt-4 md:mt-6 cheepy-btn-primary cheepy-btn-primary-lg inline-flex items-center justify-center gap-2 group w-full sm:w-auto md:w-fit shrink-0"
           >
             {ctaText}
             <ArrowRight size={16} className="transition-transform group-hover:translate-x-1 shrink-0" />

@@ -68,7 +68,7 @@ const ChangePasswordPage = () => {
           {confirm && newPass !== confirm && <p className="text-xs text-destructive mt-1">Пароли не совпадают</p>}
         </div>
 
-        <Button type="submit" disabled={saving || !current || !newPass || newPass !== confirm} className="gradient-primary text-primary-foreground rounded-lg">
+        <Button type="submit" disabled={saving || !current || !newPass || newPass !== confirm} className="">
           {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}Сменить пароль
         </Button>
       </form>

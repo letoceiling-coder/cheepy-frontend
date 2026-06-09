@@ -16,7 +16,7 @@ const PromoVideoBanner = () => {
           <span className="text-[11px] font-semibold text-primary-foreground/70 uppercase tracking-widest">Только на этой неделе</span>
           <h2 className="text-xl md:text-2xl font-bold text-primary-foreground leading-tight max-w-md">Горячие скидки на топовые бренды</h2>
           <p className="text-sm text-primary-foreground/80 max-w-sm">Успейте купить до конца акции — лучшие товары по специальным ценам</p>
-          <button className="mt-1 h-9 px-6 gradient-primary text-primary-foreground rounded-lg font-semibold text-sm flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <button className="mt-1 cheepy-btn-primary cheepy-btn-primary-sm flex items-center gap-2">
             Смотреть предложения <ArrowRight size={14} />
           </button>
         </div>

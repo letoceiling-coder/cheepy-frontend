@@ -19,7 +19,7 @@ const SplitHero = () => {
             Каждая вещь создана для тех, кто ценит стиль без компромиссов.
           </p>
           <div>
-            <button className="h-12 px-8 rounded-xl gradient-primary text-primary-foreground font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity group">
+            <button className="cheepy-btn-primary cheepy-btn-primary-lg flex items-center gap-2 group">
               Смотреть коллекцию <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
             </button>
           </div>

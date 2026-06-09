@@ -14,7 +14,7 @@ const SplitProductBanner = () => {
           <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">Новинка сезона</span>
           <h2 className="text-2xl font-bold text-foreground leading-tight">Обновите свой стиль сегодня</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">Премиальные материалы и современный крой — коллекция, которая подчеркнёт вашу индивидуальность.</p>
-          <button className="mt-2 self-start h-10 px-6 gradient-primary text-primary-foreground rounded-lg font-semibold text-sm flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <button className="mt-2 self-start cheepy-btn-primary cheepy-btn-primary-sm flex items-center gap-2">
             Купить сейчас <ArrowRight size={14} />
           </button>
         </div>

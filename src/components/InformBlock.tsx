@@ -28,7 +28,7 @@ const InformBlock = () => {
               <p className="text-sm text-muted-foreground">
                 Ознакомьтесь со всеми преимуществами нашей площадки, чтобы пользоваться всеми привилегиями
               </p>
-              <button className="gradient-primary text-primary-foreground px-8 py-3 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity">
+              <button className="cheepy-btn-primary cheepy-btn-primary-lg">
                 Зарегистрироваться
               </button>
               <p className="text-sm">
@@ -40,7 +40,7 @@ const InformBlock = () => {
               <p className="text-sm text-muted-foreground">
                 Если у вас возникли вопросы, пожалуйста свяжитесь с нами
               </p>
-              <button className="gradient-primary text-primary-foreground px-8 py-3 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity">
+              <button className="cheepy-btn-primary cheepy-btn-primary-lg">
                 Связаться
               </button>
               <p className="text-sm text-muted-foreground">

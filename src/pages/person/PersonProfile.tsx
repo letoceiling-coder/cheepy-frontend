@@ -150,7 +150,7 @@ const PersonProfile = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleSave} size="sm" className="gradient-primary text-primary-foreground rounded-xl px-5 text-xs shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
+              <Button onClick={handleSave} size="sm" className="text-xs shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
                 <Save className="w-3 h-3 mr-1.5" /> Сохранить
               </Button>
               <Button onClick={() => setEditing(false)} variant="outline" size="sm" className="rounded-xl text-xs">
@@ -175,7 +175,7 @@ const PersonProfile = () => {
       <section className="animate-fade-in" style={{ animationDelay: "150ms", animationFillMode: "both" }}>
         <div className="flex items-center gap-2 mb-4">
           <h2 className="text-lg font-bold text-foreground">Адрес доставки</h2>
-          <button onClick={() => handleAddressAction("Добавить адрес")} className="w-6 h-6 rounded-full gradient-primary flex items-center justify-center text-primary-foreground shadow-md shadow-primary/20 hover:scale-110 active:scale-95 transition-transform duration-200">
+          <button type="button" onClick={() => handleAddressAction("Добавить адрес")} className="cheepy-btn-primary cheepy-btn-primary-icon !min-h-6 !min-w-6 !p-0 shadow-md shadow-primary/20 hover:scale-110 active:scale-95 transition-transform duration-200">
             <Plus className="w-3 h-3" />
           </button>
         </div>
@@ -219,7 +219,7 @@ const PersonProfile = () => {
       <section className="animate-fade-in" style={{ animationDelay: "300ms", animationFillMode: "both" }}>
         <div className="flex items-center gap-2 mb-4">
           <h2 className="text-lg font-bold text-foreground">Пункты выдачи</h2>
-          <button onClick={() => handleAddressAction("Добавить пункт выдачи")} className="w-6 h-6 rounded-full gradient-primary flex items-center justify-center text-primary-foreground shadow-md shadow-primary/20 hover:scale-110 active:scale-95 transition-transform duration-200">
+          <button type="button" onClick={() => handleAddressAction("Добавить пункт выдачи")} className="cheepy-btn-primary cheepy-btn-primary-icon !min-h-6 !min-w-6 !p-0 shadow-md shadow-primary/20 hover:scale-110 active:scale-95 transition-transform duration-200">
             <Plus className="w-3 h-3" />
           </button>
         </div>
@@ -274,7 +274,7 @@ const PersonProfile = () => {
         <h2 className="text-lg font-bold text-foreground mb-3">Будьте в курсе акций</h2>
         <div className="flex items-center gap-2 max-w-md">
           <Input placeholder="Ваш e-mail" className="rounded-xl" />
-          <Button onClick={handleSubscribe} className="gradient-primary text-primary-foreground rounded-xl px-5 shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
+          <Button onClick={handleSubscribe} className="shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
             Подписаться
           </Button>
         </div>

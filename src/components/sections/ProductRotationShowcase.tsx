@@ -67,7 +67,7 @@ const ProductRotationShowcase = () => {
           <p className="text-sm font-bold text-primary">9 990 ₽</p>
         </div>
 
-        <button className="mt-3 h-9 px-5 gradient-primary text-primary-foreground rounded-lg font-semibold text-sm inline-flex items-center gap-2 hover:opacity-90 transition-opacity mx-auto">
+        <button className="mt-3 cheepy-btn-primary cheepy-btn-primary-sm inline-flex items-center gap-2 mx-auto">
           В корзину
         </button>
       </div>

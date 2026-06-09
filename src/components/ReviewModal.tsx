@@ -64,7 +64,7 @@ const ReviewModal = ({ onClose, productName }: ReviewModalProps) => {
             Добавить фото
           </button>
 
-          <Button type="submit" disabled={rating === 0} className="w-full gradient-primary text-primary-foreground rounded-lg py-3 h-auto text-sm font-semibold">
+          <Button type="submit" disabled={rating === 0} className="w-full cheepy-btn-primary cheepy-btn-primary-sm py-3 h-auto text-sm font-semibold">
             Отправить отзыв
           </Button>
         </form>

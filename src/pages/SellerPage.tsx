@@ -151,7 +151,7 @@ const SellerPage = () => {
                   href={whatsappHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex gradient-primary text-primary-foreground px-5 py-2 rounded-full text-sm font-semibold items-center gap-2 hover:opacity-90 transition-opacity"
+                  className="cheepy-btn-primary cheepy-btn-primary-sm items-center gap-2"
                 >
                   <MessageCircle className="w-4 h-4" />
                   Написать продавцу
@@ -159,7 +159,7 @@ const SellerPage = () => {
               ) : seller.contacts?.phone ? (
                 <a
                   href={`tel:${seller.contacts.phone.replace(/\s/g, "")}`}
-                  className="inline-flex gradient-primary text-primary-foreground px-5 py-2 rounded-full text-sm font-semibold items-center gap-2 hover:opacity-90 transition-opacity"
+                  className="cheepy-btn-primary cheepy-btn-primary-sm items-center gap-2"
                 >
                   <MessageCircle className="w-4 h-4" />
                   Позвонить продавцу
@@ -255,7 +255,7 @@ const SellerPage = () => {
             <button
               type="submit"
               disabled={reviewMutation.isPending}
-              className="gradient-primary text-primary-foreground px-5 py-2 rounded-full text-sm font-semibold disabled:opacity-50"
+              className="cheepy-btn-primary cheepy-btn-primary-sm disabled:opacity-50"
             >
               {reviewMutation.isPending ? "Отправка…" : "Отправить отзыв"}
             </button>

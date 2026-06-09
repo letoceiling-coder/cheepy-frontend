@@ -9,7 +9,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "gradient-primary text-primary-foreground hover:opacity-90 border-0",
+        default: "cheepy-btn-primary border-0 shadow-none",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
@@ -17,12 +17,18 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-auto min-h-10 px-6 py-2.5",
-        sm: "h-auto min-h-9 px-4 py-2 text-xs",
-        lg: "h-auto min-h-12 px-10 py-3 text-base",
-        icon: "h-10 w-10 p-0",
+        default: "h-auto min-h-0",
+        sm: "h-auto min-h-0 text-xs",
+        lg: "h-auto min-h-0",
+        icon: "h-10 w-10",
       },
     },
+    compoundVariants: [
+      { variant: "default", size: "default", class: "cheepy-btn-primary-sm" },
+      { variant: "default", size: "sm", class: "cheepy-btn-primary-sm" },
+      { variant: "default", size: "lg", class: "cheepy-btn-primary-lg" },
+      { variant: "default", size: "icon", class: "cheepy-btn-primary-icon !min-h-10 !min-w-10" },
+    ],
     defaultVariants: {
       variant: "default",
       size: "default",

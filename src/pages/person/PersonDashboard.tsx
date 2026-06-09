@@ -120,7 +120,7 @@ const PersonDashboard = () => {
                 <LogOut className="w-4 h-4" />
               </button>
             ) : (
-              <button onClick={() => requireAuth("Войти в аккаунт")} className="h-9 px-4 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shadow-md shadow-primary/20 active:scale-95">
+              <button onClick={() => requireAuth("Войти в аккаунт")} className="cheepy-btn-primary cheepy-btn-primary-sm shadow-md shadow-primary/20 active:scale-95">
                 Войти
               </button>
             )}

@@ -61,7 +61,7 @@ const TrendCard = ({ product }: { product: TrendProduct }) => {
             <span>{product.reviews} отз.</span>
           </div>
           <button
-            className={`mt-2 w-full gradient-primary text-primary-foreground text-[10px] py-1.5 rounded-full font-medium flex items-center justify-center gap-1 transition-all duration-200 hover:opacity-90 ${isHovered ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+            className={`mt-2 w-full cheepy-btn-primary cheepy-btn-primary-sm text-[10px] flex items-center justify-center gap-1 transition-all duration-200 ${isHovered ? "opacity-100" : "opacity-0 pointer-events-none"}`}
           >
             <ShoppingCart className="w-3 h-3" />
             В корзину
