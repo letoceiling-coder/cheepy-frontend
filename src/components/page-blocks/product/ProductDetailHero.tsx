@@ -15,6 +15,7 @@ import type { CartPromotionSnapshot } from "@/lib/cartPricing";
 import { filterRedundantVariantAttributes } from "@/lib/cartDisplayAttributes";
 import { useAuth } from "@/contexts/AuthContext";
 import DeliveryQuoteEntry from "@/components/page-blocks/product/DeliveryQuoteEntry";
+import ColorSwatchPicker from "@/components/page-blocks/product/ColorSwatchPicker";
 
 const RECENT_KEY = "cheepy_recent_product_ids";
 
@@ -356,70 +357,30 @@ export default function ProductDetailHero(
         ) : null}
 
         {colorVariantsUnique.length > 0 ? (
-          <div className="mb-4">
-            <p className="text-sm font-medium text-foreground mb-2">
-              Цвет:{" "}
-              <span className="text-muted-foreground">
-                {selectedVariantMeta?.color || selectedColor || presentation.colors[0] || "—"}
-              </span>
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {colorVariantsUnique.map((v) => {
-                const isSelected = String(v.id) === selectedColorVariantId.trim();
-                return (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedColorVariantId(String(v.id));
-                      setSelectedColor(v.color || "");
-                      setActiveImage(0);
-                    }}
-                    className={`rounded-lg border-2 border-transparent p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                      isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "hover:border-primary/40"
-                    }`}
-                    title={v.title || v.color}
-                  >
-                    <span
-                      className={`block h-16 w-12 overflow-hidden rounded-lg border-2 bg-secondary transition-colors ${
-                        isSelected ? "border-primary" : "border-border"
-                      }`}
-                    >
-                      {v.thumbnail ? (
-                        <img src={v.thumbnail} alt={v.color || v.title} className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="flex h-full w-full items-center justify-center px-1 text-center text-[10px] text-muted-foreground leading-tight">
-                          {v.color || "…"}
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <ColorSwatchPicker
+            activeLabel={selectedVariantMeta?.color || selectedColor || presentation.colors[0] || "—"}
+            options={colorVariantsUnique.map((v) => ({
+              key: String(v.id),
+              label: v.color || v.title || "—",
+            }))}
+            selectedKey={selectedColorVariantId.trim()}
+            onSelect={(variantId) => {
+              const variant = colorVariantsUnique.find((v) => String(v.id) === variantId);
+              setSelectedColorVariantId(variantId);
+              setSelectedColor(variant?.color || "");
+              setActiveImage(0);
+            }}
+          />
         ) : presentation.colors.length > 0 ? (
-          <div className="mb-4">
-            <p className="text-sm font-medium text-foreground mb-2">
-              Цвет: <span className="text-muted-foreground">{selectedColor || presentation.colors[0]}</span>
-            </p>
-            <div className="flex gap-2 flex-wrap">
-              {presentation.colors.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setSelectedColor(c)}
-                  className={`px-4 py-2 rounded-lg text-sm border transition-colors ${
-                    (selectedColor || presentation.colors[0]) === c
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:border-primary/50"
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-          </div>
+          <ColorSwatchPicker
+            activeLabel={selectedColor || presentation.colors[0] || "—"}
+            options={presentation.colors.map((c) => ({
+              key: c,
+              label: c,
+            }))}
+            selectedKey={selectedColor || presentation.colors[0] || ""}
+            onSelect={setSelectedColor}
+          />
         ) : null}
 
         {presentation.sizes.length > 0 ? (
