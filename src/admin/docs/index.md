@@ -9,14 +9,14 @@ The Cheepy Admin Panel is the control center for managing the marketplace parser
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                         Admin UI (React SPA)                             │
-│  https://siteaacess.store/admin                                         │
+│  https://cheepy.shop/admin                                         │
 └─────────────────────────────────────────────────────────────────────────┘
                                       │
                                       │ HTTPS + JWT
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                      Laravel API                                         │
-│  https://online-parser.siteaacess.store/api/v1                          │
+│  https://online-parser.cheepy.shop/api/v1                          │
 │  • Auth (JWT)  • Parser  • Products  • Categories  • Logs  • Settings   │
 └─────────────────────────────────────────────────────────────────────────┘
          │                    │                    │

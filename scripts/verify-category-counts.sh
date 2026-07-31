@@ -1,9 +1,9 @@
 #!/bin/bash
 # Verify category counts: frontend vs admin vs database
 # Usage: ./scripts/verify-category-counts.sh [API_BASE]
-# Example: ./scripts/verify-category-counts.sh https://online-parser.siteaacess.store/api/v1
+# Example: ./scripts/verify-category-counts.sh https://online-parser.cheepy.shop/api/v1
 
-BASE="${1:-https://online-parser.siteaacess.store/api/v1}"
+BASE="${1:-https://online-parser.cheepy.shop/api/v1}"
 echo "=== Category count verification ==="
 echo "API: $BASE"
 echo ""

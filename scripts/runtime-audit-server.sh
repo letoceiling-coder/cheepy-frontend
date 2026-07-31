@@ -43,4 +43,4 @@ cd "$BASE" && git log -1 --oneline 2>/dev/null && git status -sb 2>/dev/null || 
 echo ""
 
 echo "--- 6) HTTP response for /person (redirect?) ---"
-curl -sI "https://siteaacess.store/person" 2>/dev/null | head -5 || curl -sI "http://localhost/person" 2>/dev/null | head -5 || echo "curl failed"
+curl -sI "https://cheepy.shop/person" 2>/dev/null | head -5 || curl -sI "http://localhost/person" 2>/dev/null | head -5 || echo "curl failed"

@@ -20,11 +20,11 @@ check() {
 }
 
 FAIL=0
-check "frontend" "https://siteaacess.store" || FAIL=1
-check "api" "https://online-parser.siteaacess.store/api/v1/up" || FAIL=1
+check "frontend" "https://cheepy.shop" || FAIL=1
+check "api" "https://online-parser.cheepy.shop/api/v1/up" || FAIL=1
 
 # ws-status (optional - may require auth)
-curl -s --connect-timeout 3 "https://online-parser.siteaacess.store/api/v1/ws-status" | head -c 200 >> "$LOG_FILE" 2>/dev/null || true
+curl -s --connect-timeout 3 "https://online-parser.cheepy.shop/api/v1/ws-status" | head -c 200 >> "$LOG_FILE" 2>/dev/null || true
 echo "" >> "$LOG_FILE"
 
 [ $FAIL -eq 0 ] && exit 0

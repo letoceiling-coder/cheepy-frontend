@@ -1,8 +1,8 @@
 /**
- * API client for Parser backend (online-parser.siteaacess.store)
+ * API client for Parser backend (online-parser.cheepy.shop)
  */
 
-const DEFAULT_API_URL = 'https://online-parser.siteaacess.store/api/v1';
+const DEFAULT_API_URL = 'https://online-parser.cheepy.shop/api/v1';
 
 function resolveApiBaseUrl(): string {
   const raw = String(import.meta.env.VITE_API_URL || '').trim();
@@ -3136,7 +3136,7 @@ export interface AiProviderItem {
   has_api_key: boolean;
   api_key_hint: string | null;
   default_model: string;
-  /** Опционально: свой endpoint (OpenAI-совместимые), для Ollama — https://ollama.siteaacess.store/v1 */
+  /** Опционально: свой endpoint (OpenAI-совместимые), для Ollama — https://ollama.cheepy.shop/v1 */
   base_url: string;
   models: AiProviderModelOption[];
   catalog_updated_at: string;

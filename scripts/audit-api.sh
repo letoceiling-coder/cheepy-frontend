@@ -2,7 +2,7 @@
 # API audit script — run locally, requires curl and jq
 # Usage: ./scripts/audit-api.sh [BASE_URL]
 
-BASE="${1:-https://online-parser.siteaacess.store/api/v1}"
+BASE="${1:-https://online-parser.cheepy.shop/api/v1}"
 # Try /up or /health — routes may vary
 
 echo "=== API Audit: $BASE ==="

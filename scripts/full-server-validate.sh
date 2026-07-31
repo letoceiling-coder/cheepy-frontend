@@ -11,13 +11,13 @@ echo "=== $(date) FULL SERVER VALIDATION ==="
 
 echo ""
 echo "--- 1. Health ---"
-curl -s "https://online-parser.siteaacess.store/api/v1/up" | head -c 200
+curl -s "https://online-parser.cheepy.shop/api/v1/up" | head -c 200
 echo ""
-curl -s "https://online-parser.siteaacess.store/api/v1/health" | head -c 500
+curl -s "https://online-parser.cheepy.shop/api/v1/health" | head -c 500
 echo ""
 echo ""
 echo "--- 1b. WebSocket status ---"
-curl -s "https://online-parser.siteaacess.store/api/v1/ws-status" | head -c 200
+curl -s "https://online-parser.cheepy.shop/api/v1/ws-status" | head -c 200
 echo ""
 
 echo ""

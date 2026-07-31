@@ -5,7 +5,7 @@
 **Symptom**: Browser blocks requests, "CORS policy" error.
 
 **Fix**:
-- Backend `.env`: `FRONTEND_URL=https://siteaacess.store,http://cheepy.loc`
+- Backend `.env`: `FRONTEND_URL=https://cheepy.shop,http://cheepy.loc`
 - Backend `config/cors.php`: `allowed_origins` includes production origin
 - Run: `php artisan config:clear && php artisan cache:clear`
 

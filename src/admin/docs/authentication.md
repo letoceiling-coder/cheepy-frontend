@@ -2,7 +2,7 @@
 
 ## Login Flow
 
-1. Admin opens `https://siteaacess.store/admin/login`
+1. Admin opens `https://cheepy.shop/admin/login`
 2. Enters **email** and **password**
 3. Frontend sends `POST /api/v1/auth/login` with JSON body: `{ email, password }`
 4. Backend validates against `AdminUser` model (`admin_users` table)

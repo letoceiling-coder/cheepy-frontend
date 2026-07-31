@@ -20,7 +20,7 @@ type Draft = {
   base_url: string;
 };
 
-const OLLAMA_DEFAULT_BASE_URL = "https://ollama.siteaacess.store/v1";
+const OLLAMA_DEFAULT_BASE_URL = "https://ollama.cheepy.shop/v1";
 const OPENROUTER_DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
 
 function formatTs(iso: string | null): string {

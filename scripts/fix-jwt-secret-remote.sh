@@ -10,4 +10,4 @@ fi
 php artisan config:clear
 php artisan config:cache
 echo "JWT_SECRET updated (64 chars)"
-echo "Test login: POST https://online-parser.siteaacess.store/api/v1/auth/login"
+echo "Test login: POST https://online-parser.cheepy.shop/api/v1/auth/login"

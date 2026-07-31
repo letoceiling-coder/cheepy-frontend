@@ -1,6 +1,6 @@
 # Admin API Reference
 
-Base URL: `https://online-parser.siteaacess.store/api/v1`
+Base URL: `https://online-parser.cheepy.shop/api/v1`
 
 All endpoints (except login) require: `Authorization: Bearer <token>`
 

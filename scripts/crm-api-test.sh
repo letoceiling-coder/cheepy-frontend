@@ -5,7 +5,7 @@
 
 EMAIL="${1:-admin@sadavod.loc}"
 PASS="${2:-admin123}"
-API="https://online-parser.siteaacess.store/api/v1"
+API="https://online-parser.cheepy.shop/api/v1"
 
 echo "=== Login ==="
 TOKEN=$(curl -s -X POST "$API/auth/login" \

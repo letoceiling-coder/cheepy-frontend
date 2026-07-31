@@ -22,8 +22,8 @@ check() {
 }
 
 FAIL=0
-check "Frontend https://siteaacess.store" "https://siteaacess.store" || FAIL=1
-check "API /up" "https://online-parser.siteaacess.store/api/v1/up" || FAIL=1
+check "Frontend https://cheepy.shop" "https://cheepy.shop" || FAIL=1
+check "API /up" "https://online-parser.cheepy.shop/api/v1/up" || FAIL=1
 
 [ $FAIL -eq 0 ] && exit 0
 exit 1

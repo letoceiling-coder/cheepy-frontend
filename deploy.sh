@@ -159,7 +159,7 @@ fi
 
 echo "🩺 HEALTH CHECK"
 
-RESPONSE=$(curl -sS https://online-parser.siteaacess.store/api/health)
+RESPONSE=$(curl -sS https://online-parser.cheepy.shop/api/health)
 
 echo "$RESPONSE"
 
@@ -173,7 +173,7 @@ if ! echo "$RESPONSE" | grep -qE '"status"[[:space:]]*:[[:space:]]*"ok"'; then
   exit 1
 fi
 
-curl -fS https://siteaacess.store
+curl -fS https://cheepy.shop
 
 echo "✅ DEPLOY DONE"
 
