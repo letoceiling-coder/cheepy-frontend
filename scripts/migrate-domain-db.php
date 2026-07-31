@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 /**
  * Replace legacy siteaacess.store domains in text/json columns.
- * Skips columns with no matches for faster runs on large databases.
+ * By default scans config/integration/CMS tables only (fast).
+ * Set FULL_DB_SCAN=1 to scan all tables (slow on large catalogs).
  */
 
 $root = getenv('BACKEND_ROOT') ?: '/var/www/online-parser.siteaacess.store';
@@ -30,14 +31,50 @@ $to = [
     'www.cheepy.shop',
 ];
 
+$priorityTables = [
+    'settings',
+    'parser_settings',
+    'ai_provider_integrations',
+    'social_oauth_integrations',
+    'mail_integrations',
+    'sms_integrations',
+    'delivery_integrations',
+    'payment_providers',
+    'saas_api_keys',
+    'cms_pages',
+    'cms_page_blocks',
+    'cms_page_versions',
+    'constructor_layout_templates',
+    'constructor_layout_template_blocks',
+    'marketing_email_templates',
+    'marketing_campaigns',
+    'marketing_news',
+    'crm_media_files',
+    'users',
+    'sessions',
+    'cache',
+    'jobs',
+    'failed_jobs',
+];
+
 $db = DB::connection();
 $dbName = $db->getDatabaseName();
-$tables = $db->select('SHOW TABLES');
-$key = 'Tables_in_' . $dbName;
+$fullScan = getenv('FULL_DB_SCAN') === '1';
+$tables = $fullScan
+    ? array_map(static fn ($row) => $row->{'Tables_in_' . $dbName}, $db->select('SHOW TABLES'))
+    : $priorityTables;
+
 $updated = 0;
 
-foreach ($tables as $row) {
-    $table = $row->{$key};
+foreach ($tables as $table) {
+    $exists = $db->selectOne(
+        'SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?',
+        [$dbName, $table]
+    );
+    if (! $exists) {
+        continue;
+    }
+
     $cols = $db->select(
         'SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?',
         [$dbName, $table]
@@ -53,7 +90,7 @@ foreach ($tables as $row) {
         foreach ($from as $i => $old) {
             $new = $to[$i];
             $has = (int) $db->selectOne(
-                'SELECT COUNT(*) AS c FROM `' . $table . '` WHERE `' . $name . '` LIKE ?',
+                'SELECT COUNT(*) AS c FROM `' . $table . '` WHERE `' . $name . '` LIKE ? LIMIT 1',
                 ['%' . $old . '%']
             )->c;
             if ($has === 0) {
