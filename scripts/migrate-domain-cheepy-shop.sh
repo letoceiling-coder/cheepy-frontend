@@ -17,17 +17,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 log() { echo "[$(date -Iseconds)] $*"; }
 
-log "=== 1. Nginx vhosts ==="
-install -m 644 "$SCRIPT_DIR/nginx-cheepy-shop-frontend.conf" /etc/nginx/sites-available/cheepy.shop
-install -m 644 "$SCRIPT_DIR/nginx-online-parser-cheepy-shop.conf" /etc/nginx/sites-available/online-parser.cheepy.shop
+log "=== 1. Nginx vhosts (HTTP bootstrap) ==="
+install -m 644 "$SCRIPT_DIR/nginx-cheepy-shop-frontend-http.conf" /etc/nginx/sites-available/cheepy.shop
+install -m 644 "$SCRIPT_DIR/nginx-online-parser-cheepy-shop-http.conf" /etc/nginx/sites-available/online-parser.cheepy.shop
 ln -sf /etc/nginx/sites-available/cheepy.shop /etc/nginx/sites-enabled/cheepy.shop
 ln -sf /etc/nginx/sites-available/online-parser.cheepy.shop /etc/nginx/sites-enabled/online-parser.cheepy.shop
 
 if [ -f /etc/nginx/sites-enabled/ollama.siteaacess.store ]; then
   real=$(readlink -f /etc/nginx/sites-enabled/ollama.siteaacess.store 2>/dev/null || echo /etc/nginx/sites-enabled/ollama.siteaacess.store)
-  sed 's/ollama\.siteaacess\.store/ollama.cheepy.shop/g; s/listen \[::\]:443 ssl ipv6only=on/listen [::]:443 ssl/g' "$real" > /etc/nginx/sites-available/ollama.cheepy.shop
+  sed 's/ollama\.siteaacess\.store/ollama.cheepy.shop/g; s/listen \[::\]:443 ssl ipv6only=on/listen [::]:443 ssl/g' "$real" > /etc/nginx/sites-available/ollama.cheepy.shop.http
+  # Ollama may keep old cert until certbot runs; prefer HTTP-only block if SSL cert missing
+  if [ ! -f /etc/letsencrypt/live/ollama.cheepy.shop/fullchain.pem ]; then
+    grep -v 'ssl_certificate\|listen 443\|listen \[::\]:443' /etc/nginx/sites-available/ollama.cheepy.shop.http > /etc/nginx/sites-available/ollama.cheepy.shop || cp /etc/nginx/sites-available/ollama.cheepy.shop.http /etc/nginx/sites-available/ollama.cheepy.shop
+  else
+    cp /etc/nginx/sites-available/ollama.cheepy.shop.http /etc/nginx/sites-available/ollama.cheepy.shop
+  fi
   ln -sf /etc/nginx/sites-available/ollama.cheepy.shop /etc/nginx/sites-enabled/ollama.cheepy.shop
-  log "Created nginx: ollama.cheepy.shop"
+  log "Prepared nginx: ollama.cheepy.shop"
 fi
 
 # Avoid duplicate ipv6 listen options while old vhosts remain enabled during DNS transition.
@@ -48,9 +54,17 @@ certbot certonly --nginx -d cheepy.shop -d www.cheepy.shop --non-interactive --a
 certbot certonly --nginx -d online-parser.cheepy.shop --non-interactive --agree-tos -m admin@${NEW_FRONT} --keep-until-expiring 2>/dev/null || \
   certbot --nginx -d online-parser.cheepy.shop --non-interactive --agree-tos -m admin@${NEW_FRONT} --redirect 2>/dev/null || log "WARN: certbot API — check manually"
 
-if [ -f /etc/nginx/sites-available/ollama.cheepy.shop ]; then
+if [ -f /etc/nginx/sites-available/ollama.cheepy.shop ] || [ -f /etc/nginx/sites-enabled/ollama.siteaacess.store ]; then
   certbot certonly --nginx -d ollama.cheepy.shop --non-interactive --agree-tos -m admin@${NEW_FRONT} --keep-until-expiring 2>/dev/null || \
     log "WARN: certbot ollama — check manually"
+fi
+
+log "=== 2b. Nginx vhosts (HTTPS) ==="
+if [ -f /etc/letsencrypt/live/cheepy.shop/fullchain.pem ]; then
+  install -m 644 "$SCRIPT_DIR/nginx-cheepy-shop-frontend.conf" /etc/nginx/sites-available/cheepy.shop
+fi
+if [ -f /etc/letsencrypt/live/online-parser.cheepy.shop/fullchain.pem ]; then
+  install -m 644 "$SCRIPT_DIR/nginx-online-parser-cheepy-shop.conf" /etc/nginx/sites-available/online-parser.cheepy.shop
 fi
 
 nginx -t && systemctl reload nginx
