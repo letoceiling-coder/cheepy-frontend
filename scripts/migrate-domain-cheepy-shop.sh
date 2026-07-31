@@ -98,32 +98,7 @@ EOF
 log "=== 5. DB domain replace ==="
 cd "$BACKEND_ROOT"
 php artisan optimize:clear
-php -r "
-require 'vendor/autoload.php';
-\$app = require 'bootstrap/app.php';
-\$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-\$from = ['siteaacess.store', 'online-parser.siteaacess.store', 'ollama.siteaacess.store', 'www.siteaacess.store'];
-\$to   = ['cheepy.shop', 'online-parser.cheepy.shop', 'ollama.cheepy.shop', 'www.cheepy.shop'];
-\$db = DB::connection();
-\$tables = \$db->select('SHOW TABLES');
-\$key = 'Tables_in_' . \$db->getDatabaseName();
-\$updated = 0;
-foreach (\$tables as \$row) {
-  \$table = \$row->\$key;
-  \$cols = \$db->select('SHOW COLUMNS FROM `' . \$table . '`');
-  foreach (\$cols as \$col) {
-    \$type = strtolower(\$col->Type);
-    if (!preg_match('/char|text|json|blob/', \$type)) continue;
-    \$name = \$col->Field;
-    foreach (\$from as \$i => \$old) {
-      \$new = \$to[\$i];
-      \$n = \$db->update('UPDATE `' . \$table . '` SET `' . \$name . '` = REPLACE(`' . \$name . '`, ?, ?) WHERE `' . \$name . '` LIKE ?', [\$old, \$new, '%' . \$old . '%']);
-      \$updated += \$n;
-    }
-  }
-}
-echo \"DB rows updated: \$updated\n\";
-"
+BACKEND_ROOT="$BACKEND_ROOT" php "$SCRIPT_DIR/migrate-domain-db.php"
 
 cd "$BACKEND_ROOT"
 php artisan config:cache
