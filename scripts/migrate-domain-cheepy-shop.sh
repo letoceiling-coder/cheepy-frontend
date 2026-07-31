@@ -8,36 +8,35 @@ FRONTEND_ROOT="${FRONTEND_ROOT:-/var/www/siteaacess.store}"
 BACKEND_ROOT="${BACKEND_ROOT:-/var/www/online-parser.siteaacess.store}"
 OLD_FRONT="siteaacess.store"
 OLD_API="online-parser.siteaacess.store"
-OLD_OLLAMA="ollama.cheepy.shop"
+OLD_OLLAMA="ollama.siteaacess.store"
 NEW_FRONT="cheepy.shop"
 NEW_API="online-parser.cheepy.shop"
 NEW_OLLAMA="ollama.cheepy.shop"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 log() { echo "[$(date -Iseconds)] $*"; }
 
 log "=== 1. Nginx vhosts ==="
-for pair in \
-  "siteaacess.store:cheepy.shop" \
-  "online-parser.siteaacess.store:online-parser.cheepy.shop" \
-  "ollama.cheepy.shop:ollama.cheepy.shop"; do
-  old="${pair%%:*}"
-  new="${pair##*:}"
-  src="/etc/nginx/sites-enabled/${old}"
-  dst="/etc/nginx/sites-available/${new}"
-  if [ -f "$src" ] || [ -L "$src" ]; then
-    real=$(readlink -f "$src" 2>/dev/null || echo "$src")
-    sed "s/${old}/${new}/g; s/www\.cheepy\.shop/cheepy.shop/g" "$real" > "$dst"
-    ln -sf "$dst" "/etc/nginx/sites-enabled/${new}"
-    log "Created nginx: $new"
+install -m 644 "$SCRIPT_DIR/nginx-cheepy-shop-frontend.conf" /etc/nginx/sites-available/cheepy.shop
+install -m 644 "$SCRIPT_DIR/nginx-online-parser-cheepy-shop.conf" /etc/nginx/sites-available/online-parser.cheepy.shop
+ln -sf /etc/nginx/sites-available/cheepy.shop /etc/nginx/sites-enabled/cheepy.shop
+ln -sf /etc/nginx/sites-available/online-parser.cheepy.shop /etc/nginx/sites-enabled/online-parser.cheepy.shop
+
+if [ -f /etc/nginx/sites-enabled/ollama.siteaacess.store ]; then
+  real=$(readlink -f /etc/nginx/sites-enabled/ollama.siteaacess.store 2>/dev/null || echo /etc/nginx/sites-enabled/ollama.siteaacess.store)
+  sed 's/ollama\.siteaacess\.store/ollama.cheepy.shop/g; s/listen \[::\]:443 ssl ipv6only=on/listen [::]:443 ssl/g' "$real" > /etc/nginx/sites-available/ollama.cheepy.shop
+  ln -sf /etc/nginx/sites-available/ollama.cheepy.shop /etc/nginx/sites-enabled/ollama.cheepy.shop
+  log "Created nginx: ollama.cheepy.shop"
+fi
+
+# Avoid duplicate ipv6 listen options while old vhosts remain enabled during DNS transition.
+for old_vhost in siteaacess.store online-parser.siteaacess.store ollama.siteaacess.store; do
+  f="/etc/nginx/sites-enabled/${old_vhost}"
+  if [ -f "$f" ] || [ -L "$f" ]; then
+    sed -i 's/listen \[::\]:443 ssl ipv6only=on/listen [::]:443 ssl/g' "$(readlink -f "$f" 2>/dev/null || echo "$f")"
   fi
 done
-
-# www redirect block for cheepy.shop
-if [ -f /etc/nginx/sites-available/cheepy.shop ]; then
-  if ! grep -q 'server_name cheepy.shop www.cheepy.shop' /etc/nginx/sites-available/cheepy.shop; then
-    sed -i 's/server_name cheepy.shop;/server_name cheepy.shop www.cheepy.shop;/' /etc/nginx/sites-available/cheepy.shop
-  fi
-fi
 
 nginx -t
 systemctl reload nginx
@@ -89,7 +88,7 @@ php -r "
 require 'vendor/autoload.php';
 \$app = require 'bootstrap/app.php';
 \$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-\$from = ['siteaacess.store', 'online-parser.siteaacess.store', 'ollama.cheepy.shop', 'www.siteaacess.store'];
+\$from = ['siteaacess.store', 'online-parser.siteaacess.store', 'ollama.siteaacess.store', 'www.siteaacess.store'];
 \$to   = ['cheepy.shop', 'online-parser.cheepy.shop', 'ollama.cheepy.shop', 'www.cheepy.shop'];
 \$db = DB::connection();
 \$tables = \$db->select('SHOW TABLES');
