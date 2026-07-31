@@ -16,6 +16,8 @@ interface Product {
   colorVariantThumbnails?: string[];
 }
 
+const productImgProps = { referrerPolicy: "no-referrer" as const, loading: "lazy" as const };
+
 const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?: "grid" | "list" }) => {
   const navigate = useNavigate();
   const [activeImage, setActiveImage] = useState(0);
@@ -53,6 +55,7 @@ const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?
               key={i}
               src={img}
               alt={product.name}
+              {...productImgProps}
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${
                 i === activeImage ? "opacity-100" : "opacity-0"
               }`}
@@ -85,7 +88,7 @@ const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?
             {(product.colorVariantThumbnails?.length ?? 0) > 0 ? (
               <div className="flex flex-wrap items-center gap-1 mt-1.5" aria-label="Доступные цвета">
                 {product.colorVariantThumbnails!.slice(0, 4).map((src, i) => (
-                  <img key={i} src={src} alt="" className="h-8 w-6 object-cover rounded border border-border" />
+                  <img key={i} src={src} alt="" {...productImgProps} className="h-8 w-6 object-cover rounded border border-border" />
                 ))}
                 {typeof product.colorVariantsCount === "number" && product.colorVariantsCount > 1 ? (
                   <span className="text-[10px] text-muted-foreground">{product.colorVariantsCount} цв.</span>
@@ -133,6 +136,7 @@ const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?
             key={i}
             src={img}
             alt={product.name}
+            {...productImgProps}
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${
               i === activeImage ? "opacity-100" : "opacity-0"
             }`}
@@ -204,7 +208,7 @@ const ProductCard = ({ product, variant = "grid" }: { product: Product; variant?
         {(product.colorVariantThumbnails?.length ?? 0) > 0 ? (
           <div className="flex flex-wrap items-center gap-1 mt-2" aria-label="Доступные цвета">
             {product.colorVariantThumbnails!.slice(0, 4).map((src, i) => (
-              <img key={i} src={src} alt="" className="h-9 w-7 object-cover rounded border border-border" />
+              <img key={i} src={src} alt="" {...productImgProps} className="h-9 w-7 object-cover rounded border border-border" />
             ))}
             {typeof product.colorVariantsCount === "number" && product.colorVariantsCount > 1 ? (
               <span className="text-[10px] text-muted-foreground whitespace-nowrap">{product.colorVariantsCount} цв.</span>
